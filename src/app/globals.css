@@ -14,7 +14,7 @@
   /* Cores de Interface Semânticas */
   --color-background: var(--bg-main);
   --color-foreground: var(--text-main);
-  
+
   --color-card: var(--bg-card);
   --color-muted: var(--text-muted);
   --color-border: var(--border-ui);
@@ -51,4 +51,12 @@
   .card-membro {
     @apply bg-card border border-border rounded-lg shadow-sm p-4;
   }
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
 }
