@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Area {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  createdAt DateTime @default(now())
+
+  membros   Membro[]
+}
+
+model Membro {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  fotoUrl   String?
+  dre       String
+  periodo   String
+  isAtivo   Boolean  @default(true)
+  areaId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  area                Area                    @relation(fields: [areaId], references: [id])
+  avaliacoesFeitas    RespostaAvaliacao[]     @relation("AvaliacoesFeitas")
+  avaliacoesRecebidas RespostaAvaliacao[]     @relation("AvaliacoesRecebidas")
+  planosAcao          PlanoAcao[]
+  avaliacaoFeedbacks  AvaliacaoFeedback[]
+  alocacoes           AlocacaoDemanda[]
+  participacoes       ParticipacaoAvaliacao[]
+}
+
+model Coordenador {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  usuario   String   @unique
+  senhaHash String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  avaliacoesCriadas Avaliacao[]
+}
+
+model Avaliacao {
+  id          Int       @id @default(autoincrement())
+  nome        String
+  dataInicio  DateTime
+  dataFim     DateTime?
+  finalizada  Boolean   @default(false)
+  createdById Int
+  createdAt   DateTime  @default(now())
+
+  createdBy     Coordenador             @relation(fields: [createdById], references: [id])
+  respostas     RespostaAvaliacao[]
+  participantes ParticipacaoAvaliacao[]
+}
+
+model RespostaAvaliacao {
+  id            Int      @id @default(autoincrement())
+  avaliacaoId   Int
+  avaliadorId   Int
+  avaliadoId    Int
+  notaEntrega   Int
+  notaCultura   Int
+  feedbackTexto String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  avaliacao         Avaliacao          @relation(fields: [avaliacaoId], references: [id])
+  avaliador         Membro             @relation("AvaliacoesFeitas", fields: [avaliadorId], references: [id])
+  avaliado          Membro             @relation("AvaliacoesRecebidas", fields: [avaliadoId], references: [id])
+  planosAcao        PlanoAcao[]
+  avaliacaoFeedback AvaliacaoFeedback?
+
+  @@unique([avaliacaoId, avaliadorId, avaliadoId])
+}
+
+model PlanoAcao {
+  id                  Int      @id @default(autoincrement())
+  respostaAvaliacaoId Int
+  responsavelId       Int
+  descricao           String
+  concluido           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  respostaAvaliacao RespostaAvaliacao @relation(fields: [respostaAvaliacaoId], references: [id])
+  responsavel       Membro            @relation(fields: [responsavelId], references: [id])
+}
+
+model AvaliacaoFeedback {
+  id                  Int      @id @default(autoincrement())
+  respostaAvaliacaoId Int      @unique
+  avaliadoId          Int
+  notaFeedback        Int
+  createdAt           DateTime @default(now())
+
+  respostaAvaliacao RespostaAvaliacao @relation(fields: [respostaAvaliacaoId], references: [id])
+  avaliado          Membro            @relation(fields: [avaliadoId], references: [id])
+}
+
+model ParticipacaoAvaliacao {
+  id                 Int     @id @default(autoincrement())
+  avaliacaoId        Int
+  membroId           Int
+  respondeuAvaliacao Boolean @default(false)
+  avaliouFeedbacks   Boolean @default(false)
+
+  avaliacao Avaliacao @relation(fields: [avaliacaoId], references: [id])
+  membro    Membro    @relation(fields: [membroId], references: [id])
+
+  @@unique([avaliacaoId, membroId])
+}
+
+model Demanda {
+  id         Int      @id @default(autoincrement())
+  nome       String
+  descricao  String?
+  finalizada Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  alocacoes AlocacaoDemanda[]
+}
+
+model AlocacaoDemanda {
+  id        Int     @id @default(autoincrement())
+  membroId  Int
+  demandaId Int
+  isLider   Boolean @default(false)
+
+  membro  Membro  @relation(fields: [membroId], references: [id])
+  demanda Demanda @relation(fields: [demandaId], references: [id])
+
+  @@unique([membroId, demandaId])
+}
