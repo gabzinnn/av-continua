@@ -2,14 +2,15 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { LucideIcon } from "lucide-react"
 
 interface NavItemProps {
   href: string
-  icon: string
+  icon: LucideIcon
   label: string
 }
 
-export function NavItem({ href, icon, label }: NavItemProps) {
+export function NavItem({ href, icon: Icon, label }: NavItemProps) {
   const pathname = usePathname()
   const isActive = pathname === href
 
@@ -24,14 +25,13 @@ export function NavItem({ href, icon, label }: NavItemProps) {
         }
       `}
     >
-      <span 
+      <Icon 
+        size={20}
         className={`
-          material-symbols-outlined text-[20px]
-          ${isActive ? "text-[#111827] icon-filled" : "text-[#9ca3af] group-hover:text-[#111827]"}
+          ${isActive ? "text-[#111827]" : "text-[#9ca3af] group-hover:text-[#111827]"}
         `}
-      >
-        {icon}
-      </span>
+        strokeWidth={isActive ? 2.5 : 2}
+      />
       <span className="text-sm">{label}</span>
     </Link>
   )

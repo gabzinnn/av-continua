@@ -5,18 +5,19 @@ import { useRouter, usePathname } from "next/navigation"
 import { useMember } from "@/src/context/memberContext"
 import { NavItem } from "./NavItem"
 import { UserCard } from "./UserCard"
+import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon } from "lucide-react"
 
 interface NavRoute {
   href: string
-  icon: string
+  icon: LucideIcon
   label: string
 }
 
 const navRoutes: NavRoute[] = [
-  { href: "/home", icon: "home", label: "Home" },
-  { href: "/avatual", icon: "edit_square", label: "Avaliação atual" },
-  { href: "/historico", icon: "history", label: "Histórico" },
-  { href: "/avaliacoes", icon: "box", label: "Avaliações anteriores" },
+  { href: "/home", icon: Home, label: "Home" },
+  { href: "/avatual", icon: FileEdit, label: "Avaliação atual" },
+  { href: "/historico", icon: History, label: "Histórico" },
+  { href: "/avaliacoes", icon: Archive, label: "Avaliações anteriores" },
 ]
 
 export function Sidebar() {
@@ -78,9 +79,11 @@ export function Sidebar() {
           className="p-2 rounded-lg hover:bg-gray-50 transition-colors"
           aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
         >
-          <span className="material-symbols-outlined text-[28px] text-[#374151]">
-            {isOpen ? "close" : "menu"}
-          </span>
+          {isOpen ? (
+            <X size={28} className="text-[#374151]" />
+          ) : (
+            <Menu size={28} className="text-[#374151]" />
+          )}
         </button>
       </header>
 
@@ -115,7 +118,7 @@ export function Sidebar() {
               onClick={() => setIsOpen(false)}
               className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <span className="material-symbols-outlined text-[20px] text-[#6b7280]">close</span>
+              <X size={20} className="text-[#6b7280]" />
             </button>
           </div>
         </div>
@@ -139,7 +142,7 @@ export function Sidebar() {
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg 
               text-[#ef4444] hover:bg-red-50 transition-colors"
           >
-            <span className="material-symbols-outlined">logout</span>
+            <LogOut size={20} />
             <span className="text-sm font-medium">Sair do Sistema</span>
           </button>
         </div>
