@@ -51,7 +51,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const logout = useCallback(() => {
         setCoordenador(null)
         localStorage.removeItem(STORAGE_KEY)
-        router.push("/coords/login")
+        router.push("/coord/login")
     }, [router])
 
     return (

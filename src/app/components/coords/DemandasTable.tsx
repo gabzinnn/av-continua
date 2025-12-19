@@ -148,7 +148,7 @@ export function DemandasTable({ demandas: demandasIniciais, total }: DemandasTab
                 
                 <div className="px-6 py-3 border-t border-border bg-[#fcfbf8] flex items-center justify-end">
                     <Link 
-                        href="/coords/demandas"
+                        href="/coord/demandas"
                         className="text-xs font-medium text-text-muted hover:text-text-main transition-colors"
                     >
                         Ver todas →

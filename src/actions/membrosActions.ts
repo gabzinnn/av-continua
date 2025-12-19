@@ -126,7 +126,7 @@ export async function createMembro(data: CreateMembroInput): Promise<{ success: 
                 isAtivo: true,
             },
         })
-        revalidatePath("/coords/membros")
+        revalidatePath("/coord/membros")
         return { success: true }
     } catch (error) {
         console.error("Erro ao criar membro:", error)
@@ -158,7 +158,7 @@ export async function updateMembro(data: UpdateMembroInput): Promise<{ success: 
                 isCoordenador: data.isCoordenador || false,
             },
         })
-        revalidatePath("/coords/membros")
+        revalidatePath("/coord/membros")
         return { success: true }
     } catch (error) {
         console.error("Erro ao atualizar membro:", error)
@@ -178,7 +178,7 @@ export async function toggleMembroStatus(id: number): Promise<{ success: boolean
             where: { id },
             data: { isAtivo: !membro.isAtivo },
         })
-        revalidatePath("/coords/membros")
+        revalidatePath("/coord/membros")
         return { success: true }
     } catch (error) {
         console.error("Erro ao alterar status:", error)

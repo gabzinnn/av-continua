@@ -14,7 +14,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
-            router.push("/coords")
+            router.push("/coord")
         }
     }, [isAuthenticated, isLoading, router])
 

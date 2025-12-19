@@ -131,7 +131,7 @@ export function MembrosTable({ membrosIniciais, total }: MembrosTableProps) {
             <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-text-main">Membros Atuais</h3>
                 <Link 
-                    href="/coords/membros" 
+                    href="/coord/membros" 
                     className="text-sm font-bold text-text-muted hover:text-text-main transition-colors"
                 >
                     Ver todos

@@ -25,12 +25,12 @@ interface NavRoute {
 }
 
 const navRoutes: NavRoute[] = [
-    { href: "/coords/home", icon: Home, label: "Home" },
-    { href: "/coords/alocacao", icon: PieChart, label: "Overview de Alocação" },
-    { href: "/coords/avaliacoes", icon: ClipboardList, label: "Controle de Avaliações" },
-    { href: "/coords/historico", icon: History, label: "Histórico de Avaliações" },
-    { href: "/coords/membros", icon: Users, label: "Membros" },
-    { href: "/coords/demandas", icon: CheckSquare, label: "Demandas" },
+    { href: "/coord/home", icon: Home, label: "Home" },
+    { href: "/coord/alocacao", icon: PieChart, label: "Overview de Alocação" },
+    { href: "/coord/avaliacoes", icon: ClipboardList, label: "Controle de Avaliações" },
+    { href: "/coord/historico", icon: History, label: "Histórico de Avaliações" },
+    { href: "/coord/membros", icon: Users, label: "Membros" },
+    { href: "/coord/demandas", icon: CheckSquare, label: "Demandas" },
 ]
 
 export function CoordsSidebar() {
@@ -71,7 +71,7 @@ export function CoordsSidebar() {
 
     const handleLogout = () => {
         logout()
-        router.push("/coords")
+        router.push("/coord")
     }
 
     const isActive = (href: string) => pathname === href

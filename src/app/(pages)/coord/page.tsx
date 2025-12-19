@@ -26,7 +26,7 @@ export default function LoginPage() {
 
         if (result.success && result.coordenador) {
             login(result.coordenador)
-            router.push("/coords/home")
+            router.push("/coord/home")
         } else {
             setError(result.error || "Erro ao fazer login")
         }
