@@ -11,6 +11,7 @@ export interface AvaliacaoRecebida {
     notaCultura: number
     feedbackTexto: string
     notaFeedback: number | null // null se não foi avaliado ainda
+    planosAcao: string
 }
 
 export async function getAvaliacoesRecebidas(membroId: number): Promise<AvaliacaoRecebida[]> {
@@ -34,6 +35,11 @@ export async function getAvaliacoesRecebidas(membroId: number): Promise<Avaliaca
                     notaFeedback: true,
                 }
             },
+            planosAcao: {
+                select: {
+                    descricao: true,
+                }
+            }
         },
         orderBy: {
             createdAt: "desc",
@@ -49,6 +55,7 @@ export async function getAvaliacoesRecebidas(membroId: number): Promise<Avaliaca
         notaCultura: resposta.notaCultura,
         feedbackTexto: resposta.feedbackTexto,
         notaFeedback: resposta.avaliacaoFeedback?.notaFeedback ?? null,
+        planosAcao: resposta.planosAcao.map(plano => plano.descricao).join("\n"),
     }))
 }
 

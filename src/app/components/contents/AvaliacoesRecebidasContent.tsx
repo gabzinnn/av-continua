@@ -41,8 +41,8 @@ export function AvaliacoesRecebidasContent() {
 
     return (
         <div className="flex-1 overflow-y-auto">
-            {/* Header */}
-            <header className="w-full px-8 py-6 bg-bg-main sticky top-0 z-10">
+            {/* Header - sticky only on desktop for better mobile visibility */}
+            <header className="w-full px-8 py-6 bg-bg-main md:sticky md:top-0 z-10">
                 <div className="max-w-[1200px] mx-auto flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
                         <h1 className="text-text-main text-3xl font-black leading-tight tracking-tight">
@@ -51,18 +51,6 @@ export function AvaliacoesRecebidasContent() {
                         <p className="text-text-muted text-base font-normal">
                             Veja o feedback detalhado e a classificação qualitativa que você recebeu de outros membros.
                         </p>
-                    </div>
-
-                    <div className="flex flex-wrap justify-between items-center gap-4 py-2 border-b border-border">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-text-main">Ordenar por:</span>
-                            <div className="relative group">
-                                <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-card border border-border text-sm font-medium shadow-sm hover:border-primary transition-colors">
-                                    Mais recentes
-                                    <span className="material-symbols-outlined text-[18px]">expand_more</span>
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </header>

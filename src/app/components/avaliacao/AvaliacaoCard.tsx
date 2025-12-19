@@ -94,6 +94,16 @@ export function AvaliacaoCard({ avaliacao, membroId, onFeedbackSaved }: Avaliaca
                 </p>
             </div>
 
+            {/* Planos de ação */}
+            <div className="flex flex-col gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                    Planos de ação
+                </span>
+                <p className="text-text-main text-base font-normal leading-relaxed whitespace-pre-line">
+                    {avaliacao.planosAcao}
+                </p>
+            </div>
+
             {/* Avaliação de Utilidade */}
             <div className="flex items-center justify-end pt-4 border-t border-border mt-2">
                 {notaFeedback !== null ? (
