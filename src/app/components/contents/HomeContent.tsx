@@ -111,7 +111,7 @@ export function HomeContent() {
               <div className="flex items-end gap-3">
                 <p className="text-4xl font-bold text-text-main tracking-tight">
                   {data.mediaEntrega.toFixed(1)}
-                  <span className="text-xl text-text-muted font-normal">/5.0</span>
+                  <span className="text-xl text-text-muted font-normal">/10</span>
                 </p>
                 <VariacaoBadge valor={data.variacaoEntrega} />
               </div>
@@ -128,7 +128,7 @@ export function HomeContent() {
               <div className="flex items-end gap-3">
                 <p className="text-4xl font-bold text-text-main tracking-tight">
                   {data.mediaAlinhamento.toFixed(1)}
-                  <span className="text-xl text-text-muted font-normal">/5.0</span>
+                  <span className="text-xl text-text-muted font-normal">/10</span>
                 </p>
                 <VariacaoBadge valor={data.variacaoAlinhamento} />
               </div>

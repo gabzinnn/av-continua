@@ -17,7 +17,7 @@ const navRoutes: NavRoute[] = [
   { href: "/home", icon: Home, label: "Home" },
   { href: "/avatual", icon: FileEdit, label: "Avaliação atual" },
   { href: "/historico", icon: History, label: "Histórico" },
-  { href: "/avaliacoes", icon: Archive, label: "Avaliações anteriores" },
+  { href: "/avaliacoes", icon: Archive, label: "Avaliações recebidas" },
 ]
 
 export function Sidebar() {

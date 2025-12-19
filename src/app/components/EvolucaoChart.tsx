@@ -73,7 +73,7 @@ export function EvolucaoChart({ data }: EvolucaoChartProps) {
     },
     yaxis: {
       min: 0,
-      max: 5,
+      max: 10,
       tickAmount: 5,
       labels: {
         formatter: (val: number) => val.toFixed(1),
@@ -93,7 +93,7 @@ export function EvolucaoChart({ data }: EvolucaoChartProps) {
     tooltip: {
       theme: "dark",
       y: {
-        formatter: (val: number) => `${val.toFixed(1)} / 5.0`,
+        formatter: (val: number) => `${val.toFixed(1)} / 10`,
       },
     },
     dataLabels: {
