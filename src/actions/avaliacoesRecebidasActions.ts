@@ -5,6 +5,7 @@ import prisma from "@/src/lib/prisma"
 export interface AvaliacaoRecebida {
     id: number
     avaliadorNome: string
+    avaliadorId: number
     avaliadorFoto: string | null
     data: string
     notaEntrega: number
@@ -28,6 +29,7 @@ export async function getAvaliacoesRecebidas(membroId: number): Promise<Avaliaca
                 select: {
                     nome: true,
                     fotoUrl: true,
+                    id: true,
                 }
             },
             avaliacaoFeedback: {
@@ -49,6 +51,7 @@ export async function getAvaliacoesRecebidas(membroId: number): Promise<Avaliaca
     return respostas.map(resposta => ({
         id: resposta.id,
         avaliadorNome: resposta.avaliador.nome,
+        avaliadorId: resposta.avaliador.id,
         avaliadorFoto: resposta.avaliador.fotoUrl,
         data: resposta.createdAt.toLocaleDateString("pt-BR"),
         notaEntrega: resposta.notaEntrega,

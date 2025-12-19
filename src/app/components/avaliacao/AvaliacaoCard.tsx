@@ -19,7 +19,7 @@ export function AvaliacaoCard({ avaliacao, membroId, onFeedbackSaved }: Avaliaca
         const nota = Number(value)
         setIsSaving(true)
         
-        const result = await salvarAvaliacaoFeedback(avaliacao.id, membroId, nota)
+        const result = await salvarAvaliacaoFeedback(avaliacao.id, avaliacao.avaliadorId, nota)
         
         if (result.success) {
             setNotaFeedback(nota)
