@@ -92,7 +92,7 @@ export async function getHomeData(membroId: number): Promise<HomeData> {
             respondeuAvaliacao: false,
             avaliacao: {
                 finalizada: false,
-            }
+            },
         }
     })
     const avaliacaoPendente = participacaoPendente !== null

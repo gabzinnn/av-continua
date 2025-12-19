@@ -6,6 +6,7 @@ import { Button } from "@/src/app/components/Button"
 import { useEffect, useState } from "react"
 import { getHomeData } from "@/src/actions/homeActions"
 import { EvolucaoChart } from "../EvolucaoChart"
+import router from "next/router"
 
 interface EvolucaoData {
   mes: string
@@ -87,12 +88,11 @@ export function HomeContent() {
               <div className="flex flex-col gap-1">
                 <h3 className="text-lg font-bold text-text-main">Avaliação Pendente</h3>
                 <p className="text-text-muted text-sm max-w-xl">
-                  Você tem uma avaliação de ciclo em aberto. Sua resposta é fundamental para o
-                  alinhamento da equipe.
+                  Você tem uma avaliação contínua em aberto. O preenchimento dela é obrigatório para todos os membros.
                 </p>
               </div>
             </div>
-            <Button size="md" className="whitespace-nowrap w-full md:w-auto">
+            <Button size="md" className="whitespace-nowrap w-full md:w-auto" onClick={() => router.push("/avatual")}>
               Responder Agora
             </Button>
           </div>

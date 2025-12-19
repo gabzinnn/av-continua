@@ -241,16 +241,17 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
 
     const totalMembros = membrosComDemandaCompartilhada.length
 
-    // Contar avaliações feitas
-    const avaliacoesFeitas = await prisma.respostaAvaliacao.count({
+    // Contar apenas avaliações FINALIZADAS (não rascunhos)
+    const avaliacoesFinalizadas = await prisma.respostaAvaliacao.count({
         where: {
             avaliacaoId,
-            avaliadorId: membroId
+            avaliadorId: membroId,
+            finalizada: true
         }
     })
 
-    // Se avaliou todos, marcar participação como concluída
-    if (avaliacoesFeitas >= totalMembros && totalMembros > 0) {
+    // Se finalizou todas as avaliações, marcar participação como concluída
+    if (avaliacoesFinalizadas >= totalMembros && totalMembros > 0) {
         await prisma.participacaoAvaliacao.upsert({
             where: {
                 avaliacaoId_membroId: {
@@ -266,6 +267,25 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
             },
             update: {
                 respondeuAvaliacao: true
+            }
+        })
+    } else {
+        // Se ainda não finalizou todas, garantir que respondeuAvaliacao seja false
+        await prisma.participacaoAvaliacao.upsert({
+            where: {
+                avaliacaoId_membroId: {
+                    avaliacaoId,
+                    membroId
+                }
+            },
+            create: {
+                avaliacaoId,
+                membroId,
+                respondeuAvaliacao: false,
+                avaliouFeedbacks: false
+            },
+            update: {
+                respondeuAvaliacao: false
             }
         })
     }

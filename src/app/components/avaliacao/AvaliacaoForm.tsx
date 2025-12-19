@@ -59,7 +59,7 @@ export function AvaliacaoForm({
             onChange={(e) => onChange("notaCultura", e.target.value)}
             placeholder="Selecione uma opção"
             size="md"
-            helperText="Baseado nos valores core da empresa."
+            helperText="Baseado nos valores do clube."
           />
           
         </div>
