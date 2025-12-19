@@ -135,7 +135,7 @@ export function AlocacaoContent() {
                                                         </span>
                                                         {demanda.area && (
                                                             <span 
-                                                                className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium text-text-main w-fit"
+                                                                className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium text-text-main w-fit whitespace-nowrap"
                                                                 style={{ backgroundColor: coresAreas(demanda.area) }}
                                                             >
                                                                 {demanda.area}
