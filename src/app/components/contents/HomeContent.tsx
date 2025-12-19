@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { getHomeData } from "@/src/actions/homeActions"
 import { EvolucaoChart } from "../EvolucaoChart"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 interface EvolucaoData {
   mes: string
@@ -140,10 +141,10 @@ export function HomeContent() {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-xl font-bold text-text-main">Evolução de Desempenho</h3>
-            <button className="text-sm text-text-muted hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
+            <Link href="/historico" className="text-sm text-text-muted hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
               Ver Detalhes{" "}
               <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-            </button>
+            </Link>
           </div>
 
           <Card className="h-80">
