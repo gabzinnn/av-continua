@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Demanda" ADD COLUMN     "creditoLider" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "creditoMembro" INTEGER NOT NULL DEFAULT 0;

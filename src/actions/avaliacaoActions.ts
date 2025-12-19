@@ -45,6 +45,22 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
         }
     }
 
+    // Buscar dados do avaliador para saber sua área
+    const avaliador = await prisma.membro.findUnique({
+        where: { id: membroId },
+        include: { area: true }
+    })
+
+    if (!avaliador) {
+        return {
+            avaliacaoId: null,
+            nome: null,
+            membrosParaAvaliar: [],
+            totalMembros: 0,
+            avaliadosCount: 0
+        }
+    }
+
     // Buscar demandas em que o avaliador está alocado
     const demandasDoAvaliador = await prisma.alocacaoDemanda.findMany({
         where: { membroId },
@@ -63,7 +79,29 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
         distinct: ['membroId']
     })
 
-    const membrosIds = membrosComDemandaCompartilhada.map(a => a.membroId)
+    let membrosIds = membrosComDemandaCompartilhada.map(a => a.membroId)
+
+    // Adicionar coordenadores obrigatórios:
+    // 1. Coordenador da área do avaliador
+    // 2. Coordenador da Organização Interna
+    // 3. Coordenador da Coordenação Geral
+    const coordenadoresObrigatorios = await prisma.membro.findMany({
+        where: {
+            isCoordenador: true,
+            isAtivo: true,
+            id: { not: membroId }, // Não incluir o próprio avaliador
+            OR: [
+                { areaId: avaliador.areaId }, // Coordenador da própria área
+                { area: { nome: "Organização Interna" } },
+                { area: { nome: "Coordenação Geral" } }
+            ]
+        },
+        select: { id: true }
+    })
+
+    // Merge sem duplicatas
+    const coordenadorIds = coordenadoresObrigatorios.map(c => c.id)
+    membrosIds = [...new Set([...membrosIds, ...coordenadorIds])]
 
     // Buscar dados completos desses membros (apenas ativos)
     const membros = await prisma.membro.findMany({
@@ -102,7 +140,7 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
         }
     })
     const avaliacoesCompletas = membrosParaAvaliar.filter(m => m.status === 'concluido')
-    // Ordenar: pendentes primeiro, depois concluídos
+    // Ordenar: coordenadores primeiro, depois por área, depois alfabeticamente
     membrosParaAvaliar.sort((a, b) => {
         if (a.isCoordenador !== b.isCoordenador) {
             return a.isCoordenador ? -1 : 1
@@ -218,8 +256,16 @@ export async function salvarResposta(data: SalvarRespostaInput) {
     return { success: true, respostaId: resposta.id }
 }
 
-// Verifica se o membro avaliou todos (que compartilham demanda) e atualiza a participação
+// Verifica se o membro avaliou todos (que compartilham demanda + coordenadores) e atualiza a participação
 async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: number) {
+    // Buscar dados do avaliador para saber sua área
+    const avaliador = await prisma.membro.findUnique({
+        where: { id: membroId },
+        include: { area: true }
+    })
+
+    if (!avaliador) return
+
     // Buscar demandas em que o avaliador está alocado
     const demandasDoAvaliador = await prisma.alocacaoDemanda.findMany({
         where: { membroId },
@@ -239,7 +285,28 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
         distinct: ['membroId']
     })
 
-    const totalMembros = membrosComDemandaCompartilhada.length
+    let membrosIds = membrosComDemandaCompartilhada.map(a => a.membroId)
+
+    // Adicionar coordenadores obrigatórios
+    const coordenadoresObrigatorios = await prisma.membro.findMany({
+        where: {
+            isCoordenador: true,
+            isAtivo: true,
+            id: { not: membroId },
+            OR: [
+                { areaId: avaliador.areaId },
+                { area: { nome: "Organização Interna" } },
+                { area: { nome: "Coordenação Geral" } }
+            ]
+        },
+        select: { id: true }
+    })
+
+    // Merge sem duplicatas
+    const coordenadorIds = coordenadoresObrigatorios.map(c => c.id)
+    membrosIds = [...new Set([...membrosIds, ...coordenadorIds])]
+
+    const totalMembros = membrosIds.length
 
     // Contar apenas avaliações FINALIZADAS (não rascunhos)
     const avaliacoesFinalizadas = await prisma.respostaAvaliacao.count({

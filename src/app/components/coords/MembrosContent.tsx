@@ -250,7 +250,7 @@ export function MembrosContent() {
                     {/* Title */}
                     <div className="flex flex-col gap-1">
                         <h2 className="text-text-main text-3xl font-bold tracking-tight">Gestão de Membros</h2>
-                        <p className="text-text-muted">Gerencie os membros da equipe, suas funções e status.</p>
+                        <p className="text-text-muted">Gerencie os membros do clube, suas áreas e status.</p>
                     </div>
 
                     {/* Toolbar */}

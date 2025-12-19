@@ -125,6 +125,8 @@ model Demanda {
   nome       String
   descricao  String?
   finalizada Boolean  @default(false)
+  creditoMembro Float @default(0)
+  creditoLider Float @default(0)
   idArea     Int?
   createdAt  DateTime @default(now())
 
