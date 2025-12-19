@@ -12,6 +12,7 @@ model Area {
   nome      String
   createdAt DateTime @default(now())
 
+  demandas  Demanda[]
   membros   Membro[]
 }
 
@@ -124,8 +125,10 @@ model Demanda {
   nome       String
   descricao  String?
   finalizada Boolean  @default(false)
+  idArea     Int?
   createdAt  DateTime @default(now())
 
+  area      Area?      @relation(fields: [idArea], references: [id])
   alocacoes AlocacaoDemanda[]
 }
 

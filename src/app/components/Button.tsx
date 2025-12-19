@@ -1,4 +1,5 @@
 import { ButtonHTMLAttributes, ReactNode } from "react"
+import { Loader2 } from "lucide-react"
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost"
 type ButtonSize = "sm" | "md" | "lg" | "xl"
@@ -56,7 +57,7 @@ export function Button({
       {...props}
     >
       {isLoading ? (
-        <span className="material-symbols-outlined animate-spin">progress_activity</span>
+        <Loader2 className="animate-spin" size={20} />
       ) : (
         <>
           {icon && iconPosition === "left" && icon}
