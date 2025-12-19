@@ -6,7 +6,7 @@ import { Button } from "@/src/app/components/Button"
 import { useEffect, useState } from "react"
 import { getHomeData } from "@/src/actions/homeActions"
 import { EvolucaoChart } from "../EvolucaoChart"
-import router from "next/router"
+import { useRouter } from "next/navigation"
 
 interface EvolucaoData {
   mes: string
@@ -32,6 +32,7 @@ interface HomeData {
 }
 
 export function HomeContent() {
+  const router = useRouter()
   const { selectedMember, isLoading: isMemberLoading } = useMember()
   const [data, setData] = useState<HomeData | null>(null)
   const [isLoading, setIsLoading] = useState(true)

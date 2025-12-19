@@ -32,7 +32,7 @@ export function EvolucaoChart({ data }: EvolucaoChartProps) {
       curve: "smooth",
       width: 3,
     },
-    colors: ["#F9D41A", "#8B5CF6", "#10B981"], // primary, violet, emerald
+    colors: ["#329fe9", "#fad419", "#10B981"], // primary, violet, emerald
     markers: {
       size: 5,
       strokeWidth: 0,
