@@ -140,7 +140,7 @@ export function Sidebar() {
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg 
-              text-[#ef4444] hover:bg-red-50 transition-colors"
+              text-[#ef4444] hover:bg-red-50 transition-colors cursor-pointer"
           >
             <LogOut size={20} />
             <span className="text-sm font-medium">Sair do Sistema</span>

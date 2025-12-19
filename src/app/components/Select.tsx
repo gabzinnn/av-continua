@@ -45,11 +45,11 @@ export function Select({
         <select
           className={`
             w-full appearance-none rounded-xl
-            border bg-bg
+            border bg-bg-main
             text-text placeholder-text-muted font-medium
             focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none
             transition-all cursor-pointer
-            ${error ? "border-red-500" : "border-border-input"}
+            ${error ? "border-red-500" : "border-gray-300"}
             ${sizeStyles[size]}
             ${className}
           `}
