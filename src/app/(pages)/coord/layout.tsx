@@ -1,3 +1,10 @@
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Gestão CC",
+  description: "Site responsável por gerenciar a gestão de coordenadores",
+};
+
 export default function CoordsLayout({
     children,
 }: {

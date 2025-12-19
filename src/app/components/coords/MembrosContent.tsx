@@ -11,6 +11,7 @@ import { getAllMembros, getAllAreas, MembroCompleto, AreaOption } from "@/src/ac
 import coresAreas from "@/src/utils/coresAreas"
 import dynamic from "next/dynamic"
 import { TableColumn } from "react-data-table-component"
+import { useMemo } from "react"
 
 const DataTable = dynamic(() => import("react-data-table-component"), { ssr: false })
 
@@ -70,6 +71,7 @@ export function MembrosContent() {
     const [membros, setMembros] = useState<MembroCompleto[]>([])
     const [areas, setAreas] = useState<AreaOption[]>([])
     const [busca, setBusca] = useState("")
+    const [mostrarInativos, setMostrarInativos] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
 
     // Modals
@@ -95,6 +97,14 @@ export function MembrosContent() {
     useEffect(() => {
         loadData()
     }, [loadData])
+
+    // Filtrar membros inativos se necessário
+    const membrosFiltrados = useMemo(() => {
+        if (mostrarInativos) {
+            return membros
+        }
+        return membros.filter((m) => m.isAtivo)
+    }, [membros, mostrarInativos])
 
     const handleEdit = (membro: MembroCompleto) => {
         setSelectedMembro(membro)
@@ -273,7 +283,17 @@ export function MembrosContent() {
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="flex items-center gap-4 w-full md:w-auto">
+                            {/* Toggle inativos */}
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={mostrarInativos}
+                                    onChange={(e) => setMostrarInativos(e.target.checked)}
+                                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                                />
+                                <span className="text-sm text-text-muted whitespace-nowrap">Mostrar inativos</span>
+                            </label>
                             <Button
                                 onClick={() => setShowAddModal(true)}
                                 icon={<Plus size={20} />}
@@ -292,7 +312,7 @@ export function MembrosContent() {
                     <div className="bg-bg-card rounded-xl shadow-sm border border-border overflow-x-auto">
                         <DataTable
                             columns={columns as TableColumn<unknown>[]}
-                            data={membros}
+                            data={membrosFiltrados}
                             pagination
                             paginationPerPage={10}
                             paginationRowsPerPageOptions={[10, 20, 50]}

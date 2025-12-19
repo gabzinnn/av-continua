@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/src/app/components/Button"
@@ -15,7 +15,13 @@ export default function LoginPage() {
     const [error, setError] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
-    const { login } = useAuth()
+    const { login, isAuthenticated } = useAuth()
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            router.push("/coord/home")
+        }
+    }, [isAuthenticated])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

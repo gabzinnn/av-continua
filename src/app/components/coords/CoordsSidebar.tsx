@@ -28,7 +28,6 @@ const navRoutes: NavRoute[] = [
     { href: "/coord/home", icon: Home, label: "Home" },
     { href: "/coord/alocacao", icon: PieChart, label: "Overview de Alocação" },
     { href: "/coord/avaliacoes", icon: ClipboardList, label: "Controle de Avaliações" },
-    { href: "/coord/historico", icon: History, label: "Histórico de Avaliações" },
     { href: "/coord/membros", icon: Users, label: "Membros" },
     { href: "/coord/demandas", icon: CheckSquare, label: "Demandas" },
 ]

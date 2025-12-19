@@ -15,6 +15,9 @@ export async function getActiveMembers() {
           nome: true,
         }
       }
+    },
+    orderBy: {
+      nome: 'asc'
     }
   });
 
