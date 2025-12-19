@@ -85,7 +85,7 @@ export function AlocarMembrosModal({ isOpen, onClose, onSuccess, demanda, membro
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-bg-card rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between p-6 border-b border-border flex-shrink-0">
+                <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
                     <div>
                         <h2 className="text-xl font-bold text-text-main">Alocar Membros</h2>
                         <p className="text-sm text-gray-500">{demanda.nome}</p>
@@ -233,7 +233,7 @@ export function AlocarMembrosModal({ isOpen, onClose, onSuccess, demanda, membro
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-border flex-shrink-0">
+                <div className="p-6 border-t border-border shrink-0">
                     <Button
                         variant="secondary"
                         className="w-full"

@@ -66,7 +66,7 @@ export function DeleteDemandaModal({ isOpen, onClose, onSuccess, demanda }: Dele
                         </Button>
                         <Button
                             type="button"
-                            className="flex-1 !bg-red-600 hover:!bg-red-700"
+                            className="flex-1 bg-red-600 hover:bg-red-700"
                             onClick={handleConfirm}
                             isLoading={isLoading}
                         >

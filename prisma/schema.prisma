@@ -12,21 +12,22 @@ model Area {
   nome      String
   createdAt DateTime @default(now())
 
-  demandas  Demanda[]
-  membros   Membro[]
+  demandas   Demanda[]
+  membros    Membro[]
+  pagamentos Pagamento[]
 }
 
 model Membro {
-  id        Int      @id @default(autoincrement())
-  nome      String
-  fotoUrl   String?
-  dre       String
-  periodo   String
-  isAtivo   Boolean  @default(true)
-  isCoordenador Boolean @default(false)
-  areaId    Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  nome          String
+  fotoUrl       String?
+  dre           String
+  periodo       String
+  isAtivo       Boolean  @default(true)
+  isCoordenador Boolean  @default(false)
+  areaId        Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   area                Area                    @relation(fields: [areaId], references: [id])
   avaliacoesFeitas    RespostaAvaliacao[]     @relation("AvaliacoesFeitas")
@@ -70,7 +71,7 @@ model RespostaAvaliacao {
   notaEntrega   Int
   notaCultura   Int
   feedbackTexto String
-  finalizada    Boolean @default(false)
+  finalizada    Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -121,17 +122,18 @@ model ParticipacaoAvaliacao {
 }
 
 model Demanda {
-  id         Int      @id @default(autoincrement())
-  nome       String
-  descricao  String?
-  finalizada Boolean  @default(false)
-  creditoMembro Float @default(0)
-  creditoLider Float @default(0)
-  idArea     Int?
-  createdAt  DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  nome          String
+  descricao     String?
+  finalizada    Boolean  @default(false)
+  creditoMembro Float    @default(0)
+  creditoLider  Float    @default(0)
+  idArea        Int?
+  createdAt     DateTime @default(now())
 
-  area      Area?      @relation(fields: [idArea], references: [id])
-  alocacoes AlocacaoDemanda[]
+  area       Area?             @relation(fields: [idArea], references: [id])
+  alocacoes  AlocacaoDemanda[]
+  pagamentos Pagamento[]
 }
 
 model AlocacaoDemanda {
@@ -144,4 +146,26 @@ model AlocacaoDemanda {
   demanda Demanda @relation(fields: [demandaId], references: [id])
 
   @@unique([membroId, demandaId])
+}
+
+enum StatusPagamento {
+  ABERTO
+  CONCLUIDO
+}
+
+model Pagamento {
+  id         Int             @id @default(autoincrement())
+  nome       String
+  descricao  String?
+  valor      Decimal         @db.Decimal(10, 2)
+  notaFiscal String?
+  pdfUrl     String?
+  status     StatusPagamento @default(ABERTO)
+  demandaId  Int?
+  areaId     Int?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  demanda Demanda? @relation(fields: [demandaId], references: [id])
+  area    Area?    @relation(fields: [areaId], references: [id])
 }

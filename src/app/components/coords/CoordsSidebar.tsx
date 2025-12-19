@@ -9,13 +9,14 @@ import {
     Home, 
     PieChart, 
     ClipboardList, 
-    History, 
     Users, 
     CheckSquare, 
     LogOut, 
     Menu, 
     X,
-    LucideIcon 
+    Wallet,
+    LucideIcon, 
+    CircleDollarSign
 } from "lucide-react"
 
 interface NavRoute {
@@ -28,6 +29,7 @@ const navRoutes: NavRoute[] = [
     { href: "/coord/home", icon: Home, label: "Home" },
     { href: "/coord/alocacao", icon: PieChart, label: "Overview de Alocação" },
     { href: "/coord/avaliacoes", icon: ClipboardList, label: "Controle de Avaliações" },
+    { href: "/coord/pagamentos", icon: CircleDollarSign, label: "Controle de Gastos" },
     { href: "/coord/membros", icon: Users, label: "Membros" },
     { href: "/coord/demandas", icon: CheckSquare, label: "Demandas" },
 ]

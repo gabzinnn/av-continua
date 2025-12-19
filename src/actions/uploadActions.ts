@@ -63,3 +63,43 @@ export async function deleteFromCloudinary(publicId: string): Promise<{ success:
         return { success: false, error: "Erro ao deletar imagem" }
     }
 }
+
+export async function uploadPdfToCloudinary(formData: FormData): Promise<{ success: boolean; url?: string; error?: string }> {
+    const file = formData.get("file") as File
+
+    if (!file) {
+        return { success: false, error: "Nenhum arquivo selecionado" }
+    }
+
+    // Validate file type - only PDF
+    if (file.type !== "application/pdf") {
+        return { success: false, error: "Tipo de arquivo inválido. Envie apenas arquivos PDF." }
+    }
+
+    // Validate file size (max 10MB for PDFs)
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+        return { success: false, error: "Arquivo muito grande. Máximo 10MB." }
+    }
+
+    try {
+        // Convert File to base64
+        const bytes = await file.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+        const base64 = buffer.toString("base64")
+        const dataUri = `data:${file.type};base64,${base64}`
+
+        // Upload to Cloudinary as raw file (for PDFs)
+        const result = await cloudinary.uploader.upload(dataUri, {
+            folder: "av-continua/notas-fiscais",
+            resource_type: "raw",
+            format: "pdf",
+        })
+
+        return { success: true, url: result.secure_url }
+    } catch (error) {
+        console.error("Upload PDF error:", error)
+        return { success: false, error: "Erro ao fazer upload do PDF" }
+    }
+}
+
