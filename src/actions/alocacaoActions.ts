@@ -40,17 +40,24 @@ export interface AlocacaoOverviewData {
     areas: { id: number; nome: string }[]
 }
 
-export async function getAlocacaoOverview(areaId?: number): Promise<AlocacaoOverviewData> {
+export async function getAlocacaoOverview(
+    areaId?: number,
+    membrosAreaId?: number,
+    demandasAreaId?: number
+): Promise<AlocacaoOverviewData> {
     // Buscar todas as áreas
     const areas = await prisma.area.findMany({
         orderBy: { nome: "asc" },
     })
 
+    // Determinar filtro de demandas: usa demandasAreaId se fornecido, senão areaId
+    const filtroDemandasArea = demandasAreaId ?? areaId
+
     // Buscar demandas ativas (não finalizadas), ordenadas por área
     const demandas = await prisma.demanda.findMany({
         where: {
             finalizada: false,
-            ...(areaId ? { idArea: areaId } : {}),
+            ...(filtroDemandasArea ? { idArea: filtroDemandasArea } : {}),
         },
         include: {
             area: true,
@@ -66,9 +73,12 @@ export async function getAlocacaoOverview(areaId?: number): Promise<AlocacaoOver
         return orderA - orderB
     })
 
+    // Determinar filtro de membros: usa membrosAreaId se fornecido, senão areaId
+    const filtroMembrosArea = membrosAreaId ?? areaId
+
     // Buscar membros ativos
-    const membrosQuery = areaId
-        ? { isAtivo: true, areaId }
+    const membrosQuery = filtroMembrosArea
+        ? { isAtivo: true, areaId: filtroMembrosArea }
         : { isAtivo: true }
 
     const membros = await prisma.membro.findMany({

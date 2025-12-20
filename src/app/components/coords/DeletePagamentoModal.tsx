@@ -56,7 +56,7 @@ export function DeletePagamentoModal({ isOpen, onClose, onSuccess, pagamento }: 
 
                 <div className="p-6 flex flex-col gap-4">
                     <div className="flex items-start gap-4">
-                        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 flex-shrink-0">
+                        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 shrink-0">
                             <AlertTriangle size={24} className="text-red-600" />
                         </div>
                         <div className="flex flex-col gap-2">

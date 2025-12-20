@@ -18,13 +18,20 @@ export function AlocacaoContent() {
     const [data, setData] = useState<AlocacaoOverviewData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [selectedArea, setSelectedArea] = useState<number | undefined>(undefined)
+    const [filtroMembros, setFiltroMembros] = useState(true)
+    const [filtroDemandas, setFiltroDemandas] = useState(true)
 
     const loadData = useCallback(async () => {
         setIsLoading(true)
-        const result = await getAlocacaoOverview(selectedArea)
+        // Se tem área selecionada, aplicar filtros individuais
+        // Se filtro está marcado, filtra pela área; se desmarcado, mostra todas
+        const membrosFilter = selectedArea && filtroMembros ? selectedArea : undefined
+        const demandasFilter = selectedArea && filtroDemandas ? selectedArea : undefined
+        
+        const result = await getAlocacaoOverview(undefined, membrosFilter, demandasFilter)
         setData(result)
         setIsLoading(false)
-    }, [selectedArea])
+    }, [selectedArea, filtroMembros, filtroDemandas])
 
     useEffect(() => {
         loadData()
@@ -83,17 +90,42 @@ export function AlocacaoContent() {
                                 {area.nome}
                             </button>
                         ))}
+                    </div>
 
-                        {/* Legend */}
-                        <div className="ml-auto flex items-center gap-6 text-sm text-text-muted">
-                            <div className="flex items-center gap-2">
-                                <Star size={16} className="text-primary fill-primary" />
-                                <span>Líder</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded bg-secondary/50 border border-secondary"></div>
-                                <span>Alocado</span>
-                            </div>
+                    {/* Filter Toggles - only show when an area is selected */}
+                    {selectedArea && (
+                        <div className="flex items-center gap-4">
+                            <span className="text-sm text-text-muted">Filtrar por:</span>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={filtroMembros}
+                                    onChange={(e) => setFiltroMembros(e.target.checked)}
+                                    className="w-4 h-4 rounded border-border cursor-pointer accent-primary"
+                                />
+                                <span className="text-sm text-text-main">Membros da área</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={filtroDemandas}
+                                    onChange={(e) => setFiltroDemandas(e.target.checked)}
+                                    className="w-4 h-4 rounded border-border cursor-pointer accent-primary"
+                                />
+                                <span className="text-sm text-text-main">Demandas da área</span>
+                            </label>
+                        </div>
+                    )}
+
+                    {/* Legend */}
+                    <div className="flex items-center gap-6 text-sm text-text-muted">
+                        <div className="flex items-center gap-2">
+                            <Star size={16} className="text-primary fill-primary" />
+                            <span>Líder</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded bg-secondary/50 border border-secondary"></div>
+                            <span>Alocado</span>
                         </div>
                     </div>
                 </div>
@@ -152,10 +184,10 @@ export function AlocacaoContent() {
                                                 {/* Area Header Row */}
                                                 <tr key={`area-${areaNome}`} className="bg-gray-50">
                                                     <td 
-                                                        className="sticky left-0 z-10 bg-gray-50 px-6 py-2 border-r border-border shadow-[4px_0_12px_-4px_rgba(0,0,0,0.05)]"
+                                                        className="sticky left-0 z-10 bg-gray-50 px-6 py-1 border-r border-border shadow-[4px_0_12px_-4px_rgba(0,0,0,0.05)]"
                                                     >
                                                         <span 
-                                                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold text-text-main"
+                                                            className="inline-flex items-center text-center px-2 py-0.5 rounded-full text-[10px] font-bold text-text-main w-fit whitespace-nowrap"
                                                             style={{ backgroundColor: coresAreas(areaNome) }}
                                                         >
                                                             {areaNome}

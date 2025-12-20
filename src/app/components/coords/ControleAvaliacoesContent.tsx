@@ -140,7 +140,7 @@ export function ControleAvaliacoesContent() {
                 <section className="w-full">
                     <div className="bg-bg-card rounded-xl shadow-sm border border-border overflow-hidden relative">
                         {/* Top accent */}
-                        <div className="h-1 w-full bg-gradient-to-r from-primary to-secondary" />
+                        <div className="h-1 w-full bg-linear-to-r from-primary to-secondary" />
                         
                         <div className="p-6 md:p-8 flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
                             {avaliacaoAtiva ? (
