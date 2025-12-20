@@ -29,13 +29,14 @@ model Membro {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  area                Area                    @relation(fields: [areaId], references: [id])
-  avaliacoesFeitas    RespostaAvaliacao[]     @relation("AvaliacoesFeitas")
-  avaliacoesRecebidas RespostaAvaliacao[]     @relation("AvaliacoesRecebidas")
-  planosAcao          PlanoAcao[]
-  avaliacaoFeedbacks  AvaliacaoFeedback[]
-  alocacoes           AlocacaoDemanda[]
-  participacoes       ParticipacaoAvaliacao[]
+  area                  Area                    @relation(fields: [areaId], references: [id])
+  avaliacoesFeitas      RespostaAvaliacao[]     @relation("AvaliacoesFeitas")
+  avaliacoesRecebidas   RespostaAvaliacao[]     @relation("AvaliacoesRecebidas")
+  planosAcao            PlanoAcao[]
+  avaliacaoFeedbacks    AvaliacaoFeedback[]
+  alocacoes             AlocacaoDemanda[]
+  participacoes         ParticipacaoAvaliacao[]
+  pagamentosResponsavel Pagamento[]
 }
 
 model Coordenador {
@@ -154,18 +155,20 @@ enum StatusPagamento {
 }
 
 model Pagamento {
-  id         Int             @id @default(autoincrement())
-  nome       String
-  descricao  String?
-  valor      Decimal         @db.Decimal(10, 2)
-  notaFiscal String?
-  pdfUrl     String?
-  status     StatusPagamento @default(ABERTO)
-  demandaId  Int?
-  areaId     Int?
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  id            Int             @id @default(autoincrement())
+  nome          String
+  descricao     String?
+  valor         Decimal         @db.Decimal(10, 2)
+  notaFiscal    String?
+  pdfUrl        String?
+  status        StatusPagamento @default(ABERTO)
+  demandaId     Int?
+  areaId        Int?
+  responsavelId Int?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
-  demanda Demanda? @relation(fields: [demandaId], references: [id])
-  area    Area?    @relation(fields: [areaId], references: [id])
+  demanda     Demanda? @relation(fields: [demandaId], references: [id])
+  area        Area?    @relation(fields: [areaId], references: [id])
+  responsavel Membro?  @relation(fields: [responsavelId], references: [id])
 }

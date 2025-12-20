@@ -152,8 +152,7 @@ export function AlocacaoContent() {
                                                 {/* Area Header Row */}
                                                 <tr key={`area-${areaNome}`} className="bg-gray-50">
                                                     <td 
-                                                        colSpan={data.demandas.length + 1}
-                                                        className="px-6 py-2"
+                                                        className="sticky left-0 z-10 bg-gray-50 px-6 py-2 border-r border-border shadow-[4px_0_12px_-4px_rgba(0,0,0,0.05)]"
                                                     >
                                                         <span 
                                                             className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold text-text-main"
@@ -162,6 +161,7 @@ export function AlocacaoContent() {
                                                             {areaNome}
                                                         </span>
                                                     </td>
+                                                    <td colSpan={data.demandas.length} className="bg-gray-50"></td>
                                                 </tr>
                                                 {/* Member Rows */}
                                                 {membros.map((membro) => (

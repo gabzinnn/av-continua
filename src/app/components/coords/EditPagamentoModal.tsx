@@ -16,9 +16,10 @@ interface EditPagamentoModalProps {
     areas: AreaOption[]
     demandas: DemandaCompleta[]
     pagamento: PagamentoCompleto | null
+    coordenadores: { id: number; nome: string }[]
 }
 
-export function EditPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas, pagamento }: EditPagamentoModalProps) {
+export function EditPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas, pagamento, coordenadores }: EditPagamentoModalProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
     const [pdfFile, setPdfFile] = useState<File | null>(null)
@@ -32,6 +33,7 @@ export function EditPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas
         pdfUrl: "",
         areaId: undefined,
         demandaId: undefined,
+        responsavelId: undefined,
         status: "ABERTO" as StatusPagamento,
     })
 
@@ -45,6 +47,7 @@ export function EditPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas
                 pdfUrl: pagamento.pdfUrl || "",
                 areaId: pagamento.area?.id,
                 demandaId: pagamento.demanda?.id,
+                responsavelId: pagamento.responsavel?.id,
                 status: pagamento.status,
             })
         }
@@ -247,6 +250,21 @@ export function EditPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas
                         >
                             <option value="ABERTO">Aberto</option>
                             <option value="CONCLUIDO">Concluído</option>
+                        </select>
+                    </div>
+
+                    {/* Responsável */}
+                    <div>
+                        <label className="block text-sm font-medium text-text-main mb-1">Responsável (Coordenador)</label>
+                        <select
+                            value={formData.responsavelId || ""}
+                            onChange={(e) => setFormData({ ...formData, responsavelId: e.target.value ? Number(e.target.value) : undefined })}
+                            className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary cursor-pointer"
+                        >
+                            <option value="">Selecione o responsável</option>
+                            {coordenadores.map((coord) => (
+                                <option key={coord.id} value={coord.id}>{coord.nome}</option>
+                            ))}
                         </select>
                     </div>
 

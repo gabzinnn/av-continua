@@ -103,6 +103,25 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
     const coordenadorIds = coordenadoresObrigatorios.map(c => c.id)
     membrosIds = [...new Set([...membrosIds, ...coordenadorIds])]
 
+    // Se o avaliador é coordenador, adicionar líderes de demandas da sua área
+    if (avaliador.isCoordenador) {
+        const lideresDemandasDaArea = await prisma.alocacaoDemanda.findMany({
+            where: {
+                isLider: true,
+                membroId: { not: membroId },
+                demanda: {
+                    idArea: avaliador.areaId,
+                    finalizada: false
+                },
+                membro: { isAtivo: true }
+            },
+            select: { membroId: true },
+            distinct: ['membroId']
+        })
+        const liderIds = lideresDemandasDaArea.map(l => l.membroId)
+        membrosIds = [...new Set([...membrosIds, ...liderIds])]
+    }
+
     // Buscar dados completos desses membros (apenas ativos)
     const membros = await prisma.membro.findMany({
         where: {
@@ -305,6 +324,25 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
     // Merge sem duplicatas
     const coordenadorIds = coordenadoresObrigatorios.map(c => c.id)
     membrosIds = [...new Set([...membrosIds, ...coordenadorIds])]
+
+    // Se o avaliador é coordenador, adicionar líderes de demandas da sua área
+    if (avaliador.isCoordenador) {
+        const lideresDemandasDaArea = await prisma.alocacaoDemanda.findMany({
+            where: {
+                isLider: true,
+                membroId: { not: membroId },
+                demanda: {
+                    idArea: avaliador.areaId,
+                    finalizada: false
+                },
+                membro: { isAtivo: true }
+            },
+            select: { membroId: true },
+            distinct: ['membroId']
+        })
+        const liderIds = lideresDemandasDaArea.map(l => l.membroId)
+        membrosIds = [...new Set([...membrosIds, ...liderIds])]
+    }
 
     const totalMembros = membrosIds.length
 

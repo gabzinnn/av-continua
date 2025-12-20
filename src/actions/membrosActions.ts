@@ -3,6 +3,15 @@
 import prisma from "@/src/lib/prisma"
 import { revalidatePath } from "next/cache"
 
+// Ordem padrão das áreas
+const AREA_ORDER: Record<string, number> = {
+    "Coordenação Geral": 0,
+    "Organização Interna": 1,
+    "Academia de Preparação": 2,
+    "Escola de Negócios": 3,
+    "Fábrica de Consultores": 4,
+}
+
 export interface MembroCompleto {
     id: number
     nome: string
@@ -26,11 +35,18 @@ export interface AreaOption {
 export async function getAllMembros(busca?: string): Promise<MembroCompleto[]> {
     const membros = await prisma.membro.findMany({
         include: { area: true },
-        orderBy: { nome: "asc" },
+    })
+
+    // Ordenar por área (ordem padrão) e depois alfabeticamente
+    const membrosOrdenados = membros.sort((a, b) => {
+        const orderA = AREA_ORDER[a.area.nome] ?? 999
+        const orderB = AREA_ORDER[b.area.nome] ?? 999
+        if (orderA !== orderB) return orderA - orderB
+        return a.nome.localeCompare(b.nome)
     })
 
     if (!busca || busca.trim() === "") {
-        return membros.map(m => ({
+        return membrosOrdenados.map(m => ({
             id: m.id,
             nome: m.nome,
             fotoUrl: m.fotoUrl,
@@ -48,7 +64,7 @@ export async function getAllMembros(busca?: string): Promise<MembroCompleto[]> {
     // Busca por relevância: prioriza nome > DRE > área
     const buscaLower = busca.toLowerCase().trim()
 
-    const membrosComRelevancia = membros.map(m => {
+    const membrosComRelevancia = membrosOrdenados.map(m => {
         let relevancia = 0
         const nomeLower = m.nome.toLowerCase()
         const dreLower = m.dre.toLowerCase()
@@ -101,6 +117,22 @@ export async function getAllAreas(): Promise<AreaOption[]> {
         orderBy: { nome: "asc" },
     })
     return areas.map(a => ({ id: a.id, nome: a.nome }))
+}
+
+// Buscar coordenadores ativos (para uso como responsável de gastos)
+export async function getCoordenadoresAtivos(): Promise<{ id: number; nome: string }[]> {
+    const coordenadores = await prisma.membro.findMany({
+        where: {
+            isCoordenador: true,
+            isAtivo: true,
+        },
+        select: {
+            id: true,
+            nome: true,
+        },
+        orderBy: { nome: "asc" },
+    })
+    return coordenadores
 }
 
 // Criar novo membro

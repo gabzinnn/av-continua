@@ -331,6 +331,25 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
         const coordenadorIds = coordenadoresObrigatorios.map((c) => c.id)
         membrosAvaliadosIds = [...new Set([...membrosAvaliadosIds, ...coordenadorIds])]
 
+        // Se o membro é coordenador, adicionar líderes de demandas da sua área
+        if (membro.isCoordenador) {
+            const lideresDemandasDaArea = await prisma.alocacaoDemanda.findMany({
+                where: {
+                    isLider: true,
+                    membroId: { not: membro.id },
+                    demanda: {
+                        idArea: membro.areaId,
+                        finalizada: false
+                    },
+                    membro: { isAtivo: true }
+                },
+                select: { membroId: true },
+                distinct: ['membroId']
+            })
+            const liderIds = lideresDemandasDaArea.map((l) => l.membroId)
+            membrosAvaliadosIds = [...new Set([...membrosAvaliadosIds, ...liderIds])]
+        }
+
         // Buscar dados dos membros a avaliar
         const membrosAvaliar = await prisma.membro.findMany({
             where: {
@@ -379,6 +398,15 @@ export interface DetalheAvaliacao {
     participantes: ParticipanteDetalhe[]
 }
 
+// Ordem padrão das áreas
+const AREA_ORDER: Record<string, number> = {
+    "Coordenação Geral": 0,
+    "Organização Interna": 1,
+    "Academia de Preparação": 2,
+    "Escola de Negócios": 3,
+    "Fábrica de Consultores": 4,
+}
+
 // Buscar detalhes completos de uma avaliação
 export async function getDetalheAvaliacao(avaliacaoId: number): Promise<DetalheAvaliacao | null> {
     const avaliacao = await prisma.avaliacao.findUnique({
@@ -396,11 +424,13 @@ export async function getDetalheAvaliacao(avaliacaoId: number): Promise<DetalheA
 
     if (!avaliacao) return null
 
-    // Buscar todos os membros ativos
-    const membrosAtivos = await prisma.membro.findMany({
-        where: { isAtivo: true },
+    // Buscar membros que podiam participar dessa avaliação
+    // (criados antes ou na data de início da avaliação E que estavam ativos)
+    const membrosParticipantes = await prisma.membro.findMany({
+        where: {
+            createdAt: { lte: avaliacao.dataInicio },
+        },
         include: { area: true },
-        orderBy: [{ area: { nome: "asc" } }, { nome: "asc" }],
     })
 
     // Criar mapa de participações
@@ -408,18 +438,25 @@ export async function getDetalheAvaliacao(avaliacaoId: number): Promise<DetalheA
         avaliacao.participantes.map((p) => [p.membroId, p])
     )
 
-    // Montar lista de participantes com status
-    const participantes: ParticipanteDetalhe[] = membrosAtivos.map((membro) => {
-        const participacao = participacoesMap.get(membro.id)
-        return {
-            id: membro.id,
-            nome: membro.nome,
-            fotoUrl: membro.fotoUrl,
-            area: membro.area.nome,
-            respondeuAvaliacao: participacao?.respondeuAvaliacao ?? false,
-            avaliouFeedbacks: participacao?.avaliouFeedbacks ?? false,
-        }
-    })
+    // Montar lista de participantes com status e ordenar por área
+    const participantes: ParticipanteDetalhe[] = membrosParticipantes
+        .map((membro) => {
+            const participacao = participacoesMap.get(membro.id)
+            return {
+                id: membro.id,
+                nome: membro.nome,
+                fotoUrl: membro.fotoUrl,
+                area: membro.area.nome,
+                respondeuAvaliacao: participacao?.respondeuAvaliacao ?? false,
+                avaliouFeedbacks: participacao?.avaliouFeedbacks ?? false,
+            }
+        })
+        .sort((a, b) => {
+            const orderA = AREA_ORDER[a.area] ?? 999
+            const orderB = AREA_ORDER[b.area] ?? 999
+            if (orderA !== orderB) return orderA - orderB
+            return a.nome.localeCompare(b.nome)
+        })
 
     return {
         id: avaliacao.id,
@@ -428,5 +465,49 @@ export async function getDetalheAvaliacao(avaliacaoId: number): Promise<DetalheA
         dataFim: avaliacao.dataFim,
         finalizada: avaliacao.finalizada,
         participantes,
+    }
+}
+
+// Excluir avaliação do histórico
+export async function deleteAvaliacao(avaliacaoId: number): Promise<{ success: boolean; error?: string }> {
+    try {
+        // Buscar todas as respostas dessa avaliação para deletar dependências
+        const respostas = await prisma.respostaAvaliacao.findMany({
+            where: { avaliacaoId },
+            select: { id: true }
+        })
+        const respostaIds = respostas.map(r => r.id)
+
+        // Deletar em ordem de dependência
+        // 1. Planos de ação
+        await prisma.planoAcao.deleteMany({
+            where: { respostaAvaliacaoId: { in: respostaIds } }
+        })
+
+        // 2. Feedbacks de avaliação
+        await prisma.avaliacaoFeedback.deleteMany({
+            where: { respostaAvaliacaoId: { in: respostaIds } }
+        })
+
+        // 3. Respostas de avaliação
+        await prisma.respostaAvaliacao.deleteMany({
+            where: { avaliacaoId }
+        })
+
+        // 4. Participações
+        await prisma.participacaoAvaliacao.deleteMany({
+            where: { avaliacaoId }
+        })
+
+        // 5. Avaliação
+        await prisma.avaliacao.delete({
+            where: { id: avaliacaoId }
+        })
+
+        revalidatePath("/coord/avaliacoes")
+        return { success: true }
+    } catch (error) {
+        console.error("Erro ao excluir avaliação:", error)
+        return { success: false, error: "Erro ao excluir avaliação" }
     }
 }

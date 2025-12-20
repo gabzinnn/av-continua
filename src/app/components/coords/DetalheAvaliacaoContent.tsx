@@ -7,6 +7,7 @@ import { ArrowLeft, Search, ChevronLeft, ChevronRight, CheckCircle, XCircle, Che
 import { Button } from "@/src/app/components/Button"
 import { DetalheAvaliacao } from "@/src/actions/controleAvaliacoesActions"
 import { AREA_ORDER } from "@/src/utils/areaOrder"
+import coresAreas from "@/src/utils/coresAreas"
 
 interface DetalheAvaliacaoContentProps {
     avaliacao: DetalheAvaliacao
@@ -256,7 +257,10 @@ export function DetalheAvaliacaoContent({ avaliacao }: DetalheAvaliacaoContentPr
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="inline-flex items-center rounded-md bg-bg-main px-2.5 py-1 text-xs font-medium text-text-main border border-border">
+                                                <span 
+                                                    className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium text-text-main border border-border/50"
+                                                    style={{ backgroundColor: coresAreas(participante.area) }}
+                                                >
                                                     {participante.area}
                                                 </span>
                                             </td>

@@ -25,6 +25,10 @@ export interface PagamentoCompleto {
         id: number
         nome: string
     } | null
+    responsavel: {
+        id: number
+        nome: string
+    } | null
 }
 
 export interface PagamentoFiltros {
@@ -78,6 +82,9 @@ export async function getAllPagamentos(filtros?: PagamentoFiltros): Promise<Paga
             },
             area: {
                 select: { id: true, nome: true }
+            },
+            responsavel: {
+                select: { id: true, nome: true }
             }
         },
         orderBy: { createdAt: "desc" }
@@ -95,6 +102,7 @@ export async function getAllPagamentos(filtros?: PagamentoFiltros): Promise<Paga
         updatedAt: p.updatedAt,
         demanda: p.demanda,
         area: p.area,
+        responsavel: p.responsavel,
     }))
 }
 
@@ -104,7 +112,8 @@ export async function getPagamentoById(id: number): Promise<PagamentoCompleto | 
         where: { id },
         include: {
             demanda: { select: { id: true, nome: true } },
-            area: { select: { id: true, nome: true } }
+            area: { select: { id: true, nome: true } },
+            responsavel: { select: { id: true, nome: true } }
         }
     })
 
@@ -122,6 +131,7 @@ export async function getPagamentoById(id: number): Promise<PagamentoCompleto | 
         updatedAt: pagamento.updatedAt,
         demanda: pagamento.demanda,
         area: pagamento.area,
+        responsavel: pagamento.responsavel,
     }
 }
 
@@ -134,6 +144,7 @@ export interface CreatePagamentoInput {
     pdfUrl?: string
     demandaId?: number
     areaId?: number
+    responsavelId?: number
 }
 
 export async function createPagamento(data: CreatePagamentoInput): Promise<{ success: boolean; error?: string }> {
@@ -147,6 +158,7 @@ export async function createPagamento(data: CreatePagamentoInput): Promise<{ suc
                 pdfUrl: data.pdfUrl || null,
                 demandaId: data.demandaId || null,
                 areaId: data.areaId || null,
+                responsavelId: data.responsavelId || null,
                 status: "ABERTO",
             }
         })
@@ -168,6 +180,7 @@ export interface UpdatePagamentoInput {
     pdfUrl?: string
     demandaId?: number
     areaId?: number
+    responsavelId?: number
     status?: StatusPagamento
 }
 
@@ -183,6 +196,7 @@ export async function updatePagamento(data: UpdatePagamentoInput): Promise<{ suc
                 pdfUrl: data.pdfUrl || null,
                 demandaId: data.demandaId || null,
                 areaId: data.areaId || null,
+                responsavelId: data.responsavelId || null,
                 status: data.status,
             }
         })

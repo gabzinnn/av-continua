@@ -186,13 +186,13 @@ export function AddMembroModal({ isOpen, onClose, onSuccess, areas }: AddMembroM
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-text-main mb-1">Período *</label>
+                            <label className="block text-sm font-medium text-text-main mb-1">Período de Entrada *</label>
                             <input
                                 type="text"
                                 value={formData.periodo}
                                 onChange={(e) => setFormData({ ...formData, periodo: e.target.value })}
                                 className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary"
-                                placeholder="Ex: 5º Período"
+                                placeholder="Ex: 2024.1"
                             />
                         </div>
                     </div>

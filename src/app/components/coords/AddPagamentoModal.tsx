@@ -14,9 +14,10 @@ interface AddPagamentoModalProps {
     onSuccess: () => void
     areas: AreaOption[]
     demandas: DemandaCompleta[]
+    coordenadores: { id: number; nome: string }[]
 }
 
-export function AddPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas }: AddPagamentoModalProps) {
+export function AddPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas, coordenadores }: AddPagamentoModalProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
     const [pdfFile, setPdfFile] = useState<File | null>(null)
@@ -29,6 +30,7 @@ export function AddPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas 
         notaFiscal: "",
         areaId: undefined,
         demandaId: undefined,
+        responsavelId: undefined,
     })
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -91,6 +93,7 @@ export function AddPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas 
             notaFiscal: "",
             areaId: undefined,
             demandaId: undefined,
+            responsavelId: undefined,
         })
         setPdfFile(null)
         setError("")
@@ -225,6 +228,21 @@ export function AddPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas 
                                 ))}
                             </select>
                         </div>
+                    </div>
+
+                    {/* Responsável */}
+                    <div>
+                        <label className="block text-sm font-medium text-text-main mb-1">Responsável (Coordenador)</label>
+                        <select
+                            value={formData.responsavelId || ""}
+                            onChange={(e) => setFormData({ ...formData, responsavelId: e.target.value ? Number(e.target.value) : undefined })}
+                            className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary cursor-pointer"
+                        >
+                            <option value="">Selecione o responsável</option>
+                            {coordenadores.map((coord) => (
+                                <option key={coord.id} value={coord.id}>{coord.nome}</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Upload PDF */}

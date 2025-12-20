@@ -15,7 +15,7 @@ import {
     PagamentoFiltros,
     DadosEvolucaoMensal
 } from "@/src/actions/pagamentosActions"
-import { getAllAreas, AreaOption } from "@/src/actions/membrosActions"
+import { getAllAreas, AreaOption, getCoordenadoresAtivos } from "@/src/actions/membrosActions"
 import { getAllDemandas, DemandaCompleta } from "@/src/actions/demandasActions"
 import coresAreas from "@/src/utils/coresAreas"
 import dynamic from "next/dynamic"
@@ -93,7 +93,7 @@ function formatDateForExport(date: Date) {
 
 function exportToCSV(pagamentos: PagamentoCompleto[], stats: PagamentoStats | null) {
     // CSV Header
-    const headers = ["Data", "Nome", "Descrição", "Área", "Demanda", "Nota Fiscal", "Valor (R$)", "Status"]
+    const headers = ["Data", "Nome", "Descrição", "Área", "Demanda", "Responsável", "Nota Fiscal", "Valor (R$)", "Status"]
     
     // CSV Rows
     const rows = pagamentos.map(p => [
@@ -102,6 +102,7 @@ function exportToCSV(pagamentos: PagamentoCompleto[], stats: PagamentoStats | nu
         `"${(p.descricao || "").replace(/"/g, '""')}"`,
         p.area?.nome || "",
         p.demanda?.nome || "",
+        p.responsavel?.nome || "",
         p.notaFiscal || "",
         p.valor.toFixed(2).replace(".", ","),
         p.status === "CONCLUIDO" ? "Concluído" : "Aberto"
@@ -150,6 +151,7 @@ export function PagamentosContent() {
     const [evolucao, setEvolucao] = useState<DadosEvolucaoMensal[]>([])
     const [areas, setAreas] = useState<AreaOption[]>([])
     const [demandas, setDemandas] = useState<DemandaCompleta[]>([])
+    const [coordenadores, setCoordenadores] = useState<{ id: number; nome: string }[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
     // Filters
@@ -176,7 +178,7 @@ export function PagamentosContent() {
         if (dataInicio) filterParams.dataInicio = new Date(dataInicio)
         if (dataFim) filterParams.dataFim = new Date(dataFim + "T23:59:59")
         
-        const [pagamentosData, statsData, evolucaoData, areasData, demandasData] = await Promise.all([
+        const [pagamentosData, statsData, evolucaoData, areasData, demandasData, coordenadoresData] = await Promise.all([
             getAllPagamentos(filterParams),
             getPagamentoStats({ 
                 dataInicio: filterParams.dataInicio, 
@@ -190,6 +192,7 @@ export function PagamentosContent() {
             }),
             getAllAreas(),
             getAllDemandas(),
+            getCoordenadoresAtivos(),
         ])
         
         setPagamentos(pagamentosData)
@@ -197,6 +200,7 @@ export function PagamentosContent() {
         setEvolucao(evolucaoData)
         setAreas(areasData)
         setDemandas(demandasData)
+        setCoordenadores(coordenadoresData)
         setIsLoading(false)
     }, [filtros, dataInicio, dataFim, anoGrafico])
 
@@ -290,6 +294,17 @@ export function PagamentosContent() {
                 )
             },
             minWidth: "150px",
+        },
+        {
+            name: "Responsável",
+            selector: (row) => row.responsavel?.nome || "",
+            sortable: true,
+            cell: (row) => row.responsavel ? (
+                <span className="text-sm text-text-main">{row.responsavel.nome}</span>
+            ) : (
+                <span className="text-gray-400 text-sm">—</span>
+            ),
+            minWidth: "140px",
         },
         {
             name: "Valor",
@@ -663,6 +678,7 @@ export function PagamentosContent() {
                 onSuccess={loadData}
                 areas={areas}
                 demandas={demandas}
+                coordenadores={coordenadores}
             />
 
             <EditPagamentoModal
@@ -672,6 +688,7 @@ export function PagamentosContent() {
                 areas={areas}
                 demandas={demandas}
                 pagamento={selectedPagamento}
+                coordenadores={coordenadores}
             />
 
             <DeletePagamentoModal

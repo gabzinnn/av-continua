@@ -164,7 +164,7 @@ export function MembrosContent() {
             minWidth: "120px",
         },
         {
-            name: "Período",
+            name: "Período de Entrada",
             selector: (row) => row.periodo,
             sortable: true,
             cell: (row) => <span className="text-sm text-gray-600 whitespace-nowrap">{row.periodo}</span>,
