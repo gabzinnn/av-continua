@@ -120,6 +120,18 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
         })
         const liderIds = lideresDemandasDaArea.map(l => l.membroId)
         membrosIds = [...new Set([...membrosIds, ...liderIds])]
+
+        // Coordenadores também precisam avaliar TODOS os outros coordenadores ativos
+        const outrosCoordenadores = await prisma.membro.findMany({
+            where: {
+                isCoordenador: true,
+                isAtivo: true,
+                id: { not: membroId } // Não incluir o próprio avaliador
+            },
+            select: { id: true }
+        })
+        const outrosCoordenadoresIds = outrosCoordenadores.map(c => c.id)
+        membrosIds = [...new Set([...membrosIds, ...outrosCoordenadoresIds])]
     }
 
     // Buscar dados completos desses membros (apenas ativos)
@@ -342,6 +354,18 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
         })
         const liderIds = lideresDemandasDaArea.map(l => l.membroId)
         membrosIds = [...new Set([...membrosIds, ...liderIds])]
+
+        // Coordenadores também precisam avaliar TODOS os outros coordenadores ativos
+        const outrosCoordenadores = await prisma.membro.findMany({
+            where: {
+                isCoordenador: true,
+                isAtivo: true,
+                id: { not: membroId }
+            },
+            select: { id: true }
+        })
+        const outrosCoordenadoresIds = outrosCoordenadores.map(c => c.id)
+        membrosIds = [...new Set([...membrosIds, ...outrosCoordenadoresIds])]
     }
 
     const totalMembros = membrosIds.length

@@ -281,84 +281,151 @@ export interface PreviewMembro {
     avaliaQuem: PreviewMembroAvalia[]
 }
 
-// Gerar preview de quem avalia quem
+// Gerar preview de quem avalia quem (OTIMIZADO)
 export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
-    // Buscar todos os membros ativos
-    const membrosAtivos = await prisma.membro.findMany({
-        where: { isAtivo: true },
-        include: { area: true },
-        orderBy: [{ area: { nome: "asc" } }, { nome: "asc" }],
-    })
+    // Buscar todos os dados necessários de uma vez
+    const [membrosAtivos, todasAlocacoes, coordenadoresObrigatoriosPorArea] = await Promise.all([
+        // Todos os membros ativos
+        prisma.membro.findMany({
+            where: { isAtivo: true },
+            include: { area: true },
+            orderBy: [{ area: { nome: "asc" } }, { nome: "asc" }],
+        }),
+        // Todas as alocações com info de demanda
+        prisma.alocacaoDemanda.findMany({
+            where: {
+                membro: { isAtivo: true },
+            },
+            select: { 
+                membroId: true, 
+                demandaId: true, 
+                isLider: true,
+                demanda: {
+                    select: { idArea: true, finalizada: true }
+                }
+            },
+        }),
+        // Coordenadores por área (OI e CG são obrigatórios para todos)
+        prisma.membro.findMany({
+            where: {
+                isCoordenador: true,
+                isAtivo: true,
+            },
+            include: { area: true },
+        }),
+    ])
+
+    // Criar mapas para acesso rápido
+    const membrosMap = new Map(membrosAtivos.map(m => [m.id, m]))
+    
+    // Mapa de membroId -> demandaIds
+    const demandasPorMembro = new Map<number, number[]>()
+    // Mapa de demandaId -> membroIds
+    const membrosPorDemanda = new Map<number, number[]>()
+    // Mapa de areaId -> líderes (membros que são líderes de demandas dessa área)
+    const lideresPorArea = new Map<number, number[]>()
+    
+    for (const aloc of todasAlocacoes) {
+        // Demandas por membro
+        if (!demandasPorMembro.has(aloc.membroId)) {
+            demandasPorMembro.set(aloc.membroId, [])
+        }
+        demandasPorMembro.get(aloc.membroId)!.push(aloc.demandaId)
+        
+        // Membros por demanda
+        if (!membrosPorDemanda.has(aloc.demandaId)) {
+            membrosPorDemanda.set(aloc.demandaId, [])
+        }
+        membrosPorDemanda.get(aloc.demandaId)!.push(aloc.membroId)
+        
+        // Líderes por área (demandas não finalizadas)
+        if (aloc.isLider && !aloc.demanda.finalizada && aloc.demanda.idArea) {
+            if (!lideresPorArea.has(aloc.demanda.idArea)) {
+                lideresPorArea.set(aloc.demanda.idArea, [])
+            }
+            lideresPorArea.get(aloc.demanda.idArea)!.push(aloc.membroId)
+        }
+    }
+    
+    // IDs dos coordenadores de OI e CG
+    const coordenadoresOICG = coordenadoresObrigatoriosPorArea
+        .filter(c => c.area.nome === "Organização Interna" || c.area.nome === "Coordenação Geral")
+        .map(c => c.id)
+    
+    // Todos os coordenadores (para avaliação entre coordenadores)
+    const todosCoordenadoresIds = coordenadoresObrigatoriosPorArea.map(c => c.id)
+    
+    // Mapa de areaId -> coordenador dessa área
+    const coordenadorPorArea = new Map<number, number[]>()
+    for (const coord of coordenadoresObrigatoriosPorArea) {
+        if (!coordenadorPorArea.has(coord.areaId)) {
+            coordenadorPorArea.set(coord.areaId, [])
+        }
+        coordenadorPorArea.get(coord.areaId)!.push(coord.id)
+    }
 
     const resultado: PreviewMembro[] = []
 
     for (const membro of membrosAtivos) {
-        // Buscar demandas em que o membro está alocado
-        const demandasDoMembro = await prisma.alocacaoDemanda.findMany({
-            where: { membroId: membro.id },
-            select: { demandaId: true },
-        })
-
-        const demandaIds = demandasDoMembro.map((d) => d.demandaId)
-
-        // Buscar membros que compartilham pelo menos uma demanda
-        const membrosComDemandaCompartilhada = await prisma.alocacaoDemanda.findMany({
-            where: {
-                demandaId: { in: demandaIds },
-                membroId: { not: membro.id },
-            },
-            select: { membroId: true },
-            distinct: ["membroId"],
-        })
-
-        let membrosAvaliadosIds = membrosComDemandaCompartilhada.map((a) => a.membroId)
-
-        // Adicionar coordenadores obrigatórios
-        const coordenadoresObrigatorios = await prisma.membro.findMany({
-            where: {
-                isCoordenador: true,
-                isAtivo: true,
-                id: { not: membro.id },
-                OR: [
-                    { areaId: membro.areaId },
-                    { area: { nome: "Organização Interna" } },
-                    { area: { nome: "Coordenação Geral" } },
-                ],
-            },
-            select: { id: true },
-        })
-
-        const coordenadorIds = coordenadoresObrigatorios.map((c) => c.id)
-        membrosAvaliadosIds = [...new Set([...membrosAvaliadosIds, ...coordenadorIds])]
-
-        // Se o membro é coordenador, adicionar líderes de demandas da sua área
-        if (membro.isCoordenador) {
-            const lideresDemandasDaArea = await prisma.alocacaoDemanda.findMany({
-                where: {
-                    isLider: true,
-                    membroId: { not: membro.id },
-                    demanda: {
-                        idArea: membro.areaId,
-                        finalizada: false
-                    },
-                    membro: { isAtivo: true }
-                },
-                select: { membroId: true },
-                distinct: ['membroId']
-            })
-            const liderIds = lideresDemandasDaArea.map((l) => l.membroId)
-            membrosAvaliadosIds = [...new Set([...membrosAvaliadosIds, ...liderIds])]
+        const membrosAvaliadosIds = new Set<number>()
+        
+        // 1. Membros que compartilham demanda
+        const demandaIds = demandasPorMembro.get(membro.id) || []
+        for (const demandaId of demandaIds) {
+            const membrosNaDemanda = membrosPorDemanda.get(demandaId) || []
+            for (const membroId of membrosNaDemanda) {
+                if (membroId !== membro.id) {
+                    membrosAvaliadosIds.add(membroId)
+                }
+            }
         }
-
-        // Buscar dados dos membros a avaliar
-        const membrosAvaliar = await prisma.membro.findMany({
-            where: {
-                id: { in: membrosAvaliadosIds },
-                isAtivo: true,
-            },
-            include: { area: true },
-            orderBy: [{ isCoordenador: "desc" }, { area: { nome: "asc" } }, { nome: "asc" }],
-        })
+        
+        // 2. Coordenadores obrigatórios (própria área + OI + CG)
+        const coordsDaArea = coordenadorPorArea.get(membro.areaId) || []
+        for (const coordId of coordsDaArea) {
+            if (coordId !== membro.id) {
+                membrosAvaliadosIds.add(coordId)
+            }
+        }
+        for (const coordId of coordenadoresOICG) {
+            if (coordId !== membro.id) {
+                membrosAvaliadosIds.add(coordId)
+            }
+        }
+        
+        // 3. Se é coordenador: líderes da área + todos os outros coordenadores
+        if (membro.isCoordenador) {
+            const lideresDaArea = lideresPorArea.get(membro.areaId) || []
+            for (const liderId of lideresDaArea) {
+                if (liderId !== membro.id) {
+                    membrosAvaliadosIds.add(liderId)
+                }
+            }
+            
+            // Todos os outros coordenadores
+            for (const coordId of todosCoordenadoresIds) {
+                if (coordId !== membro.id) {
+                    membrosAvaliadosIds.add(coordId)
+                }
+            }
+        }
+        
+        // Filtrar apenas membros ativos e ordenar
+        const membrosAvaliar = Array.from(membrosAvaliadosIds)
+            .map(id => membrosMap.get(id))
+            .filter((m): m is NonNullable<typeof m> => m !== undefined && m.isAtivo)
+            .sort((a, b) => {
+                // Coordenadores primeiro
+                if (a.isCoordenador !== b.isCoordenador) {
+                    return a.isCoordenador ? -1 : 1
+                }
+                // Depois por área
+                if (a.area.nome !== b.area.nome) {
+                    return a.area.nome.localeCompare(b.area.nome)
+                }
+                // Depois por nome
+                return a.nome.localeCompare(b.nome)
+            })
 
         resultado.push({
             id: membro.id,
