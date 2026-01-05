@@ -172,3 +172,109 @@ model Pagamento {
   area        Area?    @relation(fields: [areaId], references: [id])
   responsavel Membro?  @relation(fields: [responsavelId], references: [id])
 }
+
+// ==========================================
+// PROCESSO SELETIVO - PROVAS
+// ==========================================
+
+enum StatusProva {
+  RASCUNHO
+  PUBLICADA
+  ENCERRADA
+}
+
+enum TipoQuestao {
+  MULTIPLA_ESCOLHA
+  DISSERTATIVA
+  VERDADEIRO_FALSO
+}
+
+enum StatusResultado {
+  PENDENTE
+  CORRIGIDA
+}
+
+model Prova {
+  id          Int         @id @default(autoincrement())
+  titulo      String
+  descricao   String?
+  tempoLimite Int?
+  embaralhar  Boolean     @default(false)
+  status      StatusProva @default(RASCUNHO)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  questoes   Questao[]
+  resultados ResultadoProva[]
+}
+
+model Questao {
+  id        Int         @id @default(autoincrement())
+  provaId   Int
+  tipo      TipoQuestao
+  enunciado String
+  imagemUrl String?
+  pontos    Decimal     @db.Decimal(10, 2)
+  ordem     Int
+
+  prova        Prova             @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  alternativas Alternativa[]
+  respostas    RespostaQuestao[]
+
+  @@index([provaId])
+}
+
+model Alternativa {
+  id        Int     @id @default(autoincrement())
+  questaoId Int
+  texto     String
+  correta   Boolean @default(false)
+  ordem     Int
+
+  questao Questao @relation(fields: [questaoId], references: [id], onDelete: Cascade)
+
+  @@index([questaoId])
+}
+
+model Candidato {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  dre       String   @default("") // TODO: Make unique in production if needed
+  telefone  String?
+  createdAt DateTime @default(now())
+
+  resultados ResultadoProva[]
+}
+
+model ResultadoProva {
+  id           Int             @id @default(autoincrement())
+  provaId      Int
+  candidatoId  Int
+  status       StatusResultado @default(PENDENTE)
+  notaFinal    Decimal?        @db.Decimal(10, 2)
+  tempoGasto   Int?
+  iniciadoEm   DateTime        @default(now())
+  finalizadoEm DateTime?
+
+  prova     Prova             @relation(fields: [provaId], references: [id])
+  candidato Candidato         @relation(fields: [candidatoId], references: [id])
+  respostas RespostaQuestao[]
+
+  @@unique([provaId, candidatoId])
+}
+
+model RespostaQuestao {
+  id            Int      @id @default(autoincrement())
+  resultadoId   Int
+  questaoId     Int
+  alternativaId Int?
+  respostaTexto String?
+  pontuacao     Decimal? @db.Decimal(10, 2)
+  corrigida     Boolean  @default(false)
+
+  resultado ResultadoProva @relation(fields: [resultadoId], references: [id], onDelete: Cascade)
+  questao   Questao        @relation(fields: [questaoId], references: [id])
+
+  @@unique([resultadoId, questaoId])
+}

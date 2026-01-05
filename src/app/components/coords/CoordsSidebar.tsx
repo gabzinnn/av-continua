@@ -14,15 +14,23 @@ import {
     LogOut, 
     Menu, 
     X,
-    Wallet,
     LucideIcon, 
-    CircleDollarSign
+    CircleDollarSign,
+    FileText,
+    ChevronDown,
+    ClipboardCheck
 } from "lucide-react"
 
 interface NavRoute {
     href: string
     icon: LucideIcon
     label: string
+}
+
+interface NavGroup {
+    icon: LucideIcon
+    label: string
+    children: NavRoute[]
 }
 
 const navRoutes: NavRoute[] = [
@@ -34,8 +42,19 @@ const navRoutes: NavRoute[] = [
     { href: "/coord/demandas", icon: CheckSquare, label: "Demandas" },
 ]
 
+const navGroups: NavGroup[] = [
+    {
+        icon: FileText,
+        label: "Processo Seletivo",
+        children: [
+            { href: "/coord/processo-seletivo/provas", icon: ClipboardCheck, label: "Provas" },
+        ]
+    }
+]
+
 export function CoordsSidebar() {
     const [isOpen, setIsOpen] = useState(false)
+    const [expandedGroups, setExpandedGroups] = useState<string[]>([])
     const { logout } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
@@ -43,6 +62,16 @@ export function CoordsSidebar() {
     // Fecha o menu ao mudar de rota
     useEffect(() => {
         setIsOpen(false)
+    }, [pathname])
+
+    // Auto-expand group if current path matches
+    useEffect(() => {
+        navGroups.forEach(group => {
+            const isChildActive = group.children.some(child => pathname.startsWith(child.href))
+            if (isChildActive && !expandedGroups.includes(group.label)) {
+                setExpandedGroups(prev => [...prev, group.label])
+            }
+        })
     }, [pathname])
 
     // Fecha o menu ao redimensionar para desktop
@@ -75,7 +104,15 @@ export function CoordsSidebar() {
         router.push("/coord")
     }
 
-    const isActive = (href: string) => pathname === href
+    const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/")
+
+    const toggleGroup = (label: string) => {
+        setExpandedGroups(prev => 
+            prev.includes(label) 
+                ? prev.filter(g => g !== label)
+                : [...prev, label]
+        )
+    }
 
     return (
         <>
@@ -168,6 +205,75 @@ export function CoordsSidebar() {
                                     </Link>
                                 )
                             })}
+
+                            {/* Collapsible Groups */}
+                            {navGroups.map((group) => {
+                                const GroupIcon = group.icon
+                                const isExpanded = expandedGroups.includes(group.label)
+                                const hasActiveChild = group.children.some(child => isActive(child.href))
+                                
+                                return (
+                                    <div key={group.label}>
+                                        <button
+                                            onClick={() => toggleGroup(group.label)}
+                                            className={`
+                                                w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer
+                                                ${hasActiveChild 
+                                                    ? "bg-primary/10 border-l-4 border-primary" 
+                                                    : "hover:bg-[#f4f2e6] border-l-4 border-transparent"
+                                                }
+                                            `}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <GroupIcon 
+                                                    size={20} 
+                                                    className={hasActiveChild ? "text-text-main" : "text-gray-500"} 
+                                                />
+                                                <span 
+                                                    className={`text-sm leading-normal ${
+                                                        hasActiveChild 
+                                                            ? "font-bold text-text-main" 
+                                                            : "font-medium text-gray-500"
+                                                    }`}
+                                                >
+                                                    {group.label}
+                                                </span>
+                                            </div>
+                                            <ChevronDown 
+                                                size={16} 
+                                                className={`text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                                            />
+                                        </button>
+                                        
+                                        {/* Submenu */}
+                                        <div className={`overflow-hidden transition-all duration-200 ${isExpanded ? "max-h-40" : "max-h-0"}`}>
+                                            <div className="pl-4 mt-1 flex flex-col gap-1">
+                                                {group.children.map((child) => {
+                                                    const ChildIcon = child.icon
+                                                    const childActive = isActive(child.href)
+                                                    
+                                                    return (
+                                                        <Link
+                                                            key={child.href}
+                                                            href={child.href}
+                                                            className={`
+                                                                flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all
+                                                                ${childActive 
+                                                                    ? "bg-primary/20 text-text-main font-semibold" 
+                                                                    : "hover:bg-[#f4f2e6] text-gray-500"
+                                                                }
+                                                            `}
+                                                        >
+                                                            <ChildIcon size={18} />
+                                                            <span className="text-sm">{child.label}</span>
+                                                        </Link>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
                         </nav>
                     </div>
 
@@ -187,3 +293,4 @@ export function CoordsSidebar() {
         </>
     )
 }
+
