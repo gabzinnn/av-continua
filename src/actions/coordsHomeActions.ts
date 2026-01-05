@@ -2,6 +2,15 @@
 
 import prisma from "@/src/lib/prisma"
 
+// Ordem padrão das áreas (mesma ordem de membrosActions.ts e demandasActions.ts)
+const AREA_ORDER: Record<string, number> = {
+    "Coordenação Geral": 0,
+    "Organização Interna": 1,
+    "Academia de Preparação": 2,
+    "Escola de Negócios": 3,
+    "Fábrica de Consultores": 4,
+}
+
 export interface MembroResumo {
     id: number
     nome: string
@@ -26,17 +35,26 @@ export interface CoordsHomeData {
 }
 
 export async function getCoordsHomeData(): Promise<CoordsHomeData> {
-    // Conta total de membros ativos
-    const totalMembros = await prisma.membro.count({
-        where: { isAtivo: true }
-    })
+    // Buscar todos os dados em paralelo para melhor performance
+    const [totalMembros, totalDemandas, membrosDb, demandasDb] = await Promise.all([
+        prisma.membro.count({ where: { isAtivo: true } }),
+        prisma.demanda.count({ where: { finalizada: false } }),
+        prisma.membro.findMany({
+            where: { isAtivo: true },
+            include: { area: true },
+        }),
+        prisma.demanda.findMany({
+            where: { finalizada: false },
+            include: { area: true },
+        }),
+    ])
 
-    // Busca membros com área
-    const membrosDb = await prisma.membro.findMany({
-        where: { isAtivo: true },
-        include: { area: true },
-        orderBy: { nome: "asc" },
-        take: 10,
+    // Ordenar membros por área (ordem padrão) e depois alfabeticamente por nome
+    membrosDb.sort((a, b) => {
+        const orderA = AREA_ORDER[a.area.nome] ?? 999
+        const orderB = AREA_ORDER[b.area.nome] ?? 999
+        if (orderA !== orderB) return orderA - orderB
+        return a.nome.localeCompare(b.nome)
     })
 
     const membros: MembroResumo[] = membrosDb.map(m => ({
@@ -48,12 +66,11 @@ export async function getCoordsHomeData(): Promise<CoordsHomeData> {
         isAtivo: m.isAtivo,
     }))
 
-    // Busca demandas com área
-    const demandasDb = await prisma.demanda.findMany({
-        where: { finalizada: false },
-        include: { area: true },
-        orderBy: { createdAt: "desc" },
-        take: 10,
+    // Ordenar demandas por área (ordem padrão)
+    demandasDb.sort((a, b) => {
+        const orderA = AREA_ORDER[a.area?.nome ?? ""] ?? 999
+        const orderB = AREA_ORDER[b.area?.nome ?? ""] ?? 999
+        return orderA - orderB
     })
 
     const demandas: DemandaResumo[] = demandasDb.map(d => ({
@@ -62,10 +79,6 @@ export async function getCoordsHomeData(): Promise<CoordsHomeData> {
         descricao: d.descricao || "",
         area: d.area?.nome || "Sem área",
     }))
-
-    const totalDemandas = await prisma.demanda.count({
-        where: { finalizada: false }
-    })
 
     return {
         totalMembros,
