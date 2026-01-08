@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Save, Eye, Send, Plus, GripVertical, Copy, Trash2, ChevronDown, ChevronUp, Image as ImageIcon } from "lucide-react"
+import Image from "next/image"
+import { ArrowLeft, Save, Eye, Send, Plus, GripVertical, Copy, Trash2, ChevronDown, ChevronUp, Image as ImageIcon, Upload, X, Loader2 } from "lucide-react"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { Button } from "@/src/app/components/Button"
 import {
@@ -19,6 +20,7 @@ import {
     QuestaoData,
     QuestaoCompleta
 } from "@/src/actions/provasActions"
+import { uploadQuestaoImageToCloudinary } from "@/src/actions/uploadActions"
 import { StatusProva, TipoQuestao } from "@/src/generated/prisma/client"
 
 interface ProvaFormContentProps {
@@ -121,9 +123,9 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
         const updated = await updateQuestao(questao.id, {
             tipo: questao.tipo,
             enunciado: questao.enunciado,
-            imagemUrl: questao.imagemUrl,
             pontos: questao.pontos,
             ordem: questao.ordem,
+            imagens: questao.imagens?.map(img => img.url) || [],
             alternativas: questao.alternativas.map(a => ({
                 id: a.id,
                 texto: a.texto,
@@ -148,7 +150,7 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
         const newQuestao = await createQuestao(provaId, {
             tipo: questao.tipo,
             enunciado: questao.enunciado,
-            imagemUrl: questao.imagemUrl,
+            imagens: questao.imagens?.map(img => img.url) || [],
             pontos: questao.pontos,
             ordem: questoes.length + 1,
             alternativas: questao.alternativas.map(a => ({
@@ -563,6 +565,14 @@ function QuestaoEditor({
                         />
                     </div>
 
+                    {/* Images Upload */}
+                    <ImageUploader
+                        imageUrls={questao.imagens?.map(i => i.url) || []}
+                        onImagesChange={(urls) => onUpdate({
+                            imagens: urls.map((url, i) => ({ id: i, url, ordem: i }))
+                        })}
+                    />
+
                     {/* Alternativas (only for multiple choice) */}
                     {questao.tipo === "MULTIPLA_ESCOLHA" && (
                         <div>
@@ -616,6 +626,176 @@ function QuestaoEditor({
                     </div>
                 </div>
             )}
+        </div>
+    )
+}
+
+// ==========================================
+// ImageUploader Component
+// ==========================================
+
+interface ImageUploaderProps {
+    imageUrls: string[]
+    onImagesChange: (urls: string[]) => void
+}
+
+function ImageUploader({ imageUrls, onImagesChange }: ImageUploaderProps) {
+    const [isUploading, setIsUploading] = useState(false)
+    const [dragActive, setDragActive] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleDrag = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setDragActive(true)
+        } else if (e.type === "dragleave") {
+            setDragActive(false)
+        }
+    }
+
+    const handleDrop = async (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setDragActive(false)
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            await handleFiles(Array.from(e.dataTransfer.files))
+        }
+    }
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            await handleFiles(Array.from(e.target.files))
+        }
+    }
+
+    const handleFiles = async (files: File[]) => {
+        setIsUploading(true)
+        const validFiles = files.filter(f => ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type))
+
+        if (validFiles.length === 0) {
+            alert("Nenhum arquivo de imagem válido selecionado.")
+            setIsUploading(false)
+            return
+        }
+
+        try {
+            const newUrls: string[] = []
+
+            for (const file of validFiles) {
+                const formData = new FormData()
+                formData.append("file", file)
+
+                const result = await uploadQuestaoImageToCloudinary(formData)
+
+                if (result.success && result.url) {
+                    newUrls.push(result.url)
+                } else {
+                    console.error(`Erro ao fazer upload de ${file.name}:`, result.error)
+                }
+            }
+
+            if (newUrls.length > 0) {
+                onImagesChange([...imageUrls, ...newUrls])
+            }
+        } catch (error) {
+            console.error("Upload error:", error)
+            alert("Erro ao fazer upload das imagens")
+        } finally {
+            setIsUploading(false)
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ""
+            }
+        }
+    }
+
+    const handleRemoveImage = (index: number) => {
+        const newUrls = [...imageUrls]
+        newUrls.splice(index, 1)
+        onImagesChange(newUrls)
+    }
+
+    return (
+        <div>
+            <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+                Imagens (opcional)
+            </label>
+
+            <div className="space-y-4">
+                {imageUrls.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {imageUrls.map((url, index) => (
+                            <div key={index} className="relative aspect-video rounded-lg border border-border overflow-hidden bg-gray-50 group">
+                                <Image
+                                    src={url}
+                                    alt={`Imagem ${index + 1}`}
+                                    fill
+                                    className="object-cover"
+                                    sizes="(max-width: 768px) 50vw, 25vw"
+                                />
+                                <button
+                                    onClick={() => handleRemoveImage(index)}
+                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-sm cursor-pointer"
+                                    title="Remover imagem"
+                                >
+                                    <X size={14} />
+                                </button>
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] p-1 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    Imagem {index + 1}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`
+                        border-2 border-dashed rounded-lg p-6 text-center cursor-pointer
+                        transition-all duration-200 flex flex-col items-center justify-center gap-2
+                        ${dragActive
+                            ? "border-primary bg-primary/10 scale-[1.01]"
+                            : "border-gray-300 hover:border-primary hover:bg-primary/5"
+                        }
+                        ${isUploading ? "pointer-events-none opacity-50" : ""}
+                    `}
+                >
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        multiple
+                        onChange={handleFileChange}
+                        className="hidden"
+                    />
+
+                    {isUploading ? (
+                        <>
+                            <Loader2 size={24} className="text-primary animate-spin" />
+                            <span className="text-sm text-text-muted">Enviando imagens...</span>
+                        </>
+                    ) : (
+                        <>
+                            <div className="p-2 bg-gray-100 rounded-full">
+                                <Upload size={20} className="text-text-muted" />
+                            </div>
+                            <div>
+                                <span className="text-sm font-medium text-text-main">
+                                    Adicionar imagens
+                                </span>
+                                <p className="text-xs text-text-muted mt-0.5">
+                                    Arraste ou clique (JPG, PNG, GIF)
+                                </p>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
         </div>
     )
 }

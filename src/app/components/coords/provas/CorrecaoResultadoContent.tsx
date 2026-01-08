@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowLeft, Save, CheckCircle, XCircle, Clock, User, Mail, FileText } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import {
@@ -58,6 +59,7 @@ type ResultadoDetalhado = {
             id: number
             tipo: TipoQuestao
             enunciado: string
+            imagens: { id: number; url: string; ordem: number }[]
             pontos: number
             alternativas: {
                 id: number
@@ -83,7 +85,7 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
         setIsLoading(true)
         const data = await getResultadoDetalhado(resultadoId)
         setResultado(data as ResultadoDetalhado)
-        
+
         // Initialize local pontuacoes
         if (data) {
             const pontuacoes: Record<number, number> = {}
@@ -187,7 +189,7 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                 )}
                             </div>
                         </div>
-                        
+
                         <div className="flex gap-6 ml-auto">
                             <div className="text-center">
                                 <p className="text-xs text-text-muted uppercase tracking-wider">Nota Parcial</p>
@@ -214,7 +216,7 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                 {/* Questões */}
                 <div className="space-y-4">
                     <h2 className="text-xl font-bold text-text-main">Questões e Respostas</h2>
-                    
+
                     {resultado.prova.questoes.map((questao, index) => {
                         const resposta = getRespostaForQuestao(questao.id)
                         const alternativaCorreta = questao.alternativas.find(a => a.correta)
@@ -254,6 +256,27 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                         <p className="text-text-main">{questao.enunciado}</p>
                                     </div>
 
+                                    {/* Imagem da questão */}
+                                    {/* Imagens da questão */}
+                                    {questao.imagens && questao.imagens.length > 0 && (
+                                        <div>
+                                            <p className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">Imagens</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {questao.imagens.map((img, idx) => (
+                                                    <div key={img.id} className="relative w-full aspect-video rounded-lg overflow-hidden border border-border bg-gray-50">
+                                                        <Image
+                                                            src={img.url}
+                                                            alt={`Imagem ${idx + 1} da questão`}
+                                                            fill
+                                                            className="object-contain"
+                                                            sizes="(max-width: 768px) 100vw, 50vw"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Resposta */}
                                     {questao.tipo === "MULTIPLA_ESCOLHA" && (
                                         <div>
@@ -262,11 +285,11 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                                 {questao.alternativas.map(alt => {
                                                     const selected = alt.id === resposta?.alternativaId
                                                     const correct = alt.correta
-                                                    
+
                                                     let bgColor = "bg-gray-50"
                                                     let borderColor = "border-gray-200"
                                                     let textColor = "text-text-main"
-                                                    
+
                                                     if (selected && correct) {
                                                         bgColor = "bg-green-50"
                                                         borderColor = "border-green-300"

@@ -213,15 +213,27 @@ model Questao {
   provaId   Int
   tipo      TipoQuestao
   enunciado String
-  imagemUrl String?
   pontos    Decimal     @db.Decimal(10, 2)
   ordem     Int
 
   prova        Prova             @relation(fields: [provaId], references: [id], onDelete: Cascade)
   alternativas Alternativa[]
   respostas    RespostaQuestao[]
+  imagens      ImagemQuestao[]
 
   @@index([provaId])
+}
+
+model ImagemQuestao {
+  id        Int      @id @default(autoincrement())
+  questaoId Int
+  url       String
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  questao Questao @relation(fields: [questaoId], references: [id], onDelete: Cascade)
+
+  @@index([questaoId])
 }
 
 model Alternativa {

@@ -18,7 +18,7 @@ export type QuestaoData = {
     id?: number
     tipo: TipoQuestao
     enunciado: string
-    imagemUrl?: string | null
+    imagens?: string[]
     pontos: number
     ordem: number
     alternativas?: AlternativaData[]
@@ -54,9 +54,13 @@ export type QuestaoCompleta = {
     provaId: number
     tipo: TipoQuestao
     enunciado: string
-    imagemUrl: string | null
     pontos: number
     ordem: number
+    imagens: {
+        id: number
+        url: string
+        ordem: number
+    }[]
     alternativas: {
         id: number
         questaoId: number
@@ -115,6 +119,9 @@ export async function getAllProvas(busca?: string, status?: StatusProva) {
                 include: {
                     alternativas: {
                         orderBy: { ordem: "asc" }
+                    },
+                    imagens: {
+                        orderBy: { ordem: "asc" }
                     }
                 }
             },
@@ -147,6 +154,9 @@ export async function getProvaById(id: number) {
                 orderBy: { ordem: "asc" },
                 include: {
                     alternativas: {
+                        orderBy: { ordem: "asc" }
+                    },
+                    imagens: {
                         orderBy: { ordem: "asc" }
                     }
                 }
@@ -231,9 +241,14 @@ export async function createQuestao(provaId: number, data: QuestaoData) {
             provaId,
             tipo: data.tipo,
             enunciado: data.enunciado,
-            imagemUrl: data.imagemUrl,
             pontos: data.pontos,
             ordem: data.ordem,
+            imagens: data.imagens ? {
+                create: data.imagens.map((url, index) => ({
+                    url,
+                    ordem: index
+                }))
+            } : undefined,
             alternativas: data.alternativas ? {
                 create: data.alternativas.map(alt => ({
                     texto: alt.texto,
@@ -244,6 +259,9 @@ export async function createQuestao(provaId: number, data: QuestaoData) {
         },
         include: {
             alternativas: {
+                orderBy: { ordem: "asc" }
+            },
+            imagens: {
                 orderBy: { ordem: "asc" }
             }
         }
@@ -256,17 +274,35 @@ export async function createQuestao(provaId: number, data: QuestaoData) {
 }
 
 export async function updateQuestao(id: number, data: QuestaoData) {
-    // First, update the questao
-    const questao = await prisma.questao.update({
+    // First, update the questao basic fields
+    await prisma.questao.update({
         where: { id },
         data: {
             tipo: data.tipo,
             enunciado: data.enunciado,
-            imagemUrl: data.imagemUrl,
             pontos: data.pontos,
             ordem: data.ordem,
         }
     })
+
+    // Handle images update
+    if (data.imagens) {
+        // Delete existing images
+        await prisma.imagemQuestao.deleteMany({
+            where: { questaoId: id }
+        })
+
+        // Create new images
+        if (data.imagens.length > 0) {
+            await prisma.imagemQuestao.createMany({
+                data: data.imagens.map((url, index) => ({
+                    questaoId: id,
+                    url,
+                    ordem: index
+                }))
+            })
+        }
+    }
 
     // Handle alternativas update
     if (data.alternativas) {
@@ -315,6 +351,9 @@ export async function updateQuestao(id: number, data: QuestaoData) {
         include: {
             alternativas: {
                 orderBy: { ordem: "asc" }
+            },
+            imagens: {
+                orderBy: { ordem: "asc" }
             }
         }
     })
@@ -353,7 +392,11 @@ export async function getResultadosProva(provaId: number) {
             respostas: true,
             prova: {
                 include: {
-                    questoes: true
+                    questoes: {
+                        include: {
+                            imagens: { orderBy: { ordem: "asc" } }
+                        }
+                    }
                 }
             }
         },
@@ -388,6 +431,9 @@ export async function getResultadoDetalhado(resultadoId: number) {
                         include: {
                             alternativas: {
                                 orderBy: { ordem: "asc" }
+                            },
+                            imagens: {
+                                orderBy: { ordem: "asc" }
                             }
                         }
                     }
@@ -399,6 +445,9 @@ export async function getResultadoDetalhado(resultadoId: number) {
                         orderBy: { ordem: "asc" },
                         include: {
                             alternativas: {
+                                orderBy: { ordem: "asc" }
+                            },
+                            imagens: {
                                 orderBy: { ordem: "asc" }
                             }
                         }
