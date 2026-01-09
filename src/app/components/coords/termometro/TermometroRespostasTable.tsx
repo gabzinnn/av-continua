@@ -21,10 +21,11 @@ function getInitials(nome: string): string {
 }
 
 function getNotaColor(nota: number): string {
-    if (nota >= 4.5) return "bg-primary/70 text-text-main font-medium"
-    if (nota >= 3.5) return "bg-primary/30 text-gray-700"
-    if (nota >= 2.5) return "bg-gray-100 text-gray-500"
-    return "bg-gray-100 text-gray-400"
+    if (nota >= 5) return "bg-[#e3ffc2] text-gray-800"
+    if (nota >= 4) return "bg-[#f8ffc2] text-gray-800"
+    if (nota >= 3) return "bg-[#fffbc2] text-gray-800"
+    if (nota >= 2) return "bg-[#ffebc2] text-gray-800"
+    return "bg-[#ffd6c2] text-gray-800"
 }
 
 const customStyles = {

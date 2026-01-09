@@ -31,7 +31,7 @@ export function TermometroQuestionCard({
 
                 {/* Scale */}
                 <div className="ml-12 pt-2">
-                    <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+                    <div className="grid grid-cols-5 gap-2 sm:gap-4">
                         {notas.map((nota) => (
                             <button
                                 key={nota}
@@ -39,7 +39,7 @@ export function TermometroQuestionCard({
                                 onClick={() => !disabled && onNotaChange(nota)}
                                 disabled={disabled}
                                 className={`
-                                    w-12 h-12 rounded-full font-medium transition-all 
+                                    w-full aspect-square max-w-[64px] rounded-full font-medium transition-all 
                                     flex items-center justify-center
                                     focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
                                     ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
@@ -54,10 +54,6 @@ export function TermometroQuestionCard({
                                 {nota}
                             </button>
                         ))}
-                    </div>
-                    <div className="flex justify-between w-full max-w-[360px] mt-2 px-1 text-xs text-gray-400 font-medium uppercase tracking-wide">
-                        <span>Insatisfatório</span>
-                        <span>Excelente</span>
                     </div>
                 </div>
             </div>
