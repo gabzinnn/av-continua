@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { useMember } from "@/src/context/memberContext"
 import { NavItem } from "./NavItem"
 import { UserCard } from "./UserCard"
-import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon } from "lucide-react"
+import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon, Thermometer } from "lucide-react"
 
 interface NavRoute {
   href: string
@@ -16,6 +16,7 @@ interface NavRoute {
 const navRoutes: NavRoute[] = [
   { href: "/home", icon: Home, label: "Home" },
   { href: "/avatual", icon: FileEdit, label: "Avaliação atual" },
+  { href: "/termometro", icon: Thermometer, label: "Termômetro" },
   { href: "/historico", icon: History, label: "Histórico" },
   { href: "/avaliacoes", icon: Archive, label: "Avaliações recebidas" },
 ]
@@ -112,7 +113,7 @@ export function Sidebar() {
               area={selectedMember.area}
               foto={selectedMember.foto}
             />
-            
+
             {/* Botão fechar - apenas mobile */}
             <button
               onClick={() => setIsOpen(false)}

@@ -37,6 +37,7 @@ model Membro {
   alocacoes             AlocacaoDemanda[]
   participacoes         ParticipacaoAvaliacao[]
   pagamentosResponsavel Pagamento[]
+  respostasTermometro   RespostaTermometro[]
 }
 
 model Coordenador {
@@ -289,4 +290,39 @@ model RespostaQuestao {
   questao   Questao        @relation(fields: [questaoId], references: [id])
 
   @@unique([resultadoId, questaoId])
+}
+
+// ==========================================
+// TERMOMETRO
+// ==========================================
+
+model Termometro {
+  id          Int      @id @default(autoincrement())
+  nome        String
+  dataInicial DateTime @db.Date()
+  dataFinal   DateTime @db.Date()
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  perguntas   PerguntaTermometro[]
+  respostas   RespostaTermometro[]
+}
+
+model PerguntaTermometro {
+  id        Int      @id @default(autoincrement())
+  termometroId Int
+  texto     String
+  createdAt DateTime @default(now())
+
+  termometro Termometro @relation(fields: [termometroId], references: [id])
+}
+
+model RespostaTermometro {
+  id Int @id @default(autoincrement())
+  idMembro Int
+  idTermometro Int
+  nota         Int
+
+  membro Membro @relation(fields: [idMembro], references: [id])
+  termometro Termometro @relation(fields: [idTermometro], references: [id])
 }

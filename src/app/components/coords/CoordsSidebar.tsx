@@ -5,20 +5,21 @@ import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/src/context/authContext"
 import Image from "next/image"
 import Link from "next/link"
-import { 
-    Home, 
-    PieChart, 
-    ClipboardList, 
-    Users, 
-    CheckSquare, 
-    LogOut, 
-    Menu, 
+import {
+    Home,
+    PieChart,
+    ClipboardList,
+    Users,
+    CheckSquare,
+    LogOut,
+    Menu,
     X,
-    LucideIcon, 
+    LucideIcon,
     CircleDollarSign,
     FileText,
     ChevronDown,
-    ClipboardCheck
+    ClipboardCheck,
+    Thermometer
 } from "lucide-react"
 
 interface NavRoute {
@@ -37,6 +38,7 @@ const navRoutes: NavRoute[] = [
     { href: "/coord/home", icon: Home, label: "Home" },
     { href: "/coord/alocacao", icon: PieChart, label: "Overview de Alocação" },
     { href: "/coord/avaliacoes", icon: ClipboardList, label: "Controle de Avaliações" },
+    { href: "/coord/termometro", icon: Thermometer, label: "Controle de Termômetros" },
     { href: "/coord/pagamentos", icon: CircleDollarSign, label: "Controle de Gastos" },
     { href: "/coord/membros", icon: Users, label: "Membros" },
     { href: "/coord/demandas", icon: CheckSquare, label: "Demandas" },
@@ -107,8 +109,8 @@ export function CoordsSidebar() {
     const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/")
 
     const toggleGroup = (label: string) => {
-        setExpandedGroups(prev => 
-            prev.includes(label) 
+        setExpandedGroups(prev =>
+            prev.includes(label)
                 ? prev.filter(g => g !== label)
                 : [...prev, label]
         )
@@ -176,29 +178,28 @@ export function CoordsSidebar() {
                             {navRoutes.map((route) => {
                                 const Icon = route.icon
                                 const active = isActive(route.href)
-                                
+
                                 return (
                                     <Link
                                         key={route.href}
                                         href={route.href}
                                         className={`
                                             flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                                            ${active 
-                                                ? "bg-primary/20 border-l-4 border-primary shadow-sm" 
+                                            ${active
+                                                ? "bg-primary/20 border-l-4 border-primary shadow-sm"
                                                 : "hover:bg-[#f4f2e6] border-l-4 border-transparent"
                                             }
                                         `}
                                     >
-                                        <Icon 
-                                            size={20} 
-                                            className={active ? "text-text-main" : "text-gray-500"} 
+                                        <Icon
+                                            size={20}
+                                            className={active ? "text-text-main" : "text-gray-500"}
                                         />
-                                        <span 
-                                            className={`text-sm leading-normal ${
-                                                active 
-                                                    ? "font-bold text-text-main" 
+                                        <span
+                                            className={`text-sm leading-normal ${active
+                                                    ? "font-bold text-text-main"
                                                     : "font-medium text-gray-500"
-                                            }`}
+                                                }`}
                                         >
                                             {route.label}
                                         </span>
@@ -211,55 +212,54 @@ export function CoordsSidebar() {
                                 const GroupIcon = group.icon
                                 const isExpanded = expandedGroups.includes(group.label)
                                 const hasActiveChild = group.children.some(child => isActive(child.href))
-                                
+
                                 return (
                                     <div key={group.label}>
                                         <button
                                             onClick={() => toggleGroup(group.label)}
                                             className={`
                                                 w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer
-                                                ${hasActiveChild 
-                                                    ? "bg-primary/10 border-l-4 border-primary" 
+                                                ${hasActiveChild
+                                                    ? "bg-primary/10 border-l-4 border-primary"
                                                     : "hover:bg-[#f4f2e6] border-l-4 border-transparent"
                                                 }
                                             `}
                                         >
                                             <div className="flex items-center gap-3">
-                                                <GroupIcon 
-                                                    size={20} 
-                                                    className={hasActiveChild ? "text-text-main" : "text-gray-500"} 
+                                                <GroupIcon
+                                                    size={20}
+                                                    className={hasActiveChild ? "text-text-main" : "text-gray-500"}
                                                 />
-                                                <span 
-                                                    className={`text-sm leading-normal ${
-                                                        hasActiveChild 
-                                                            ? "font-bold text-text-main" 
+                                                <span
+                                                    className={`text-sm leading-normal ${hasActiveChild
+                                                            ? "font-bold text-text-main"
                                                             : "font-medium text-gray-500"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {group.label}
                                                 </span>
                                             </div>
-                                            <ChevronDown 
-                                                size={16} 
+                                            <ChevronDown
+                                                size={16}
                                                 className={`text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                                             />
                                         </button>
-                                        
+
                                         {/* Submenu */}
                                         <div className={`overflow-hidden transition-all duration-200 ${isExpanded ? "max-h-40" : "max-h-0"}`}>
                                             <div className="pl-4 mt-1 flex flex-col gap-1">
                                                 {group.children.map((child) => {
                                                     const ChildIcon = child.icon
                                                     const childActive = isActive(child.href)
-                                                    
+
                                                     return (
                                                         <Link
                                                             key={child.href}
                                                             href={child.href}
                                                             className={`
                                                                 flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all
-                                                                ${childActive 
-                                                                    ? "bg-primary/20 text-text-main font-semibold" 
+                                                                ${childActive
+                                                                    ? "bg-primary/20 text-text-main font-semibold"
                                                                     : "hover:bg-[#f4f2e6] text-gray-500"
                                                                 }
                                                             `}
