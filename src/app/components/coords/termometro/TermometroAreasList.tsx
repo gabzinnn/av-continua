@@ -124,7 +124,7 @@ export function TermometroAreasList({ data }: TermometroAreasListProps) {
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-3">
                                                             {membro.membroFoto ? (
-                                                                <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                                                                <div className="w-7 h-7 rounded-full overflow-hidden shrink-0">
                                                                     <Image
                                                                         src={membro.membroFoto}
                                                                         alt={membro.membroNome}
@@ -134,7 +134,7 @@ export function TermometroAreasList({ data }: TermometroAreasListProps) {
                                                                     />
                                                                 </div>
                                                             ) : (
-                                                                <div className="w-7 h-7 rounded-full bg-secondary/40 flex items-center justify-center text-xs font-bold text-text-main flex-shrink-0">
+                                                                <div className="w-7 h-7 rounded-full bg-secondary/40 flex items-center justify-center text-xs font-bold text-text-main shrink-0">
                                                                     {getInitials(membro.membroNome)}
                                                                 </div>
                                                             )}

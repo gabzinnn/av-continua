@@ -253,8 +253,9 @@ model Candidato {
   id        Int      @id @default(autoincrement())
   nome      String
   email     String   @unique
-  dre       String   @default("") // TODO: Make unique in production if needed
-  telefone  String?
+  curso     String?
+  periodo   String?
+  dre       String   @default("")
   createdAt DateTime @default(now())
 
   resultados ResultadoProva[]
@@ -304,25 +305,25 @@ model Termometro {
   ativo       Boolean  @default(true)
   createdAt   DateTime @default(now())
 
-  perguntas   PerguntaTermometro[]
-  respostas   RespostaTermometro[]
+  perguntas PerguntaTermometro[]
+  respostas RespostaTermometro[]
 }
 
 model PerguntaTermometro {
-  id        Int      @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   termometroId Int
-  texto     String
-  createdAt DateTime @default(now())
+  texto        String
+  createdAt    DateTime @default(now())
 
   termometro Termometro @relation(fields: [termometroId], references: [id])
 }
 
 model RespostaTermometro {
-  id Int @id @default(autoincrement())
-  idMembro Int
+  id           Int @id @default(autoincrement())
+  idMembro     Int
   idTermometro Int
   nota         Int
 
-  membro Membro @relation(fields: [idMembro], references: [id])
+  membro     Membro     @relation(fields: [idMembro], references: [id])
   termometro Termometro @relation(fields: [idTermometro], references: [id])
 }
