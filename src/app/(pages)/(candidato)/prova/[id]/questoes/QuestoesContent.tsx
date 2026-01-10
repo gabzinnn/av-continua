@@ -91,7 +91,7 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
                 setTempoRestante((prev) => {
                     if (prev === null || prev <= 0) {
                         clearInterval(timerRef.current!);
-                        handleFinalizarProva(); // Acabou o tempo
+                        handleFinalizarProva(true); // Acabou o tempo
                         return 0;
                     }
                     return prev - 1;
@@ -128,12 +128,12 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
         }
     };
 
-    const handleFinalizarProva = async () => {
+    const handleFinalizarProva = async (isTimeout = false) => {
         if (!resultadoId) return;
         setLoading(true);
         await finalizarProva(resultadoId);
         // Redireciona para feedback ou home
-        router.push("/prova/finalizada"); // TODO: Criar página de finalização
+        router.push(isTimeout ? "/prova/finalizada?reason=timeout" : "/prova/finalizada");
     };
 
     const formatTime = (seconds: number) => {
@@ -319,14 +319,27 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
                                 {currentQuestion.alternativas.map((alt, idx) => {
                                     const isSelected = respostas[currentQuestion.id] === alt.id;
                                     const letter = String.fromCharCode(65 + idx); // A, B, C...
-
-                                    // Check V/F logic
-                                    const isTrue = alt.texto?.toLowerCase().includes("verdadeiro") || alt.texto?.toLowerCase() === "v" || (currentQuestion.tipo === "VERDADEIRO_FALSO" && idx === 0);
-                                    const isFalse = alt.texto?.toLowerCase().includes("falso") || alt.texto?.toLowerCase() === "f" || (currentQuestion.tipo === "VERDADEIRO_FALSO" && idx === 1);
                                     const isVF = currentQuestion.tipo === "VERDADEIRO_FALSO";
 
-                                    // Texto fallback para V/F se estiver vazio
-                                    const displayText = alt.texto || (isVF ? (isTrue ? "Verdadeiro" : "Falso") : "");
+                                    // Logic for V/F determination
+                                    // Use index as fallback if text is missing or unidentifiable
+                                    let isTrueVariant = false;
+                                    let isFalseVariant = false;
+
+                                    if (isVF) {
+                                        const text = alt.texto?.toLowerCase().trim() || "";
+                                        if (text.includes("verdadeiro") || text === "v") isTrueVariant = true;
+                                        else if (text.includes("falso") || text === "f") isFalseVariant = true;
+                                        else {
+                                            // Fallback by index
+                                            if (idx === 0) isTrueVariant = true;
+                                            else if (idx === 1) isFalseVariant = true;
+                                        }
+                                    }
+
+                                    // Fallback text
+                                    const fallbackText = isVF ? (isTrueVariant ? "Verdadeiro" : "Falso") : "";
+                                    const displayText = alt.texto?.trim() ? alt.texto : fallbackText;
 
                                     return (
                                         <label
@@ -357,11 +370,11 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
                                                     <span className={`text-base font-medium group-hover:text-text-main ${isSelected ? "text-text-main" : "text-text-main"}`}>
                                                         {displayText}
                                                     </span>
-                                                    {isVF && (isTrue || isFalse) && (
-                                                        <span className={`text-xs px-2 py-0.5 rounded font-bold uppercase ml-auto
-                                                        ${isTrue ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}
+                                                    {isVF && (isTrueVariant || isFalseVariant) && (
+                                                        <span className={`text-xs px-2 py-0.5 rounded font-bold uppercase ml-2
+                                                        ${isTrueVariant ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}
                                                     `}>
-                                                            {isTrue ? "V" : "F"}
+                                                            {isTrueVariant ? "V" : "F"}
                                                         </span>
                                                     )}
                                                 </div>
@@ -406,7 +419,7 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
                         </button>
                     ) : (
                         <button
-                            onClick={handleFinalizarProva}
+                            onClick={() => handleFinalizarProva(false)}
                             className="flex items-center gap-2 px-8 py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold shadow-md shadow-green-500/20 transition-all active:scale-95 group cursor-pointer"
                         >
                             <span>Finalizar Prova</span>

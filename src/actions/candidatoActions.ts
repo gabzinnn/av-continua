@@ -229,11 +229,66 @@ export async function salvarResposta(
 
 export async function finalizarProva(resultadoId: number) {
     try {
+        // Busca o resultado e a prova com gabarito
+        const resultado = await prisma.resultadoProva.findUnique({
+            where: { id: resultadoId },
+            include: {
+                prova: {
+                    include: {
+                        questoes: {
+                            include: {
+                                alternativas: true
+                            }
+                        }
+                    }
+                },
+                respostas: true
+            }
+        });
+
+        if (!resultado) {
+            return { success: false, error: "Resultado não encontrado" };
+        }
+
+        let temDissertativa = false;
+        const updates = [];
+
+        for (const questao of resultado.prova.questoes) {
+            if (questao.tipo === "DISSERTATIVA") {
+                temDissertativa = true;
+                continue;
+            }
+
+            // Lógica de correção para Múltipla Escolha e V/F
+            if (questao.tipo === "MULTIPLA_ESCOLHA" || questao.tipo === "VERDADEIRO_FALSO") {
+                const resposta = resultado.respostas.find(r => r.questaoId === questao.id);
+                if (resposta && resposta.alternativaId) {
+                    const alternativaCorreta = questao.alternativas.find(a => a.correta);
+                    const acertou = alternativaCorreta?.id === resposta.alternativaId;
+                    const pontuacao = acertou ? Number(questao.pontos) : 0;
+
+                    updates.push(
+                        prisma.respostaQuestao.update({
+                            where: { id: resposta.id },
+                            data: {
+                                pontuacao: pontuacao,
+                                corrigida: true
+                            }
+                        })
+                    );
+                }
+            }
+        }
+
+        // Executa todas as atualizações de correção
+        await prisma.$transaction(updates);
+
+        // Atualiza status final
         await prisma.resultadoProva.update({
             where: { id: resultadoId },
             data: {
                 finalizadoEm: new Date(),
-                status: "PENDENTE",
+                status: temDissertativa ? "PENDENTE" : "CORRIGIDA",
             },
         });
         return { success: true };

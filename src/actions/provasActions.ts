@@ -84,7 +84,6 @@ export type ResultadoProvaCompleto = {
         nome: string
         email: string
         dre: string | null
-        telefone: string | null
     }
     respostas: {
         id: number
@@ -544,7 +543,7 @@ export async function autoCorrigirMultiplaEscolha(resultadoId: number) {
     if (!resultado) return null
 
     for (const resposta of resultado.respostas) {
-        if (resposta.questao.tipo === "MULTIPLA_ESCOLHA" && !resposta.corrigida) {
+        if ((resposta.questao.tipo === "MULTIPLA_ESCOLHA" || resposta.questao.tipo === "VERDADEIRO_FALSO") && !resposta.corrigida) {
             const alternativaCorreta = resposta.questao.alternativas.find(a => a.correta)
             const acertou = resposta.alternativaId === alternativaCorreta?.id
 

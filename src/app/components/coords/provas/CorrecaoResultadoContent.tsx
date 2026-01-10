@@ -29,6 +29,7 @@ type RespostaDetalhada = {
         tipo: TipoQuestao
         enunciado: string
         pontos: number
+        imagens: { id: number; url: string; ordem: number }[]
         alternativas: {
             id: number
             texto: string
@@ -50,7 +51,6 @@ type ResultadoDetalhado = {
         nome: string
         email: string
         dre: string | null
-        telefone: string | null
     }
     prova: {
         id: number
@@ -278,7 +278,7 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                     )}
 
                                     {/* Resposta */}
-                                    {questao.tipo === "MULTIPLA_ESCOLHA" && (
+                                    {(questao.tipo === "MULTIPLA_ESCOLHA" || questao.tipo === "VERDADEIRO_FALSO") && (
                                         <div>
                                             <p className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">Resposta do Candidato</p>
                                             <div className="space-y-2">
