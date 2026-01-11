@@ -2,17 +2,21 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import type { UserRole } from "@/src/actions/authActions"
 
 interface Coordenador {
     id: number
     nome: string
     usuario: string
+    role: UserRole
 }
 
 interface AuthContextType {
     coordenador: Coordenador | null
     isLoading: boolean
     isAuthenticated: boolean
+    isEquipePS: boolean
+    isCoordenador: boolean
     login: (coordenador: Coordenador) => void
     logout: () => void
 }
@@ -51,8 +55,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const logout = useCallback(() => {
         setCoordenador(null)
         localStorage.removeItem(STORAGE_KEY)
-        router.push("/coord/login")
+        router.push("/coord")
     }, [router])
+
+    const isEquipePS = coordenador?.role === "equipeps"
+    const isCoordenador = coordenador?.role === "coordenador"
 
     return (
         <AuthContext.Provider
@@ -60,6 +67,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 coordenador,
                 isLoading,
                 isAuthenticated: !!coordenador,
+                isEquipePS,
+                isCoordenador,
                 login,
                 logout,
             }}
@@ -76,3 +85,4 @@ export function useAuth() {
     }
     return context
 }
+

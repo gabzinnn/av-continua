@@ -32,7 +32,12 @@ export default function LoginPage() {
 
         if (result.success && result.coordenador) {
             login(result.coordenador)
-            router.push("/coord/home")
+            // Redireciona equipeps para provas, coordenadores para home
+            if (result.coordenador.role === "equipeps") {
+                router.push("/coord/processo-seletivo/provas")
+            } else {
+                router.push("/coord/home")
+            }
         } else {
             setError(result.error || "Erro ao fazer login")
         }
@@ -83,9 +88,9 @@ export default function LoginPage() {
                                     placeholder="Seu usuário de acesso"
                                     className="w-full rounded-xl border border-gray-200 bg-bg-main px-4 py-4 pl-12 text-text-main placeholder-text-muted/70 text-lg font-medium focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
                                 />
-                                <IdCard 
-                                    size={22} 
-                                    className="pointer-events-none absolute top-1/2 -translate-y-1/2 left-4 text-text-muted group-focus-within:text-primary transition-colors" 
+                                <IdCard
+                                    size={22}
+                                    className="pointer-events-none absolute top-1/2 -translate-y-1/2 left-4 text-text-muted group-focus-within:text-primary transition-colors"
                                 />
                             </div>
                         </div>
@@ -108,9 +113,9 @@ export default function LoginPage() {
                                     placeholder="••••••••"
                                     className="w-full rounded-xl border border-gray-200 bg-bg-main px-4 py-4 pl-12 text-text-main placeholder-text-muted/70 text-lg font-medium focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
                                 />
-                                <KeyRound 
-                                    size={22} 
-                                    className="pointer-events-none absolute top-1/2 -translate-y-1/2 left-4 text-text-muted group-focus-within:text-primary transition-colors" 
+                                <KeyRound
+                                    size={22}
+                                    className="pointer-events-none absolute top-1/2 -translate-y-1/2 left-4 text-text-muted group-focus-within:text-primary transition-colors"
                                 />
                             </div>
                         </div>

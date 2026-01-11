@@ -3,6 +3,8 @@
 import prisma from "@/src/lib/prisma"
 import bcrypt from "bcrypt"
 
+export type UserRole = "coordenador" | "equipeps"
+
 export interface LoginResult {
     success: boolean
     error?: string
@@ -10,7 +12,14 @@ export interface LoginResult {
         id: number
         nome: string
         usuario: string
+        role: UserRole
     }
+}
+
+// Credenciais da equipe do processo seletivo (hardcoded)
+const EQUIPEPS_CREDENTIALS = {
+    usuario: "equipeps",
+    senha: "equipeps"
 }
 
 export async function loginCoordenador(
@@ -20,6 +29,19 @@ export async function loginCoordenador(
     try {
         if (!usuario || !senha) {
             return { success: false, error: "Preencha todos os campos" }
+        }
+
+        // Verifica se é o login da equipe do processo seletivo
+        if (usuario === EQUIPEPS_CREDENTIALS.usuario && senha === EQUIPEPS_CREDENTIALS.senha) {
+            return {
+                success: true,
+                coordenador: {
+                    id: -1, // ID especial para equipe
+                    nome: "Equipe Processo Seletivo",
+                    usuario: "equipeps",
+                    role: "equipeps"
+                }
+            }
         }
 
         const coordenador = await prisma.coordenador.findUnique({
@@ -48,6 +70,7 @@ export async function loginCoordenador(
                 id: coordenador.id,
                 nome: coordenador.nome,
                 usuario: coordenador.usuario,
+                role: "coordenador"
             },
         }
     } catch (error) {
@@ -61,3 +84,4 @@ export async function hashSenha(senha: string): Promise<string> {
     const saltRounds = 10
     return bcrypt.hash(senha, saltRounds)
 }
+

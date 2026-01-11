@@ -57,7 +57,7 @@ const navGroups: NavGroup[] = [
 export function CoordsSidebar() {
     const [isOpen, setIsOpen] = useState(false)
     const [expandedGroups, setExpandedGroups] = useState<string[]>([])
-    const { logout } = useAuth()
+    const { logout, isEquipePS } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
 
@@ -176,7 +176,8 @@ export function CoordsSidebar() {
 
                     {/* Scrollable Navigation */}
                     <nav className="flex-1 overflow-y-auto px-6 flex flex-col gap-2 min-h-0 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                        {navRoutes.map((route) => {
+                        {/* Regular nav routes - hidden for equipeps */}
+                        {!isEquipePS && navRoutes.map((route) => {
                             const Icon = route.icon
                             const active = isActive(route.href)
 
