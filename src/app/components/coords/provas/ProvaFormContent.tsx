@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
+import CreatableSelect from "react-select/creatable"
 import { ArrowLeft, Save, Eye, Send, Plus, GripVertical, Copy, Trash2, ChevronDown, ChevronUp, Image as ImageIcon, Upload, X, Loader2 } from "lucide-react"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { Button } from "@/src/app/components/Button"
@@ -15,10 +16,13 @@ import {
     updateQuestao,
     deleteQuestao,
     reorderQuestoes,
+    getAllProcessosSeletivos,
+    createProcessoSeletivo,
     ProvaCompleta,
     ProvaData,
     QuestaoData,
-    QuestaoCompleta
+    QuestaoCompleta,
+    ProcessoSeletivoSimples
 } from "@/src/actions/provasActions"
 import { uploadQuestaoImageToCloudinary } from "@/src/actions/uploadActions"
 import { StatusProva, TipoQuestao } from "@/src/generated/prisma/client"
@@ -29,6 +33,12 @@ interface ProvaFormContentProps {
 }
 
 type LocalQuestao = QuestaoCompleta & { isNew?: boolean; isExpanded?: boolean }
+
+type ProcessoOption = {
+    value: number | null
+    label: string
+    __isNew__?: boolean
+}
 
 export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
     const router = useRouter()
@@ -42,15 +52,31 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
     const [embaralhar, setEmbaralhar] = useState(false)
     const [status, setStatus] = useState<StatusProva>("RASCUNHO")
 
+    // Processo Seletivo
+    const [processosSeletivos, setProcessosSeletivos] = useState<ProcessoSeletivoSimples[]>([])
+    const [selectedProcesso, setSelectedProcesso] = useState<ProcessoOption | null>(null)
+    const [isLoadingProcessos, setIsLoadingProcessos] = useState(true)
+
     // Questões
     const [questoes, setQuestoes] = useState<LocalQuestao[]>([])
     const [expandedId, setExpandedId] = useState<number | null>(null)
+
+    useEffect(() => {
+        loadProcessosSeletivos()
+    }, [])
 
     useEffect(() => {
         if (mode === "edit" && provaId) {
             loadProva()
         }
     }, [mode, provaId])
+
+    const loadProcessosSeletivos = async () => {
+        setIsLoadingProcessos(true)
+        const processos = await getAllProcessosSeletivos()
+        setProcessosSeletivos(processos)
+        setIsLoadingProcessos(false)
+    }
 
     const loadProva = async () => {
         if (!provaId) return
@@ -63,8 +89,24 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
             setEmbaralhar(prova.embaralhar)
             setStatus(prova.status)
             setQuestoes(prova.questoes.map(q => ({ ...q, isExpanded: false })))
+            if (prova.processoSeletivo) {
+                setSelectedProcesso({
+                    value: prova.processoSeletivo.id,
+                    label: prova.processoSeletivo.nome
+                })
+            }
         }
         setIsLoading(false)
+    }
+
+    const handleCreateProcesso = async (inputValue: string) => {
+        const newProcesso = await createProcessoSeletivo(inputValue)
+        const newOption: ProcessoOption = {
+            value: newProcesso.id,
+            label: newProcesso.nome
+        }
+        setProcessosSeletivos([...processosSeletivos, { id: newProcesso.id, nome: newProcesso.nome, ativo: true }])
+        setSelectedProcesso(newOption)
     }
 
     const handleSaveProva = async () => {
@@ -76,6 +118,7 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
                 tempoLimite: tempoLimite ? Number(tempoLimite) : null,
                 embaralhar,
                 status,
+                processoSeletivoId: selectedProcesso?.value || null,
             }
 
             if (mode === "create") {
@@ -98,6 +141,7 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
                 tempoLimite: tempoLimite ? Number(tempoLimite) : null,
                 embaralhar,
                 status: "RASCUNHO",
+                processoSeletivoId: selectedProcesso?.value || null,
             }
             const newProva = await createProva(provaData)
             router.push(`/coord/processo-seletivo/provas/${newProva.id}`)
@@ -241,7 +285,7 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {/* Título */}
-                        <div className="lg:col-span-3">
+                        <div className="lg:col-span-2">
                             <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
                                 Título da Prova
                             </label>
@@ -251,6 +295,57 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
                                 onChange={(e) => setTitulo(e.target.value)}
                                 placeholder="Ex: Avaliação Técnica Q3 2024"
                                 className="w-full rounded-lg border border-border px-4 bg-gray-50 text-text-main focus:border-primary focus:ring-primary h-11 transition-colors font-medium outline-none"
+                            />
+                        </div>
+
+                        {/* Processo Seletivo */}
+                        <div className="lg:col-span-1">
+                            <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+                                Processo Seletivo
+                            </label>
+                            <CreatableSelect
+                                isClearable
+                                isLoading={isLoadingProcessos}
+                                options={processosSeletivos.map(p => ({ value: p.id, label: p.nome }))}
+                                value={selectedProcesso}
+                                onChange={(newValue) => setSelectedProcesso(newValue as ProcessoOption | null)}
+                                onCreateOption={handleCreateProcesso}
+                                placeholder="Selecione ou crie..."
+                                formatCreateLabel={(inputValue) => `Criar "${inputValue}"`}
+                                noOptionsMessage={() => "Nenhum processo encontrado"}
+                                loadingMessage={() => "Carregando..."}
+                                styles={{
+                                    control: (base, state) => ({
+                                        ...base,
+                                        minHeight: '44px',
+                                        backgroundColor: '#f9fafb',
+                                        borderColor: state.isFocused ? '#fad519' : '#e5e7eb',
+                                        borderRadius: '0.5rem',
+                                        boxShadow: state.isFocused ? '0 0 0 1px #fad519' : 'none',
+                                        '&:hover': {
+                                            borderColor: '#fad519'
+                                        }
+                                    }),
+                                    option: (base, state) => ({
+                                        ...base,
+                                        backgroundColor: state.isSelected ? '#fad519' : state.isFocused ? '#fef9e7' : 'white',
+                                        color: '#1f2937',
+                                        cursor: 'pointer'
+                                    }),
+                                    menu: (base) => ({
+                                        ...base,
+                                        borderRadius: '0.5rem',
+                                        overflow: 'hidden'
+                                    }),
+                                    placeholder: (base) => ({
+                                        ...base,
+                                        color: '#9ca3af'
+                                    }),
+                                    singleValue: (base) => ({
+                                        ...base,
+                                        color: '#1f2937'
+                                    })
+                                }}
                             />
                         </div>
 

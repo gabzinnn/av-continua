@@ -5,11 +5,12 @@ import { useMember } from "@/src/context/memberContext"
 import { MembrosList } from "../avaliacao/MembrosList"
 import { MembroHeader } from "../avaliacao/MembroHeader"
 import { AvaliacaoForm } from "../avaliacao/AvaliacaoForm"
-import { 
-  getAvaliacaoAtual, 
-  getRespostaExistente, 
+import {
+  getAvaliacaoAtual,
+  getRespostaExistente,
   getMembroDetalhes,
-  salvarResposta 
+  salvarResposta,
+  podeMarcar1on1
 } from "@/src/actions/avaliacaoActions"
 import { ClipboardList, Users } from "lucide-react"
 
@@ -34,34 +35,39 @@ interface FormData {
   notaCultura: string
   feedbackTexto: string
   planosAcao: string
+  oneOnOneFeito: boolean
 }
 
 const initialFormData: FormData = {
   notaEntrega: "",
   notaCultura: "",
   feedbackTexto: "",
-  planosAcao: ""
+  planosAcao: "",
+  oneOnOneFeito: false
 }
 
 export function AvaliacaoContent() {
   const { selectedMember, isLoading: isMemberLoading } = useMember()
-  
+
   // Estado da avaliação
   const [avaliacaoId, setAvaliacaoId] = useState<number | null>(null)
   const [avaliacaoNome, setAvaliacaoNome] = useState<string | null>(null)
   const [membros, setMembros] = useState<MembroParaAvaliar[]>([])
   const [totalMembros, setTotalMembros] = useState(0)
   const [avaliadosCount, setAvaliadosCount] = useState(0)
-  
+
   // Estado do membro selecionado
   const [selectedMembroId, setSelectedMembroId] = useState<number | null>(null)
   const [membroDetalhes, setMembroDetalhes] = useState<MembroDetalhes | null>(null)
-  
+
   // Estado do formulário
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  
+
+  // Estado do 1:1
+  const [podeMarcar1on1Checkbox, setPodeMarcar1on1Checkbox] = useState(false)
+
   // Estado do drawer mobile
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
@@ -125,19 +131,22 @@ export function AvaliacaoContent() {
       if (!selectedMembroId || !avaliacaoId || !selectedMember?.id) return
 
       try {
-        const [detalhes, respostaExistente] = await Promise.all([
+        const [detalhes, respostaExistente, podeMarcar] = await Promise.all([
           getMembroDetalhes(selectedMembroId),
-          getRespostaExistente(avaliacaoId, Number(selectedMember.id), selectedMembroId)
+          getRespostaExistente(avaliacaoId, Number(selectedMember.id), selectedMembroId),
+          podeMarcar1on1(Number(selectedMember.id), selectedMembroId)
         ])
 
         setMembroDetalhes(detalhes)
+        setPodeMarcar1on1Checkbox(podeMarcar)
 
         if (respostaExistente) {
           setFormData({
             notaEntrega: String(respostaExistente.notaEntrega),
             notaCultura: String(respostaExistente.notaCultura),
             feedbackTexto: respostaExistente.feedbackTexto,
-            planosAcao: respostaExistente.planosAcao.join("\n")
+            planosAcao: respostaExistente.planosAcao.join("\n"),
+            oneOnOneFeito: respostaExistente.oneOnOneFeito
           })
         } else {
           setFormData(initialFormData)
@@ -154,7 +163,7 @@ export function AvaliacaoContent() {
     setSelectedMembroId(id)
   }
 
-  const handleFormChange = (field: string, value: string) => {
+  const handleFormChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
@@ -171,9 +180,11 @@ export function AvaliacaoContent() {
         notaCultura: Number(formData.notaCultura),
         feedbackTexto: formData.feedbackTexto,
         planosAcao: formData.planosAcao.split("\n").filter(p => p.trim()),
-        finalizada
+        finalizada,
+        // Só passa oneOnOneFeito se o avaliador tem permissão de marcar
+        ...(podeMarcar1on1Checkbox && { oneOnOneFeito: formData.oneOnOneFeito })
       })
-      
+
       // Recarrega dados para atualizar status
       await loadAvaliacaoData()
     } catch (error) {
@@ -187,7 +198,7 @@ export function AvaliacaoContent() {
     await handleSave(true) // Finaliza a avaliação
 
     // Seleciona próximo membro pendente ou rascunho
-    const proximoPendente = membros.find(m => 
+    const proximoPendente = membros.find(m =>
       (m.status === 'pendente' || m.status === 'rascunho') && m.id !== selectedMembroId
     )
     if (proximoPendente) {
@@ -245,7 +256,7 @@ export function AvaliacaoContent() {
       />
 
       {/* Formulário de avaliação */}
-      <div className="flex-1 overflow-y-auto bg-[#f8f8f5] p-6 lg:p-10">
+      <div className="flex-1 overflow-y-auto bg-bg-main p-6 lg:p-10">
         <div className="max-w-4xl mx-auto">
           {membroDetalhes && (
             <>
@@ -262,6 +273,8 @@ export function AvaliacaoContent() {
                 onSave={() => handleSave(false)}
                 onSubmit={handleSubmit}
                 isSaving={isSaving}
+                podeMarcar1on1={podeMarcar1on1Checkbox}
+                on1on1Change={(checked) => handleFormChange("oneOnOneFeito", checked)}
               />
             </>
           )}

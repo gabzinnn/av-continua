@@ -30,6 +30,31 @@ export type ProvaData = {
     tempoLimite?: number | null
     embaralhar?: boolean
     status?: StatusProva
+    processoSeletivoId?: number | null
+}
+
+// ==========================================
+// PROCESSO SELETIVO CRUD
+// ==========================================
+
+export type ProcessoSeletivoSimples = {
+    id: number
+    nome: string
+    ativo: boolean
+}
+
+export async function getAllProcessosSeletivos() {
+    const processos = await prisma.processoSeletivo.findMany({
+        where: { ativo: true },
+        orderBy: { createdAt: 'desc' }
+    })
+    return processos as ProcessoSeletivoSimples[]
+}
+
+export async function createProcessoSeletivo(nome: string) {
+    return prisma.processoSeletivo.create({
+        data: { nome }
+    })
 }
 
 export type ProvaCompleta = {
@@ -39,6 +64,11 @@ export type ProvaCompleta = {
     tempoLimite: number | null
     embaralhar: boolean
     status: StatusProva
+    processoSeletivoId: number | null
+    processoSeletivo: {
+        id: number
+        nome: string
+    } | null
     createdAt: Date
     updatedAt: Date
     questoes: QuestaoCompleta[]
@@ -113,6 +143,12 @@ export async function getAllProvas(busca?: string, status?: StatusProva) {
             ]
         },
         include: {
+            processoSeletivo: {
+                select: {
+                    id: true,
+                    nome: true
+                }
+            },
             questoes: {
                 orderBy: { ordem: "asc" },
                 include: {
@@ -149,6 +185,12 @@ export async function getProvaById(id: number) {
     const prova = await prisma.prova.findUnique({
         where: { id },
         include: {
+            processoSeletivo: {
+                select: {
+                    id: true,
+                    nome: true
+                }
+            },
             questoes: {
                 orderBy: { ordem: "asc" },
                 include: {
@@ -197,6 +239,7 @@ export async function createProva(data: ProvaData) {
             tempoLimite: data.tempoLimite,
             embaralhar: data.embaralhar ?? false,
             status: data.status ?? "RASCUNHO",
+            processoSeletivoId: data.processoSeletivoId,
         }
     })
 }
@@ -220,6 +263,7 @@ export async function updateProva(id: number, data: ProvaData) {
             tempoLimite: data.tempoLimite,
             embaralhar: data.embaralhar,
             status: data.status,
+            processoSeletivoId: data.processoSeletivoId,
         }
     })
 }

@@ -296,9 +296,9 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
             where: {
                 membro: { isAtivo: true },
             },
-            select: { 
-                membroId: true, 
-                demandaId: true, 
+            select: {
+                membroId: true,
+                demandaId: true,
                 isLider: true,
                 demanda: {
                     select: { idArea: true, finalizada: true }
@@ -317,27 +317,27 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
 
     // Criar mapas para acesso rápido
     const membrosMap = new Map(membrosAtivos.map(m => [m.id, m]))
-    
+
     // Mapa de membroId -> demandaIds
     const demandasPorMembro = new Map<number, number[]>()
     // Mapa de demandaId -> membroIds
     const membrosPorDemanda = new Map<number, number[]>()
     // Mapa de areaId -> líderes (membros que são líderes de demandas dessa área)
     const lideresPorArea = new Map<number, number[]>()
-    
+
     for (const aloc of todasAlocacoes) {
         // Demandas por membro
         if (!demandasPorMembro.has(aloc.membroId)) {
             demandasPorMembro.set(aloc.membroId, [])
         }
         demandasPorMembro.get(aloc.membroId)!.push(aloc.demandaId)
-        
+
         // Membros por demanda
         if (!membrosPorDemanda.has(aloc.demandaId)) {
             membrosPorDemanda.set(aloc.demandaId, [])
         }
         membrosPorDemanda.get(aloc.demandaId)!.push(aloc.membroId)
-        
+
         // Líderes por área (demandas não finalizadas)
         if (aloc.isLider && !aloc.demanda.finalizada && aloc.demanda.idArea) {
             if (!lideresPorArea.has(aloc.demanda.idArea)) {
@@ -346,15 +346,15 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
             lideresPorArea.get(aloc.demanda.idArea)!.push(aloc.membroId)
         }
     }
-    
+
     // IDs dos coordenadores de OI e CG
     const coordenadoresOICG = coordenadoresObrigatoriosPorArea
         .filter(c => c.area.nome === "Organização Interna" || c.area.nome === "Coordenação Geral")
         .map(c => c.id)
-    
+
     // Todos os coordenadores (para avaliação entre coordenadores)
     const todosCoordenadoresIds = coordenadoresObrigatoriosPorArea.map(c => c.id)
-    
+
     // Mapa de areaId -> coordenador dessa área
     const coordenadorPorArea = new Map<number, number[]>()
     for (const coord of coordenadoresObrigatoriosPorArea) {
@@ -368,7 +368,7 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
 
     for (const membro of membrosAtivos) {
         const membrosAvaliadosIds = new Set<number>()
-        
+
         // 1. Membros que compartilham demanda
         const demandaIds = demandasPorMembro.get(membro.id) || []
         for (const demandaId of demandaIds) {
@@ -379,7 +379,7 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
                 }
             }
         }
-        
+
         // 2. Coordenadores obrigatórios (própria área + OI + CG)
         const coordsDaArea = coordenadorPorArea.get(membro.areaId) || []
         for (const coordId of coordsDaArea) {
@@ -392,7 +392,7 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
                 membrosAvaliadosIds.add(coordId)
             }
         }
-        
+
         // 3. Se é coordenador: líderes da área + todos os outros coordenadores
         if (membro.isCoordenador) {
             const lideresDaArea = lideresPorArea.get(membro.areaId) || []
@@ -401,7 +401,7 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
                     membrosAvaliadosIds.add(liderId)
                 }
             }
-            
+
             // Todos os outros coordenadores
             for (const coordId of todosCoordenadoresIds) {
                 if (coordId !== membro.id) {
@@ -409,7 +409,7 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
                 }
             }
         }
-        
+
         // Filtrar apenas membros ativos e ordenar
         const membrosAvaliar = Array.from(membrosAvaliadosIds)
             .map(id => membrosMap.get(id))
@@ -453,6 +453,7 @@ export interface ParticipanteDetalhe {
     area: string
     respondeuAvaliacao: boolean
     avaliouFeedbacks: boolean
+    oneOnOneFeitoCount: number // Quantidade de 1:1s que este membro recebeu
 }
 
 // Interface para detalhe completo da avaliação
@@ -486,10 +487,21 @@ export async function getDetalheAvaliacao(avaliacaoId: number): Promise<DetalheA
                     },
                 },
             },
+            respostas: {
+                where: { oneOnOneFeito: true },
+                select: { avaliadoId: true }
+            }
         },
     })
 
     if (!avaliacao) return null
+
+    // Contar 1:1s por avaliadoId
+    const oneOnOneCountMap = new Map<number, number>()
+    for (const resposta of avaliacao.respostas) {
+        const count = oneOnOneCountMap.get(resposta.avaliadoId) || 0
+        oneOnOneCountMap.set(resposta.avaliadoId, count + 1)
+    }
 
     // Buscar membros que podiam participar dessa avaliação
     // (criados antes ou na data de início da avaliação E que estavam ativos)
@@ -516,6 +528,7 @@ export async function getDetalheAvaliacao(avaliacaoId: number): Promise<DetalheA
                 area: membro.area.nome,
                 respondeuAvaliacao: participacao?.respondeuAvaliacao ?? false,
                 avaliouFeedbacks: participacao?.avaliouFeedbacks ?? false,
+                oneOnOneFeitoCount: oneOnOneCountMap.get(membro.id) || 0,
             }
         })
         .sort((a, b) => {

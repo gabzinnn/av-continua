@@ -6,17 +6,20 @@ import { Select } from "../Select"
 import { Textarea } from "@/src/app/components/Textarea"
 import { Button } from "../Button"
 import { NOTAS_OPTIONS } from "@/src/utils/notas"
-import { BarChart3, MessageSquare, Flag, Save, ArrowRight } from "lucide-react"
+import { BarChart3, MessageSquare, Flag, Save, ArrowRight, UserCheck } from "lucide-react"
 
 interface AvaliacaoFormProps {
   notaEntrega: string
   notaCultura: string
   feedbackTexto: string
   planosAcao: string
+  oneOnOneFeito: boolean
   onChange: (field: string, value: string) => void
   onSave: () => void
   onSubmit: () => void
   isSaving: boolean
+  podeMarcar1on1?: boolean
+  on1on1Change?: (checked: boolean) => void
 }
 
 export function AvaliacaoForm({
@@ -24,10 +27,13 @@ export function AvaliacaoForm({
   notaCultura,
   feedbackTexto,
   planosAcao,
+  oneOnOneFeito,
   onChange,
   onSave,
   onSubmit,
-  isSaving
+  isSaving,
+  podeMarcar1on1 = false,
+  on1on1Change
 }: AvaliacaoFormProps) {
   const isFormValid = notaEntrega && notaCultura && feedbackTexto.trim() && planosAcao.trim()
 
@@ -39,7 +45,7 @@ export function AvaliacaoForm({
           <BarChart3 size={20} className="text-primary" />
           Métricas Principais
         </h4>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Select
             label="Entrega"
@@ -61,7 +67,7 @@ export function AvaliacaoForm({
             size="md"
             helperText="Baseado nos valores do clube."
           />
-          
+
         </div>
       </Card>
 
@@ -71,7 +77,7 @@ export function AvaliacaoForm({
           <MessageSquare size={20} className="text-primary" />
           Feedback Detalhado
         </h4>
-        
+
         <Textarea
           name="feedbackTexto"
           value={feedbackTexto}
@@ -88,7 +94,7 @@ export function AvaliacaoForm({
           <Flag size={20} className="text-primary" />
           Planos de Ação e Metas
         </h4>
-        
+
         <Textarea
           name="planosAcao"
           value={planosAcao}
@@ -99,6 +105,31 @@ export function AvaliacaoForm({
           helperText="Escreva um plano de ação por linha. Exemplo: Participar de mais reuniões de alinhamento"
         />
       </Card>
+
+      {/* 1:1 Checkbox - Só aparece se tem permissão */}
+      {podeMarcar1on1 && (
+        <Card>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={oneOnOneFeito}
+                onChange={(e) => on1on1Change?.(e.target.checked)}
+                className="w-5 h-5 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer"
+              />
+              <div className="flex items-center gap-2">
+                <UserCheck size={20} className="text-primary" />
+                <span className="text-sm font-bold text-text-main group-hover:text-primary transition-colors">
+                  1:1 realizado com este membro
+                </span>
+              </div>
+            </label>
+          </div>
+          <p className="text-xs text-text-muted mt-2">
+            Marque esta opção após realizar a reunião individual de feedback com o membro.
+          </p>
+        </Card>
+      )}
 
       {/* Action Bar */}
       <div className="flex items-center justify-between pt-4 pb-12">
@@ -111,7 +142,7 @@ export function AvaliacaoForm({
           <Save size={18} />
           {isSaving ? "Salvando..." : "Salvar como Rascunho"}
         </button>
-        
+
         <Button
           type="submit"
           disabled={!isFormValid || isSaving}

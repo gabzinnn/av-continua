@@ -89,9 +89,8 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
         if (tempoRestante !== null && tempoRestante > 0) {
             timerRef.current = setInterval(() => {
                 setTempoRestante((prev) => {
-                    if (prev === null || prev <= 0) {
-                        clearInterval(timerRef.current!);
-                        handleFinalizarProva(true); // Acabou o tempo
+                    if (prev === null || prev <= 1) {
+                        // Will become 0 or less, stop here
                         return 0;
                     }
                     return prev - 1;
@@ -103,21 +102,39 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
         };
     }, [tempoRestante]);
 
-    // Anti-cheat: Visibility Change
+    // Separate effect to handle timeout
     useEffect(() => {
-        const handleVisibilityChange = () => {
+        if (tempoRestante === 0) {
+            console.log("Acabou o tempo");
+            handleFinalizarProva(true); // Acabou o tempo
+        }
+    }, [tempoRestante]);
+
+    // Anti-cheat: Visibility Change
+    const [showTabWarningModal, setShowTabWarningModal] = useState(false);
+
+    useEffect(() => {
+        const handleVisibilityChange = async () => {
             if (document.hidden) {
                 tabSwitches.current += 1;
-                if (tabSwitches.current >= 3) {
-                    alert("Atenção: Você saiu da aba da prova muitas vezes. Isso pode anular sua prova.");
-                }
                 console.log(`Tab switch count: ${tabSwitches.current}`);
+
+                if (tabSwitches.current === 1) {
+                    // Primeiro aviso - mostra modal
+                    setShowTabWarningModal(true);
+                } else if (tabSwitches.current >= 2) {
+                    // Segunda troca - finaliza prova
+                    if (resultadoId) {
+                        await finalizarProva(resultadoId);
+                        router.push("/prova/finalizada?reason=tabswitch");
+                    }
+                }
             }
         };
 
         document.addEventListener("visibilitychange", handleVisibilityChange);
         return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-    }, []);
+    }, [resultadoId, router]);
 
     const handleSelectOption = async (questaoId: number, alternativaId: number) => {
         setRespostas((prev) => ({ ...prev, [questaoId]: alternativaId }));
@@ -164,7 +181,7 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
     const timerCircleOffset = 100 - timerPercent; // Dasharray 100
 
     return (
-        <div className="bg-bg-main min-h-screen flex flex-col overflow-x-hidden selection:bg-primary/30">
+        <div className="bg-bg-main min-h-screen flex flex-col overflow-x-hidden select-none">
             {/* Fixed Glass Header */}
             <header className="fixed top-0 left-0 right-0 z-50 h-[72px] px-6 lg:px-12 flex items-center justify-between transition-colors duration-300 bg-bg-main/85 backdrop-blur-md border-b border-border-ui">
                 <div className="flex items-center gap-4">
@@ -430,6 +447,36 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
                     )}
                 </div>
             </div>
+
+            {/* Tab Switch Warning Modal */}
+            {showTabWarningModal && (
+                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 animate-in fade-in zoom-in duration-200">
+                        <div className="flex flex-col items-center text-center gap-4">
+                            <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-amber-600" style={{ fontSize: "32px" }}>
+                                    warning
+                                </span>
+                            </div>
+                            <h2 className="text-xl font-bold text-text-main">
+                                Atenção!
+                            </h2>
+                            <p className="text-text-muted">
+                                Você saiu da aba da prova. Esta é uma <span className="font-bold text-amber-600">advertência</span>.
+                            </p>
+                            <p className="text-sm text-red-600 font-semibold bg-red-50 px-4 py-2 rounded-lg">
+                                Na próxima troca de aba, sua prova será finalizada automaticamente.
+                            </p>
+                            <button
+                                onClick={() => setShowTabWarningModal(false)}
+                                className="mt-2 px-8 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-lg transition-colors cursor-pointer"
+                            >
+                                Entendi, continuar prova
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

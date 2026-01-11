@@ -72,6 +72,7 @@ model RespostaAvaliacao {
   avaliadoId    Int
   notaEntrega   Int
   notaCultura   Int
+  oneOnOneFeito Boolean  @default(false)
   feedbackTexto String
   finalizada    Boolean  @default(false)
   createdAt     DateTime @default(now())
@@ -178,6 +179,17 @@ model Pagamento {
 // PROCESSO SELETIVO - PROVAS
 // ==========================================
 
+model ProcessoSeletivo {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  descricao String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  provas Prova[]
+}
+
 enum StatusProva {
   RASCUNHO
   PUBLICADA
@@ -196,17 +208,21 @@ enum StatusResultado {
 }
 
 model Prova {
-  id          Int         @id @default(autoincrement())
-  titulo      String
-  descricao   String?
-  tempoLimite Int?
-  embaralhar  Boolean     @default(false)
-  status      StatusProva @default(RASCUNHO)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                 Int         @id @default(autoincrement())
+  titulo             String
+  descricao          String?
+  tempoLimite        Int?
+  embaralhar         Boolean     @default(false)
+  status             StatusProva @default(RASCUNHO)
+  processoSeletivoId Int?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
-  questoes   Questao[]
-  resultados ResultadoProva[]
+  processoSeletivo ProcessoSeletivo? @relation(fields: [processoSeletivoId], references: [id])
+  questoes         Questao[]
+  resultados       ResultadoProva[]
+
+  @@index([processoSeletivoId])
 }
 
 model Questao {
@@ -255,7 +271,7 @@ model Candidato {
   email     String   @unique
   curso     String?
   periodo   String?
-  dre       String   @default("")
+  dre       String   @unique @default("")
   createdAt DateTime @default(now())
 
   resultados ResultadoProva[]

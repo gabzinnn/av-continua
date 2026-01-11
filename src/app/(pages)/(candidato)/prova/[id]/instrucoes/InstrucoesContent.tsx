@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/src/app/components/Button";
 import { useCandidato } from "../../../candidatoContext";
+import { iniciarProva } from "@/src/actions/candidatoActions";
 import { ArrowLeft, Play } from "lucide-react";
 
 interface Prova {
@@ -46,7 +48,8 @@ const instrucoes = [
 
 export default function InstrucoesContent({ prova }: InstrucoesContentProps) {
     const router = useRouter();
-    const { candidato, isRegistered } = useCandidato();
+    const { candidato, isRegistered, resultadoId } = useCandidato();
+    const [isStarting, setIsStarting] = useState(false);
 
     // Redireciona se não estiver registrado
     if (!isRegistered) {
@@ -58,7 +61,11 @@ export default function InstrucoesContent({ prova }: InstrucoesContentProps) {
         router.push("/prova");
     };
 
-    const handleComecar = () => {
+    const handleComecar = async () => {
+        setIsStarting(true);
+        if (resultadoId) {
+            await iniciarProva(resultadoId);
+        }
         router.push(`/prova/${prova.id}/questoes`);
     };
 
@@ -162,6 +169,7 @@ export default function InstrucoesContent({ prova }: InstrucoesContentProps) {
                     </Button>
                     <Button
                         onClick={handleComecar}
+                        isLoading={isStarting}
                         icon={<Play size={20} />}
                     >
                         Começar Prova

@@ -160,9 +160,9 @@ export function CoordsSidebar() {
                     ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
                 `}
             >
-                <div className="p-6 flex flex-col h-full justify-between">
-                    <div className="flex flex-col gap-6">
-                        {/* Logo Header */}
+                <div className="flex flex-col h-full">
+                    {/* Logo Header */}
+                    <div className="p-6 shrink-0">
                         <div className="flex items-center gap-3">
                             <Image
                                 src="/assets/images/logoCompletaFundoBranco.png"
@@ -172,121 +172,123 @@ export function CoordsSidebar() {
                                 className="h-auto"
                             />
                         </div>
+                    </div>
 
-                        {/* Navigation */}
-                        <nav className="flex flex-col gap-2">
-                            {navRoutes.map((route) => {
-                                const Icon = route.icon
-                                const active = isActive(route.href)
+                    {/* Scrollable Navigation */}
+                    <nav className="flex-1 overflow-y-auto px-6 flex flex-col gap-2 min-h-0 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        {navRoutes.map((route) => {
+                            const Icon = route.icon
+                            const active = isActive(route.href)
 
-                                return (
-                                    <Link
-                                        key={route.href}
-                                        href={route.href}
+                            return (
+                                <Link
+                                    key={route.href}
+                                    href={route.href}
+                                    className={`
+                                        flex items-center gap-3 px-4 py-3 rounded-lg transition-all shrink-0
+                                        ${active
+                                            ? "bg-primary/20 border-l-4 border-primary shadow-sm"
+                                            : "hover:bg-[#f4f2e6] border-l-4 border-transparent"
+                                        }
+                                    `}
+                                >
+                                    <Icon
+                                        size={20}
+                                        className={active ? "text-text-main" : "text-gray-500"}
+                                    />
+                                    <span
+                                        className={`text-sm leading-normal ${active
+                                            ? "font-bold text-text-main"
+                                            : "font-medium text-gray-500"
+                                            }`}
+                                    >
+                                        {route.label}
+                                    </span>
+                                </Link>
+                            )
+                        })}
+
+                        {/* Collapsible Groups */}
+                        {navGroups.map((group) => {
+                            const GroupIcon = group.icon
+                            const isExpanded = expandedGroups.includes(group.label)
+                            const hasActiveChild = group.children.some(child => isActive(child.href))
+
+                            return (
+                                <div key={group.label} className="shrink-0">
+                                    <button
+                                        onClick={() => toggleGroup(group.label)}
                                         className={`
-                                            flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                                            ${active
-                                                ? "bg-primary/20 border-l-4 border-primary shadow-sm"
+                                            w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer
+                                            ${hasActiveChild
+                                                ? "bg-primary/10 border-l-4 border-primary"
                                                 : "hover:bg-[#f4f2e6] border-l-4 border-transparent"
                                             }
                                         `}
                                     >
-                                        <Icon
-                                            size={20}
-                                            className={active ? "text-text-main" : "text-gray-500"}
-                                        />
-                                        <span
-                                            className={`text-sm leading-normal ${active
+                                        <div className="flex items-center gap-3">
+                                            <GroupIcon
+                                                size={20}
+                                                className={hasActiveChild ? "text-text-main" : "text-gray-500"}
+                                            />
+                                            <span
+                                                className={`text-sm leading-normal ${hasActiveChild
                                                     ? "font-bold text-text-main"
                                                     : "font-medium text-gray-500"
-                                                }`}
-                                        >
-                                            {route.label}
-                                        </span>
-                                    </Link>
-                                )
-                            })}
+                                                    }`}
+                                            >
+                                                {group.label}
+                                            </span>
+                                        </div>
+                                        <ChevronDown
+                                            size={16}
+                                            className={`text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                                        />
+                                    </button>
 
-                            {/* Collapsible Groups */}
-                            {navGroups.map((group) => {
-                                const GroupIcon = group.icon
-                                const isExpanded = expandedGroups.includes(group.label)
-                                const hasActiveChild = group.children.some(child => isActive(child.href))
+                                    {/* Submenu */}
+                                    <div className={`overflow-hidden transition-all duration-200 ${isExpanded ? "max-h-40" : "max-h-0"}`}>
+                                        <div className="pl-4 mt-1 flex flex-col gap-1">
+                                            {group.children.map((child) => {
+                                                const ChildIcon = child.icon
+                                                const childActive = isActive(child.href)
 
-                                return (
-                                    <div key={group.label}>
-                                        <button
-                                            onClick={() => toggleGroup(group.label)}
-                                            className={`
-                                                w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer
-                                                ${hasActiveChild
-                                                    ? "bg-primary/10 border-l-4 border-primary"
-                                                    : "hover:bg-[#f4f2e6] border-l-4 border-transparent"
-                                                }
-                                            `}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <GroupIcon
-                                                    size={20}
-                                                    className={hasActiveChild ? "text-text-main" : "text-gray-500"}
-                                                />
-                                                <span
-                                                    className={`text-sm leading-normal ${hasActiveChild
-                                                            ? "font-bold text-text-main"
-                                                            : "font-medium text-gray-500"
-                                                        }`}
-                                                >
-                                                    {group.label}
-                                                </span>
-                                            </div>
-                                            <ChevronDown
-                                                size={16}
-                                                className={`text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                                            />
-                                        </button>
-
-                                        {/* Submenu */}
-                                        <div className={`overflow-hidden transition-all duration-200 ${isExpanded ? "max-h-40" : "max-h-0"}`}>
-                                            <div className="pl-4 mt-1 flex flex-col gap-1">
-                                                {group.children.map((child) => {
-                                                    const ChildIcon = child.icon
-                                                    const childActive = isActive(child.href)
-
-                                                    return (
-                                                        <Link
-                                                            key={child.href}
-                                                            href={child.href}
-                                                            className={`
-                                                                flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all
-                                                                ${childActive
-                                                                    ? "bg-primary/20 text-text-main font-semibold"
-                                                                    : "hover:bg-[#f4f2e6] text-gray-500"
-                                                                }
-                                                            `}
-                                                        >
-                                                            <ChildIcon size={18} />
-                                                            <span className="text-sm">{child.label}</span>
-                                                        </Link>
-                                                    )
-                                                })}
-                                            </div>
+                                                return (
+                                                    <Link
+                                                        key={child.href}
+                                                        href={child.href}
+                                                        className={`
+                                                            flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all
+                                                            ${childActive
+                                                                ? "bg-primary/20 text-text-main font-semibold"
+                                                                : "hover:bg-[#f4f2e6] text-gray-500"
+                                                            }
+                                                        `}
+                                                    >
+                                                        <ChildIcon size={18} />
+                                                        <span className="text-sm">{child.label}</span>
+                                                    </Link>
+                                                )
+                                            })}
                                         </div>
                                     </div>
-                                )
-                            })}
-                        </nav>
-                    </div>
+                                </div>
+                            )
+                        })}
+                    </nav>
 
                     {/* Footer - Logout */}
-                    <div className="mt-auto pt-6 border-t border-border">
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center gap-3 px-4 py-2 w-full text-left rounded-lg 
-                                hover:bg-[#f4f2e6] text-gray-500 hover:text-text-main transition-colors cursor-pointer"
-                        >
-                            <LogOut size={20} />
-                            <span className="text-sm font-medium">Sair</span>
-                        </button>
+                    <div className="p-6 shrink-0">
+                        <div className="pt-6 border-t border-border">
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center gap-3 px-4 py-2 w-full text-left rounded-lg 
+                                    hover:bg-[#f4f2e6] text-gray-500 hover:text-text-main transition-colors cursor-pointer"
+                            >
+                                <LogOut size={20} />
+                                <span className="text-sm font-medium">Sair</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </aside>

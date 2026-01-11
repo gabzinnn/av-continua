@@ -25,6 +25,7 @@ interface RespostaExistente {
     notaCultura: number
     feedbackTexto: string
     planosAcao: string[]
+    oneOnOneFeito: boolean
 }
 
 // Busca a avaliação ativa e lista de membros para avaliar
@@ -218,7 +219,8 @@ export async function getRespostaExistente(
         notaEntrega: resposta.notaEntrega,
         notaCultura: resposta.notaCultura,
         feedbackTexto: resposta.feedbackTexto,
-        planosAcao: resposta.planosAcao.map(p => p.descricao)
+        planosAcao: resposta.planosAcao.map(p => p.descricao),
+        oneOnOneFeito: resposta.oneOnOneFeito
     }
 }
 
@@ -231,11 +233,12 @@ interface SalvarRespostaInput {
     feedbackTexto: string
     planosAcao: string[] // Um plano por linha
     finalizada: boolean // true = concluído, false = rascunho
+    oneOnOneFeito?: boolean // Opcional, só é salvo se o avaliador tem permissão
 }
 
 // Salva ou atualiza uma resposta de avaliação com planos de ação
 export async function salvarResposta(data: SalvarRespostaInput) {
-    const { avaliacaoId, avaliadorId, avaliadoId, notaEntrega, notaCultura, feedbackTexto, planosAcao, finalizada } = data
+    const { avaliacaoId, avaliadorId, avaliadoId, notaEntrega, notaCultura, feedbackTexto, planosAcao, finalizada, oneOnOneFeito } = data
 
     // Upsert da resposta
     const resposta = await prisma.respostaAvaliacao.upsert({
@@ -253,13 +256,15 @@ export async function salvarResposta(data: SalvarRespostaInput) {
             notaEntrega,
             notaCultura,
             feedbackTexto,
-            finalizada
+            finalizada,
+            oneOnOneFeito: oneOnOneFeito ?? false
         },
         update: {
             notaEntrega,
             notaCultura,
             feedbackTexto,
-            finalizada
+            finalizada,
+            ...(oneOnOneFeito !== undefined && { oneOnOneFeito })
         }
     })
 
@@ -435,5 +440,101 @@ export async function getMembroDetalhes(membroId: number) {
         fotoUrl: membro.fotoUrl,
         area: membro.area.nome,
         periodo: membro.periodo
+    }
+}
+
+// Verifica se o avaliador pode marcar 1:1 para o avaliado
+// Regras:
+// - Coordenadores podem marcar 1:1 para líderes de demandas da sua área
+// - Líderes de demandas podem marcar 1:1 para membros das suas demandas
+export async function podeMarcar1on1(avaliadorId: number, avaliadoId: number): Promise<boolean> {
+    // Buscar dados do avaliador
+    const avaliador = await prisma.membro.findUnique({
+        where: { id: avaliadorId },
+        include: { area: true }
+    })
+
+    if (!avaliador) return false
+
+    // Caso 1: Coordenador avaliando líder de demanda da sua área
+    if (avaliador.isCoordenador) {
+        const avaliadoEhLiderNaArea = await prisma.alocacaoDemanda.findFirst({
+            where: {
+                membroId: avaliadoId,
+                isLider: true,
+                demanda: {
+                    idArea: avaliador.areaId,
+                    finalizada: false
+                }
+            }
+        })
+        if (avaliadoEhLiderNaArea) return true
+    }
+
+    // Caso 2: Líder de demanda avaliando membro da sua demanda
+    // Buscar demandas onde o avaliador é líder
+    const demandasOndeEhLider = await prisma.alocacaoDemanda.findMany({
+        where: {
+            membroId: avaliadorId,
+            isLider: true,
+            demanda: { finalizada: false }
+        },
+        select: { demandaId: true }
+    })
+
+    if (demandasOndeEhLider.length > 0) {
+        const demandaIds = demandasOndeEhLider.map(d => d.demandaId)
+
+        // Verificar se o avaliado está em alguma dessas demandas (e não é líder dela)
+        const avaliadoNaDemanda = await prisma.alocacaoDemanda.findFirst({
+            where: {
+                membroId: avaliadoId,
+                demandaId: { in: demandaIds },
+                isLider: false // Só membros, não outros líderes
+            }
+        })
+        if (avaliadoNaDemanda) return true
+    }
+
+    return false
+}
+
+// Marca ou desmarca 1:1 como feito
+export async function marcar1on1(
+    respostaId: number,
+    avaliadorId: number,
+    feito: boolean
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        // Buscar a resposta para verificar permissões
+        const resposta = await prisma.respostaAvaliacao.findUnique({
+            where: { id: respostaId }
+        })
+
+        if (!resposta) {
+            return { success: false, error: "Resposta não encontrada" }
+        }
+
+        // Verificar se o avaliador é quem fez a avaliação
+        if (resposta.avaliadorId !== avaliadorId) {
+            return { success: false, error: "Você não tem permissão para alterar esta avaliação" }
+        }
+
+        // Verificar se pode marcar 1:1 para este avaliado
+        const podemarcar = await podeMarcar1on1(avaliadorId, resposta.avaliadoId)
+        if (!podemarcar) {
+            return { success: false, error: "Você não tem permissão para marcar 1:1 para este membro" }
+        }
+
+        // Atualizar o campo oneOnOneFeito
+        await prisma.respostaAvaliacao.update({
+            where: { id: respostaId },
+            data: { oneOnOneFeito: feito }
+        })
+
+        return { success: true }
+    } catch (error) {
+        console.error("Erro ao marcar 1:1:", error)
+        return { success: false, error: "Erro ao atualizar status do 1:1" }
     }
 }

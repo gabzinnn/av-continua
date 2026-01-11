@@ -209,24 +209,27 @@ export function DetalheAvaliacaoContent({ avaliacao }: DetalheAvaliacaoContentPr
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-bg-main border-b border-border">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted w-[40%]">
+                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted w-[35%]">
                                         Participante
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted w-[25%]">
+                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted w-[20%]">
                                         Área
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted text-center w-[17.5%]">
+                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted text-center w-[15%]">
                                         Respondeu Avaliação
                                     </th>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted text-center w-[17.5%]">
+                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted text-center w-[15%]">
                                         Avaliou Feedbacks
+                                    </th>
+                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted text-center w-[15%]">
+                                        1:1 Recebido
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {paginatedParticipantes.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-text-muted">
+                                        <td colSpan={5} className="px-6 py-12 text-center text-text-muted">
                                             Nenhum participante encontrado
                                         </td>
                                     </tr>
@@ -257,7 +260,7 @@ export function DetalheAvaliacaoContent({ avaliacao }: DetalheAvaliacaoContentPr
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span 
+                                                <span
                                                     className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium text-text-main border border-border/50"
                                                     style={{ backgroundColor: coresAreas(participante.area) }}
                                                 >
@@ -292,6 +295,16 @@ export function DetalheAvaliacaoContent({ avaliacao }: DetalheAvaliacaoContentPr
                                                         size={24}
                                                         className="inline-block text-gray-300"
                                                     />
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                {participante.oneOnOneFeitoCount > 0 ? (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
+                                                        <CheckCircle size={14} />
+                                                        {participante.oneOnOneFeitoCount}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400 text-xs">-</span>
                                                 )}
                                             </td>
                                         </tr>

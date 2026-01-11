@@ -42,6 +42,39 @@ export async function cadastrarCandidato(
             return { success: false, error: "Esta prova não está disponível" };
         }
 
+        // Verifica se o DRE já participou de alguma prova deste processo seletivo
+        if (input.dre && prova.processoSeletivoId) {
+            // Busca candidatos com o mesmo DRE que já finalizaram provas deste processo seletivo
+            const candidatoComMesmoDre = await prisma.candidato.findFirst({
+                where: {
+                    dre: input.dre,
+                },
+            });
+            if (candidatoComMesmoDre) {
+                // Verifica se esse candidato já tem resultado finalizado em alguma prova do mesmo processo seletivo
+                const resultadoExistente = await prisma.resultadoProva.findFirst({
+                    where: {
+                        candidatoId: candidatoComMesmoDre.id,
+                        finalizadoEm: { not: null },
+                        prova: {
+                            processoSeletivoId: prova.processoSeletivoId,
+                        },
+                    },
+                    include: {
+                        prova: true,
+                    },
+                });
+
+
+                if (resultadoExistente) {
+                    return {
+                        success: false,
+                        error: `Este DRE já participou deste processo seletivo na prova "${resultadoExistente.prova.titulo}". Cada candidato pode fazer apenas uma prova por processo seletivo.`,
+                    };
+                }
+            }
+        }
+
         // Cria ou atualiza o candidato pelo email usando upsert
         const candidato = await prisma.candidato.upsert({
             where: { email: input.email },
@@ -295,5 +328,35 @@ export async function finalizarProva(resultadoId: number) {
     } catch (error) {
         console.error("Erro ao finalizar prova:", error);
         return { success: false, error: "Erro ao finalizar prova" };
+    }
+}
+
+export async function iniciarProva(resultadoId: number) {
+    try {
+        const resultado = await prisma.resultadoProva.findUnique({
+            where: { id: resultadoId },
+            include: { respostas: true }
+        });
+
+        if (!resultado) {
+            return { success: false, error: "Resultado não encontrado" };
+        }
+
+        // Se o candidato ainda não respondeu nada, atualizamos o horário de início
+        // Isso permite que o timer comece corretamente quando ele clicar em "Começar"
+        // (caso tenha se cadastrado muito antes)
+        if (resultado.respostas.length === 0) {
+            await prisma.resultadoProva.update({
+                where: { id: resultadoId },
+                data: {
+                    iniciadoEm: new Date()
+                }
+            });
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error("Erro ao iniciar prova:", error);
+        return { success: false, error: "Erro ao iniciar prova" };
     }
 }

@@ -9,6 +9,7 @@ import { SearchableSelect } from "@/src/app/components/SearchableSelect";
 import { cursosUFRJ } from "@/src/utils/cursosUFRJ";
 import { cadastrarCandidato } from "@/src/actions/candidatoActions";
 import { useCandidato } from "../candidatoContext";
+import Image from "next/image";
 
 interface Prova {
     id: number;
@@ -88,11 +89,13 @@ export default function IdentificacaoContent({ prova }: IdentificacaoContentProp
         <div className="w-full max-w-[640px] bg-bg-card rounded-2xl shadow-lg border border-border-ui overflow-hidden relative z-10">
             {/* Logo Section */}
             <div className="flex justify-center pt-10 pb-2">
-                <div className="w-20 h-20 bg-stone-50 rounded-2xl flex items-center justify-center border border-stone-100 shadow-sm">
-                    <span className="material-symbols-outlined text-4xl text-primary">
-                        school
-                    </span>
-                </div>
+          <Image
+            src="/assets/images/logoCompletaFundoBranco.png"
+            alt="Logo do Clube"
+            width={200}
+            height={48}
+            className="h-auto"
+          />
             </div>
 
             <div className="px-8 pb-10 pt-4 sm:px-12 sm:pb-12">

@@ -282,7 +282,7 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                         <div>
                                             <p className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">Resposta do Candidato</p>
                                             <div className="space-y-2">
-                                                {questao.alternativas.map(alt => {
+                                                {questao.alternativas.map((alt, idx) => {
                                                     const selected = alt.id === resposta?.alternativaId
                                                     const correct = alt.correta
 
@@ -304,6 +304,24 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                                         textColor = "text-green-700"
                                                     }
 
+                                                    // Fallback text for V/F questions
+                                                    let displayText = alt.texto
+                                                    if (questao.tipo === "VERDADEIRO_FALSO" && (!alt.texto || alt.texto.trim() === "")) {
+                                                        const text = alt.texto?.toLowerCase().trim() || ""
+                                                        let isTrueVariant = false
+
+                                                        if (text.includes("verdadeiro") || text === "v") {
+                                                            isTrueVariant = true
+                                                        } else if (text.includes("falso") || text === "f") {
+                                                            isTrueVariant = false
+                                                        } else {
+                                                            // Fallback by index
+                                                            isTrueVariant = idx === 0
+                                                        }
+
+                                                        displayText = isTrueVariant ? "Verdadeiro" : "Falso"
+                                                    }
+
                                                     return (
                                                         <div
                                                             key={alt.id}
@@ -316,7 +334,7 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                                             ) : (
                                                                 <div className="w-[18px]" />
                                                             )}
-                                                            <span className={`text-sm ${textColor}`}>{alt.texto}</span>
+                                                            <span className={`text-sm ${textColor}`}>{displayText}</span>
                                                         </div>
                                                     )
                                                 })}
