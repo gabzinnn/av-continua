@@ -2,9 +2,11 @@ import Image from "next/image"
 import { getActiveMembers } from "@/src/actions/membroActions"
 import { MemberForm } from "./components/MemberForm"
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const memberOptions = await getActiveMembers()
-  
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-125 flex flex-col items-center gap-8">
