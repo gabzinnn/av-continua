@@ -73,14 +73,14 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
     // Buscar membros que compartilham pelo menos uma demanda com o avaliador
     const membrosComDemandaCompartilhada = await prisma.alocacaoDemanda.findMany({
         where: {
-            demandaId: { in: demandaIds },
-            membroId: { not: membroId }
+            demandaId: { in: demandaIds }
         },
         select: { membroId: true },
         distinct: ['membroId']
     })
 
-    let membrosIds = membrosComDemandaCompartilhada.map(a => a.membroId)
+    // Incluir o próprio membro para autoavaliação
+    let membrosIds = [...new Set([...membrosComDemandaCompartilhada.map(a => a.membroId), membroId])]
 
     // Adicionar coordenadores obrigatórios:
     // 1. Coordenador da área do avaliador
@@ -314,14 +314,14 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
     const membrosComDemandaCompartilhada = await prisma.alocacaoDemanda.findMany({
         where: {
             demandaId: { in: demandaIds },
-            membroId: { not: membroId },
             membro: { isAtivo: true }
         },
         select: { membroId: true },
         distinct: ['membroId']
     })
 
-    let membrosIds = membrosComDemandaCompartilhada.map(a => a.membroId)
+    // Incluir o próprio membro para autoavaliação
+    let membrosIds = [...new Set([...membrosComDemandaCompartilhada.map(a => a.membroId), membroId])]
 
     // Adicionar coordenadores obrigatórios
     const coordenadoresObrigatorios = await prisma.membro.findMany({

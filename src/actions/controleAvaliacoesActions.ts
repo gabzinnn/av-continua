@@ -453,7 +453,8 @@ export interface ParticipanteDetalhe {
     area: string
     respondeuAvaliacao: boolean
     avaliouFeedbacks: boolean
-    oneOnOneFeitoCount: number // Quantidade de 1:1s que este membro recebeu
+    mediaEntrega: number | null // Média das notas de entrega recebidas
+    mediaCultura: number | null // Média das notas de cultura recebidas
 }
 
 // Interface para detalhe completo da avaliação
@@ -488,19 +489,23 @@ export async function getDetalheAvaliacao(avaliacaoId: number): Promise<DetalheA
                 },
             },
             respostas: {
-                where: { oneOnOneFeito: true },
-                select: { avaliadoId: true }
+                where: { finalizada: true },
+                select: { avaliadoId: true, notaEntrega: true, notaCultura: true }
             }
         },
     })
 
     if (!avaliacao) return null
 
-    // Contar 1:1s por avaliadoId
-    const oneOnOneCountMap = new Map<number, number>()
+    // Calcular médias de notas por avaliadoId
+    const notasPorMembro = new Map<number, { entrega: number[], cultura: number[] }>()
     for (const resposta of avaliacao.respostas) {
-        const count = oneOnOneCountMap.get(resposta.avaliadoId) || 0
-        oneOnOneCountMap.set(resposta.avaliadoId, count + 1)
+        if (!notasPorMembro.has(resposta.avaliadoId)) {
+            notasPorMembro.set(resposta.avaliadoId, { entrega: [], cultura: [] })
+        }
+        const notas = notasPorMembro.get(resposta.avaliadoId)!
+        notas.entrega.push(resposta.notaEntrega)
+        notas.cultura.push(resposta.notaCultura)
     }
 
     // Buscar membros que podiam participar dessa avaliação
@@ -528,7 +533,12 @@ export async function getDetalheAvaliacao(avaliacaoId: number): Promise<DetalheA
                 area: membro.area.nome,
                 respondeuAvaliacao: participacao?.respondeuAvaliacao ?? false,
                 avaliouFeedbacks: participacao?.avaliouFeedbacks ?? false,
-                oneOnOneFeitoCount: oneOnOneCountMap.get(membro.id) || 0,
+                mediaEntrega: notasPorMembro.has(membro.id)
+                    ? Number((notasPorMembro.get(membro.id)!.entrega.reduce((a, b) => a + b, 0) / notasPorMembro.get(membro.id)!.entrega.length).toFixed(1))
+                    : null,
+                mediaCultura: notasPorMembro.has(membro.id)
+                    ? Number((notasPorMembro.get(membro.id)!.cultura.reduce((a, b) => a + b, 0) / notasPorMembro.get(membro.id)!.cultura.length).toFixed(1))
+                    : null,
             }
         })
         .sort((a, b) => {

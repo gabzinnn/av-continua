@@ -3,11 +3,15 @@
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { ArrowLeft, Search, ChevronLeft, ChevronRight, CheckCircle, XCircle, ChevronDown } from "lucide-react"
+import dynamic from "next/dynamic"
+import { TableColumn } from "react-data-table-component"
+import { ArrowLeft, Search, ChevronRight, CheckCircle, XCircle, ChevronDown } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
-import { DetalheAvaliacao } from "@/src/actions/controleAvaliacoesActions"
+import { DetalheAvaliacao, ParticipanteDetalhe } from "@/src/actions/controleAvaliacoesActions"
 import { AREA_ORDER } from "@/src/utils/areaOrder"
 import coresAreas from "@/src/utils/coresAreas"
+
+const DataTable = dynamic(() => import("react-data-table-component"), { ssr: false })
 
 interface DetalheAvaliacaoContentProps {
     avaliacao: DetalheAvaliacao
@@ -23,13 +27,56 @@ function formatDate(date: Date): string {
 
 type StatusFilter = "todos" | "completo" | "parcial" | "pendente"
 
+const customStyles = {
+    headRow: {
+        style: {
+            backgroundColor: "#fcfbf8",
+            borderBottom: "1px solid #e9e4ce",
+            minHeight: "56px",
+        },
+    },
+    headCells: {
+        style: {
+            color: "#6b6b6b",
+            fontSize: "0.75rem",
+            fontWeight: "600",
+            textTransform: "uppercase" as const,
+            letterSpacing: "0.05em",
+            paddingLeft: "1.5rem",
+            paddingRight: "1.5rem",
+            justifyContent: "center",
+        },
+    },
+    rows: {
+        style: {
+            minHeight: "64px",
+            "&:hover": {
+                backgroundColor: "#fcfbf8",
+            },
+        },
+    },
+    cells: {
+        style: {
+            paddingLeft: "1.5rem",
+            paddingRight: "1.5rem",
+            paddingTop: "0.75rem",
+            paddingBottom: "0.75rem",
+        },
+    },
+    pagination: {
+        style: {
+            backgroundColor: "#fcfbf8",
+            borderTop: "1px solid #e9e4ce",
+            minHeight: "56px",
+        },
+    },
+}
+
 export function DetalheAvaliacaoContent({ avaliacao }: DetalheAvaliacaoContentProps) {
     const router = useRouter()
     const [searchTerm, setSearchTerm] = useState("")
     const [areaFilter, setAreaFilter] = useState<string>("todas")
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos")
-    const [currentPage, setCurrentPage] = useState(1)
-    const itemsPerPage = 10
 
     // Extrair áreas únicas
     const areas = useMemo(() => {
@@ -62,21 +109,116 @@ export function DetalheAvaliacaoContent({ avaliacao }: DetalheAvaliacaoContentPr
         })
     }, [avaliacao.participantes, searchTerm, areaFilter, statusFilter])
 
-    // Paginação
-    const totalPages = Math.ceil(filteredParticipantes.length / itemsPerPage)
-    const paginatedParticipantes = filteredParticipantes.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    ).sort((a, b) => AREA_ORDER[a.area] - AREA_ORDER[b.area] || a.nome.localeCompare(b.nome))
-
     const handleVoltar = () => {
         router.push("/coord/avaliacoes")
     }
 
-    // Reset página quando filtros mudam
-    const handleFilterChange = () => {
-        setCurrentPage(1)
+    // Função para calcular a média das notas (para ordenação)
+    const calcularMediaNotas = (p: ParticipanteDetalhe): number => {
+        if (p.mediaEntrega === null || p.mediaCultura === null) {
+            return -1 // Sem notas vai para o fim
+        }
+        return (p.mediaEntrega + p.mediaCultura) / 2
     }
+
+    // Colunas da tabela
+    const columns: TableColumn<ParticipanteDetalhe>[] = [
+        {
+            name: "Participante",
+            cell: (row) => (
+                <div className="flex items-center gap-3 py-2">
+                    {row.fotoUrl ? (
+                        <Image
+                            src={row.fotoUrl}
+                            alt={row.nome}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-full object-cover border border-border"
+                        />
+                    ) : (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary border border-border">
+                            {row.nome.charAt(0)}
+                        </div>
+                    )}
+                    <span className="text-sm font-bold text-text-main whitespace-nowrap">{row.nome}</span>
+                </div>
+            ),
+            sortable: true,
+            selector: (row) => row.nome,
+            minWidth: "220px",
+        },
+        {
+            name: "Área",
+            cell: (row) => (
+                <span
+                    className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium text-text-main border border-border/50 whitespace-nowrap"
+                    style={{ backgroundColor: coresAreas(row.area) }}
+                >
+                    {row.area}
+                </span>
+            ),
+            sortable: true,
+            selector: (row) => AREA_ORDER[row.area] ?? 999,
+            minWidth: "180px",
+        },
+        {
+            name: "Respondeu Avaliação",
+            cell: (row) => (
+                <div className="flex justify-center w-full">
+                    {row.respondeuAvaliacao ? (
+                        <CheckCircle
+                            size={24}
+                            className="text-green-600"
+                            fill="currentColor"
+                            strokeWidth={0}
+                        />
+                    ) : (
+                        <XCircle size={24} className="text-gray-300" />
+                    )}
+                </div>
+            ),
+            sortable: true,
+            selector: (row) => (row.respondeuAvaliacao ? 1 : 0),
+            minWidth: "160px",
+        },
+        {
+            name: "Avaliou Feedbacks",
+            cell: (row) => (
+                <div className="flex justify-center w-full">
+                    {row.avaliouFeedbacks ? (
+                        <CheckCircle
+                            size={24}
+                            className="text-green-600"
+                            fill="currentColor"
+                            strokeWidth={0}
+                        />
+                    ) : (
+                        <XCircle size={24} className="text-gray-300" />
+                    )}
+                </div>
+            ),
+            sortable: true,
+            selector: (row) => (row.avaliouFeedbacks ? 1 : 0),
+            minWidth: "150px",
+        },
+        {
+            name: "Notas Recebidas",
+            cell: (row) => (
+                <div className="flex justify-center w-full">
+                    {row.mediaEntrega !== null && row.mediaCultura !== null ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-text-main text-xs font-semibold whitespace-nowrap">
+                            {row.mediaEntrega.toFixed(1)} / {row.mediaCultura.toFixed(1)}
+                        </span>
+                    ) : (
+                        <span className="text-gray-400 text-xs">-</span>
+                    )}
+                </div>
+            ),
+            sortable: true,
+            selector: (row) => calcularMediaNotas(row),
+            minWidth: "150px",
+        },
+    ]
 
     return (
         <div className="flex-1 overflow-y-auto">
@@ -145,10 +287,7 @@ export function DetalheAvaliacaoContent({ avaliacao }: DetalheAvaliacaoContentPr
                         <div className="relative">
                             <select
                                 value={areaFilter}
-                                onChange={(e) => {
-                                    setAreaFilter(e.target.value)
-                                    handleFilterChange()
-                                }}
+                                onChange={(e) => setAreaFilter(e.target.value)}
                                 className="appearance-none bg-bg-card border border-border text-text-main py-2 pl-3 pr-8 rounded-full text-sm font-medium shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer min-w-[180px]"
                             >
                                 <option value="todas">Todas as Áreas</option>
@@ -167,10 +306,7 @@ export function DetalheAvaliacaoContent({ avaliacao }: DetalheAvaliacaoContentPr
                         <div className="relative">
                             <select
                                 value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value as StatusFilter)
-                                    handleFilterChange()
-                                }}
+                                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
                                 className="appearance-none bg-bg-card border border-border text-text-main py-2 pl-3 pr-8 rounded-full text-sm font-medium shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer min-w-[140px]"
                             >
                                 <option value="todos">Status: Todos</option>
@@ -193,153 +329,35 @@ export function DetalheAvaliacaoContent({ avaliacao }: DetalheAvaliacaoContentPr
                         <input
                             type="text"
                             value={searchTerm}
-                            onChange={(e) => {
-                                setSearchTerm(e.target.value)
-                                handleFilterChange()
-                            }}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Buscar participante..."
                             className="h-10 w-64 rounded-full border border-border bg-bg-card pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                         />
                     </div>
                 </div>
 
-                {/* Table Card */}
+                {/* DataTable */}
                 <div className="bg-bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-bg-main border-b border-border">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted w-[35%]">
-                                        Participante
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted w-[20%]">
-                                        Área
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted text-center w-[15%]">
-                                        Respondeu Avaliação
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted text-center w-[15%]">
-                                        Avaliou Feedbacks
-                                    </th>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-text-muted text-center w-[15%]">
-                                        1:1 Recebido
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {paginatedParticipantes.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-text-muted">
-                                            Nenhum participante encontrado
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    paginatedParticipantes.map((participante) => (
-                                        <tr
-                                            key={participante.id}
-                                            className="hover:bg-bg-main transition-colors"
-                                        >
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    {participante.fotoUrl ? (
-                                                        <Image
-                                                            src={participante.fotoUrl}
-                                                            alt={participante.nome}
-                                                            width={40}
-                                                            height={40}
-                                                            className="w-10 h-10 rounded-full object-cover border border-border"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary border border-border">
-                                                            {participante.nome.charAt(0)}
-                                                        </div>
-                                                    )}
-                                                    <span className="text-sm font-bold text-text-main">
-                                                        {participante.nome}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span
-                                                    className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium text-text-main border border-border/50"
-                                                    style={{ backgroundColor: coresAreas(participante.area) }}
-                                                >
-                                                    {participante.area}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                {participante.respondeuAvaliacao ? (
-                                                    <CheckCircle
-                                                        size={24}
-                                                        className="inline-block text-green-600"
-                                                        fill="currentColor"
-                                                        strokeWidth={0}
-                                                    />
-                                                ) : (
-                                                    <XCircle
-                                                        size={24}
-                                                        className="inline-block text-gray-300"
-                                                    />
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                {participante.avaliouFeedbacks ? (
-                                                    <CheckCircle
-                                                        size={24}
-                                                        className="inline-block text-green-600"
-                                                        fill="currentColor"
-                                                        strokeWidth={0}
-                                                    />
-                                                ) : (
-                                                    <XCircle
-                                                        size={24}
-                                                        className="inline-block text-gray-300"
-                                                    />
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                {participante.oneOnOneFeitoCount > 0 ? (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
-                                                        <CheckCircle size={14} />
-                                                        {participante.oneOnOneFeitoCount}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-400 text-xs">-</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination */}
-                    {filteredParticipantes.length > 0 && (
-                        <div className="flex items-center justify-between border-t border-border bg-bg-main px-6 py-3">
-                            <p className="text-xs text-text-muted">
-                                Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
-                                {Math.min(currentPage * itemsPerPage, filteredParticipantes.length)} de{" "}
-                                {filteredParticipantes.length} resultados
-                            </p>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                    disabled={currentPage === 1}
-                                    className="flex items-center justify-center rounded-lg border border-border bg-bg-card p-1.5 hover:bg-bg-main disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                                >
-                                    <ChevronLeft size={16} />
-                                </button>
-                                <button
-                                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                                    disabled={currentPage === totalPages}
-                                    className="flex items-center justify-center rounded-lg border border-border bg-bg-card p-1.5 hover:bg-bg-main disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                                >
-                                    <ChevronRight size={16} />
-                                </button>
+                    <DataTable
+                        columns={columns as TableColumn<unknown>[]}
+                        data={filteredParticipantes}
+                        pagination
+                        paginationPerPage={10}
+                        paginationRowsPerPageOptions={[10, 20, 50]}
+                        customStyles={customStyles}
+                        responsive={false}
+                        defaultSortFieldId={2}
+                        defaultSortAsc={true}
+                        noDataComponent={
+                            <div className="py-12 text-center text-gray-500">
+                                Nenhum participante encontrado
                             </div>
-                        </div>
-                    )}
+                        }
+                        paginationComponentOptions={{
+                            rowsPerPageText: "Por página:",
+                            rangeSeparatorText: "de",
+                        }}
+                    />
                 </div>
             </div>
         </div>
