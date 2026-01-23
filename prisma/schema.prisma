@@ -56,6 +56,7 @@ model Avaliacao {
   nome        String
   dataInicio  DateTime
   dataFim     DateTime?
+  idCiclo     Int?
   finalizada  Boolean   @default(false)
   createdById Int
   createdAt   DateTime  @default(now())
@@ -63,6 +64,17 @@ model Avaliacao {
   createdBy     Coordenador             @relation(fields: [createdById], references: [id])
   respostas     RespostaAvaliacao[]
   participantes ParticipacaoAvaliacao[]
+  ciclo         Ciclo?                  @relation(fields: [idCiclo], references: [id])
+}
+
+model Ciclo {
+  id        Int      @id @default(autoincrement())
+  nome      String   @db.VarChar(6)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  avaliacoes Avaliacao[]
 }
 
 model RespostaAvaliacao {

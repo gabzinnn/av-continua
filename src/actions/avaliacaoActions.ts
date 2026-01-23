@@ -9,6 +9,7 @@ interface MembroParaAvaliar {
     area: string
     status: 'pendente' | 'rascunho' | 'concluido'
     isCoordenador: boolean
+    feedbackAvaliado: boolean // Se o destinatário já avaliou o feedback
 }
 
 interface AvaliacaoAtualData {
@@ -26,6 +27,8 @@ interface RespostaExistente {
     feedbackTexto: string
     planosAcao: string[]
     oneOnOneFeito: boolean
+    finalizada: boolean
+    notaFeedbackRecebida: number | null // Nota que o destinatário deu para este feedback
 }
 
 // Busca a avaliação ativa e lista de membros para avaliar
@@ -144,23 +147,34 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
         include: { area: true }
     })
 
-    // Buscar respostas já feitas pelo avaliador nesta avaliação
+    // Buscar respostas já feitas pelo avaliador nesta avaliação (com info de feedback)
     const respostasFeitas = await prisma.respostaAvaliacao.findMany({
         where: {
             avaliacaoId: avaliacao.id,
             avaliadorId: membroId
         },
-        select: { avaliadoId: true, finalizada: true }
+        select: {
+            avaliadoId: true,
+            finalizada: true,
+            avaliacaoFeedback: {
+                select: { id: true }
+            }
+        }
     })
 
-    // Mapeia avaliadoId para status baseado em finalizada
-    const respostasMap = new Map(respostasFeitas.map(r => [r.avaliadoId, r.finalizada]))
+    // Mapeia avaliadoId para status e feedbackAvaliado
+    const respostasMap = new Map(respostasFeitas.map(r => [
+        r.avaliadoId,
+        { finalizada: r.finalizada, feedbackAvaliado: r.avaliacaoFeedback !== null }
+    ]))
 
     const membrosParaAvaliar: MembroParaAvaliar[] = membros.map(m => {
         const resposta = respostasMap.get(m.id)
         let status: 'pendente' | 'rascunho' | 'concluido' = 'pendente'
+        let feedbackAvaliado = false
         if (resposta !== undefined) {
-            status = resposta ? 'concluido' : 'rascunho'
+            status = resposta.finalizada ? 'concluido' : 'rascunho'
+            feedbackAvaliado = resposta.feedbackAvaliado
         }
         return {
             id: m.id,
@@ -168,7 +182,8 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
             fotoUrl: m.fotoUrl,
             area: m.area.nome,
             status,
-            isCoordenador: m.isCoordenador
+            isCoordenador: m.isCoordenador,
+            feedbackAvaliado
         }
     })
     const avaliacoesCompletas = membrosParaAvaliar.filter(m => m.status === 'concluido')
@@ -208,6 +223,9 @@ export async function getRespostaExistente(
         include: {
             planosAcao: {
                 select: { descricao: true }
+            },
+            avaliacaoFeedback: {
+                select: { notaFeedback: true }
             }
         }
     })
@@ -220,7 +238,9 @@ export async function getRespostaExistente(
         notaCultura: resposta.notaCultura,
         feedbackTexto: resposta.feedbackTexto,
         planosAcao: resposta.planosAcao.map(p => p.descricao),
-        oneOnOneFeito: resposta.oneOnOneFeito
+        oneOnOneFeito: resposta.oneOnOneFeito,
+        finalizada: resposta.finalizada,
+        notaFeedbackRecebida: resposta.avaliacaoFeedback?.notaFeedback ?? null
     }
 }
 

@@ -51,6 +51,8 @@ export function DesempenhoChart({ data }: DesempenhoChartProps) {
 
     const activeSeries = SERIES_CONFIG.filter((s) => selectedSeries.has(s.key))
 
+    const hasFeedbacks = selectedSeries.has("feedbacks")
+
     const options: ApexOptions = {
         chart: {
             type: "line",
@@ -92,8 +94,7 @@ export function DesempenhoChart({ data }: DesempenhoChartProps) {
             axisTicks: { show: false },
         },
         yaxis: {
-            min: 0,
-            max: 10,
+            // Removemos min/max fixos para que a escala seja "maleável" e destaque as diferenças (5-8)
             tickAmount: 5,
             labels: {
                 formatter: (val: number) => val.toFixed(0),
@@ -112,6 +113,8 @@ export function DesempenhoChart({ data }: DesempenhoChartProps) {
         },
         tooltip: {
             theme: "dark",
+            shared: true,
+            intersect: false,
             y: {
                 formatter: (val: number) => `${val.toFixed(1)} / 10`,
             },

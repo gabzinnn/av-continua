@@ -5,6 +5,7 @@ import { useMember } from "@/src/context/memberContext"
 import { MembrosList } from "../avaliacao/MembrosList"
 import { MembroHeader } from "../avaliacao/MembroHeader"
 import { AvaliacaoForm } from "../avaliacao/AvaliacaoForm"
+import { ConfirmarAvaliacaoModal } from "../avaliacao/ConfirmarAvaliacaoModal"
 import {
   getAvaliacaoAtual,
   getRespostaExistente,
@@ -67,6 +68,14 @@ export function AvaliacaoContent() {
 
   // Estado do 1:1
   const [podeMarcar1on1Checkbox, setPodeMarcar1on1Checkbox] = useState(false)
+
+  // Estado do modal de confirmação
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+
+  // Estado de readonly (quando feedback já foi avaliado)
+  const [isReadonly, setIsReadonly] = useState(false)
+  const [notaFeedbackRecebida, setNotaFeedbackRecebida] = useState<number | null>(null)
+  const [respostaFinalizada, setRespostaFinalizada] = useState(false)
 
   // Estado do drawer mobile
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -148,8 +157,15 @@ export function AvaliacaoContent() {
             planosAcao: respostaExistente.planosAcao.join("\n"),
             oneOnOneFeito: respostaExistente.oneOnOneFeito
           })
+          setRespostaFinalizada(respostaExistente.finalizada)
+          setNotaFeedbackRecebida(respostaExistente.notaFeedbackRecebida)
+          // Readonly quando finalizada E já tem feedback avaliado
+          setIsReadonly(respostaExistente.finalizada && respostaExistente.notaFeedbackRecebida !== null)
         } else {
           setFormData(initialFormData)
+          setRespostaFinalizada(false)
+          setNotaFeedbackRecebida(null)
+          setIsReadonly(false)
         }
       } catch (error) {
         console.error("Erro ao carregar detalhes do membro:", error)
@@ -195,7 +211,12 @@ export function AvaliacaoContent() {
   }
 
   const handleSubmit = async () => {
+    setShowConfirmModal(true)
+  }
+
+  const handleConfirmSubmit = async () => {
     await handleSave(true) // Finaliza a avaliação
+    setShowConfirmModal(false)
 
     // Seleciona próximo membro pendente ou rascunho
     const proximoPendente = membros.find(m =>
@@ -275,11 +296,23 @@ export function AvaliacaoContent() {
                 isSaving={isSaving}
                 podeMarcar1on1={podeMarcar1on1Checkbox}
                 on1on1Change={(checked) => handleFormChange("oneOnOneFeito", checked)}
+                isReadonly={isReadonly}
+                notaFeedbackRecebida={notaFeedbackRecebida}
+                respostaFinalizada={respostaFinalizada}
               />
             </>
           )}
         </div>
       </div>
+
+      {/* Modal de confirmação */}
+      <ConfirmarAvaliacaoModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmSubmit}
+        membroNome={membroDetalhes?.nome || ""}
+        isLoading={isSaving}
+      />
     </div>
   )
 }

@@ -7,6 +7,7 @@ interface MembroParaAvaliar {
   fotoUrl: string | null
   area: string
   status: 'pendente' | 'rascunho' | 'concluido'
+  feedbackAvaliado?: boolean
 }
 
 interface MembrosListProps {

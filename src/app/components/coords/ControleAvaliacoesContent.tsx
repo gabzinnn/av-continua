@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { CheckCircle, Calendar, Users, ChevronRight, Plus, Eye } from "lucide-react"
+import { CheckCircle, Calendar, Users, ChevronRight, Plus, Eye, FileText } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import { DesempenhoChart } from "./DesempenhoChart"
 import {
@@ -17,9 +17,11 @@ import {
     EvolucaoDesempenho,
     PreviewMembro,
 } from "@/src/actions/controleAvaliacoesActions"
+import { getCiclos, criarCiclo, Ciclo } from "@/src/actions/cicloActions"
 import { getAllAreas } from "@/src/actions/membrosActions"
 import { PreviewAvaliacaoModal } from "./PreviewAvaliacaoModal"
 import { DeleteAvaliacaoModal } from "./DeleteAvaliacaoModal"
+import { FinalizarCicloModal } from "./FinalizarCicloModal"
 import { useAuth } from "@/src/context/authContext"
 
 
@@ -48,20 +50,38 @@ export function ControleAvaliacoesContent() {
     const [isFinalizing, setIsFinalizing] = useState(false)
     const [previewData, setPreviewData] = useState<PreviewMembro[]>([])
     const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [showFinalizarModal, setShowFinalizarModal] = useState(false)
     const [avaliacaoToDelete, setAvaliacaoToDelete] = useState<{ id: number; nome: string } | null>(null)
+    
+    // Estado dos ciclos
+    const [ciclos, setCiclos] = useState<Ciclo[]>([])
+    const [selectedCicloId, setSelectedCicloId] = useState<number | null>(null)
+    const [novoCicloNome, setNovoCicloNome] = useState("")
+    const [showNovoCiclo, setShowNovoCiclo] = useState(false)
+    const [isCreatingCiclo, setIsCreatingCiclo] = useState(false)
+    const [cicloError, setCicloError] = useState("")
+    
+    // Estado do modal de relatório
+    const [showRelatorioModal, setShowRelatorioModal] = useState(false)
+    const [selectedRelatorioCicloId, setSelectedRelatorioCicloId] = useState<number | null>(null)
 
     const loadData = useCallback(async () => {
         setIsLoading(true)
-        const [ativa, hist, areasData, evol] = await Promise.all([
+        const [ativa, hist, areasData, evol, ciclosData] = await Promise.all([
             getAvaliacaoAtiva(),
             getAvaliacaoHistorico(),
             getAllAreas(),
             getEvolucaoDesempenho(areaFilter),
+            getCiclos(),
         ])
         setAvaliacaoAtiva(ativa)
         setHistorico(hist)
         setAreas(areasData)
         setEvolucao(evol)
+        setCiclos(ciclosData)
+        // Seleciona ciclo ativo por padrão
+        const cicloAtivo = ciclosData.find(c => c.ativo)
+        if (cicloAtivo) setSelectedCicloId(cicloAtivo.id)
         setIsLoading(false)
     }, [areaFilter])
 
@@ -80,9 +100,9 @@ export function ControleAvaliacoesContent() {
     }
 
     const handleCriarAvaliacao = async () => {
-        if (!nomeNovaAvaliacao.trim() || !coordenador) return
+        if (!nomeNovaAvaliacao.trim() || !coordenador || !selectedCicloId) return
         setIsCreating(true)
-        const result = await criarAvaliacao(nomeNovaAvaliacao, coordenador.id)
+        const result = await criarAvaliacao(nomeNovaAvaliacao, coordenador.id, selectedCicloId)
         if (result.success) {
             setShowPreviewModal(false)
             setNomeNovaAvaliacao("")
@@ -91,16 +111,37 @@ export function ControleAvaliacoesContent() {
         setIsCreating(false)
     }
 
+    const handleCriarNovoCiclo = async () => {
+        if (!novoCicloNome.trim()) return
+        setIsCreatingCiclo(true)
+        setCicloError("")
+        const result = await criarCiclo(novoCicloNome)
+        if (result.success && result.ciclo) {
+            setCiclos(prev => [result.ciclo!, ...prev])
+            setSelectedCicloId(result.ciclo.id)
+            setShowNovoCiclo(false)
+            setNovoCicloNome("")
+        } else {
+            setCicloError(result.error || "Erro ao criar ciclo")
+        }
+        setIsCreatingCiclo(false)
+    }
+
     const handleVoltarParaNome = () => {
         setShowPreviewModal(false)
         setShowNovaModal(true)
     }
 
     const handleFinalizarAvaliacao = async () => {
+        setShowFinalizarModal(true)
+    }
+
+    const handleConfirmarFinalizacao = async () => {
         if (!avaliacaoAtiva) return
         setIsFinalizing(true)
         const result = await finalizarAvaliacao(avaliacaoAtiva.id)
         if (result.success) {
+            setShowFinalizarModal(false)
             await loadData()
         }
         setIsFinalizing(false)
@@ -128,9 +169,21 @@ export function ControleAvaliacoesContent() {
         <div className="flex-1 overflow-y-auto">
             {/* Header */}
             <div className="bg-bg-main border-b border-border">
-                <div className="px-8 py-6 max-w-[1200px] mx-auto w-full flex flex-col gap-2">
-                    <h2 className="text-text-main text-3xl font-bold tracking-tight">Controle de Avaliações</h2>
-                    <p className="text-text-muted">Gerencie ciclos ativos, analise o desempenho e acesse o histórico.</p>
+                <div className="px-8 py-6 max-w-[1200px] mx-auto w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h2 className="text-text-main text-3xl font-bold tracking-tight">Controle de Avaliações</h2>
+                        <p className="text-text-muted">Gerencie ciclos ativos, analise o desempenho e acesse o histórico.</p>
+                    </div>
+                    {ciclos.length > 0 && (
+                        <Button
+                            onClick={() => setShowRelatorioModal(true)}
+                            variant="secondary"
+                            icon={<FileText size={18} />}
+                            iconPosition="left"
+                        >
+                            Gerar Relatório
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -163,9 +216,14 @@ export function ControleAvaliacoesContent() {
                                         </div>
                                         <div>
                                             <h3 className="text-2xl font-bold text-text-main mb-1">{avaliacaoAtiva.nome}</h3>
-                                            <p className="text-text-muted text-sm">
-                                                Iniciada em {formatDate(avaliacaoAtiva.dataInicio)}
-                                            </p>
+                                            <div className="flex items-center gap-2 text-text-muted text-sm">
+                                                <span>Iniciada em {formatDate(avaliacaoAtiva.dataInicio)}</span>
+                                                {avaliacaoAtiva.cicloNome && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-primary/10 text-text-main text-xs font-medium">
+                                                        Ciclo {avaliacaoAtiva.cicloNome}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -303,6 +361,11 @@ export function ControleAvaliacoesContent() {
                                             <Users size={16} className="text-text-muted" />
                                             <span>{av.totalParticipantes} Participantes</span>
                                         </div>
+                                        {av.cicloNome && (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-primary/10 text-primary text-xs font-medium">
+                                                {av.cicloNome}
+                                            </span>
+                                        )}
                                         <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
                                             Finalizada
                                         </span>
@@ -334,6 +397,8 @@ export function ControleAvaliacoesContent() {
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowNovaModal(false)} />
                     <div className="relative bg-bg-card rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
                         <h2 className="text-xl font-bold text-text-main mb-4">Nova Avaliação</h2>
+                        
+                        {/* Campo Nome */}
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-text-main mb-1">Nome da Avaliação *</label>
                             <input
@@ -344,6 +409,67 @@ export function ControleAvaliacoesContent() {
                                 placeholder="Ex: Avaliação Q1 2024"
                             />
                         </div>
+
+                        {/* Campo Ciclo */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-text-main mb-1">Ciclo *</label>
+                            {!showNovoCiclo ? (
+                                <div className="flex gap-2">
+                                    <select
+                                        value={selectedCicloId ?? ""}
+                                        onChange={(e) => setSelectedCicloId(Number(e.target.value))}
+                                        className="flex-1 px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary"
+                                    >
+                                        <option value="" disabled>Selecione um ciclo</option>
+                                        {ciclos.map((ciclo) => (
+                                            <option key={ciclo.id} value={ciclo.id}>
+                                                {ciclo.nome} {ciclo.ativo && "(ativo)"}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNovoCiclo(true)}
+                                        className="px-3 py-2 border border-border rounded-lg bg-bg-main hover:bg-gray-100 transition-colors cursor-pointer"
+                                        title="Criar novo ciclo"
+                                    >
+                                        <Plus size={20} className="text-gray-500" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={novoCicloNome}
+                                            onChange={(e) => setNovoCicloNome(e.target.value)}
+                                            className="flex-1 px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary"
+                                            placeholder="2026.1"
+                                            maxLength={6}
+                                        />
+                                        <Button
+                                            onClick={handleCriarNovoCiclo}
+                                            isLoading={isCreatingCiclo}
+                                            disabled={!novoCicloNome.trim()}
+                                        >
+                                            Criar
+                                        </Button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setShowNovoCiclo(false); setCicloError("") }}
+                                            className="px-3 py-2 border border-border rounded-lg bg-bg-main hover:bg-gray-100 transition-colors cursor-pointer"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                    {cicloError && (
+                                        <p className="text-sm text-red-600">{cicloError}</p>
+                                    )}
+                                    <p className="text-xs text-gray-500">Formato: YYYY.1 ou YYYY.2 (ex: 2026.1)</p>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="flex gap-3">
                             <Button
                                 variant="secondary"
@@ -356,7 +482,7 @@ export function ControleAvaliacoesContent() {
                                 className="flex-1"
                                 onClick={handleAbrirPreview}
                                 isLoading={isLoadingPreview}
-                                disabled={!nomeNovaAvaliacao.trim()}
+                                disabled={!nomeNovaAvaliacao.trim() || !selectedCicloId}
                             >
                                 Ver Preview
                             </Button>
@@ -387,6 +513,72 @@ export function ControleAvaliacoesContent() {
                     avaliacaoId={avaliacaoToDelete.id}
                     avaliacaoNome={avaliacaoToDelete.nome}
                 />
+            )}
+
+            {/* Modal Finalizar Ciclo */}
+            {avaliacaoAtiva && (
+                <FinalizarCicloModal
+                    isOpen={showFinalizarModal}
+                    onClose={() => setShowFinalizarModal(false)}
+                    onConfirm={handleConfirmarFinalizacao}
+                    avaliacaoNome={avaliacaoAtiva.nome}
+                    isLoading={isFinalizing}
+                    progressoPercent={avaliacaoAtiva.progressoPercent}
+                    membrosAvaliaram={avaliacaoAtiva.membrosAvaliaram}
+                    totalMembros={avaliacaoAtiva.totalMembros}
+                />
+            )}
+
+            {/* Modal Gerar Relatório */}
+            {showRelatorioModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowRelatorioModal(false)} />
+                    <div className="relative bg-bg-card rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+                        <h2 className="text-xl font-bold text-text-main mb-4">Gerar Relatório</h2>
+                        <p className="text-sm text-text-muted mb-4">
+                            Selecione o ciclo para gerar o relatório completo de avaliações.
+                        </p>
+                        
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-text-main mb-2">Ciclo</label>
+                            <select
+                                value={selectedRelatorioCicloId ?? ""}
+                                onChange={(e) => setSelectedRelatorioCicloId(Number(e.target.value))}
+                                className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary"
+                            >
+                                <option value="" disabled>Selecione um ciclo</option>
+                                {ciclos.map((ciclo) => (
+                                    <option key={ciclo.id} value={ciclo.id}>
+                                        {ciclo.nome} {ciclo.ativo && "(ativo)"}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <Button
+                                variant="secondary"
+                                className="flex-1"
+                                onClick={() => setShowRelatorioModal(false)}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                className="flex-1"
+                                onClick={() => {
+                                    if (selectedRelatorioCicloId) {
+                                        router.push(`/coord/avaliacoes/relatorio/${selectedRelatorioCicloId}`)
+                                    }
+                                }}
+                                disabled={!selectedRelatorioCicloId}
+                                icon={<FileText size={18} />}
+                                iconPosition="left"
+                            >
+                                Ver Relatório
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     )

@@ -1,4 +1,4 @@
-import { Check, FileEdit, FilePenLine } from "lucide-react"
+import { Check, FileEdit, FilePenLine, Star } from "lucide-react"
 
 interface MembroCardProps {
   id: number
@@ -8,6 +8,7 @@ interface MembroCardProps {
   status: 'pendente' | 'rascunho' | 'concluido'
   isSelected: boolean
   onClick: () => void
+  feedbackAvaliado?: boolean
 }
 
 export function MembroCard({
@@ -16,7 +17,8 @@ export function MembroCard({
   area,
   status,
   isSelected,
-  onClick
+  onClick,
+  feedbackAvaliado = false
 }: MembroCardProps) {
   const isConcluido = status === 'concluido'
   const isRascunho = status === 'rascunho'
@@ -71,11 +73,18 @@ export function MembroCard({
                 ? "text-amber-600" 
                 : "text-gray-400"}
           `}>
-            {isConcluido ? "Avaliação concluída" : isRascunho ? "Rascunho salvo" : area}
+            {isConcluido 
+              ? (feedbackAvaliado ? "Feedback avaliado ✓" : "Avaliação concluída") 
+              : isRascunho 
+                ? "Rascunho salvo" 
+                : area}
           </span>
         </div>
         
-        <div className="shrink-0">
+        <div className="shrink-0 flex items-center gap-1">
+          {feedbackAvaliado && isConcluido && (
+            <Star size={16} className="text-amber-500" fill="currentColor" />
+          )}
           {isConcluido ? (
             <Check size={20} className="text-green-600" />
           ) : isRascunho ? (

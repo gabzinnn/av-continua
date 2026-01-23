@@ -12,6 +12,7 @@ export interface AvaliacaoAtiva {
     progressoPercent: number
     membrosAvaliaram: number
     totalMembros: number
+    cicloNome: string | null
 }
 
 // Interface para item de histórico
@@ -22,6 +23,7 @@ export interface AvaliacaoHistorico {
     dataFim: Date | null
     totalParticipantes: number
     finalizada: boolean
+    cicloNome: string | null
 }
 
 // Interface para dados do gráfico por área
@@ -38,6 +40,9 @@ export async function getAvaliacaoAtiva(): Promise<AvaliacaoAtiva | null> {
         where: { finalizada: false },
         include: {
             participantes: true,
+            ciclo: {
+                select: { nome: true }
+            }
         },
         orderBy: { dataInicio: "desc" },
     })
@@ -69,6 +74,7 @@ export async function getAvaliacaoAtiva(): Promise<AvaliacaoAtiva | null> {
         progressoPercent: totalMembros > 0 ? Math.round((membrosAvaliaram / totalMembros) * 100) : 0,
         membrosAvaliaram,
         totalMembros,
+        cicloNome: avaliacao.ciclo?.nome ?? null,
     }
 }
 
@@ -79,6 +85,9 @@ export async function getAvaliacaoHistorico(): Promise<AvaliacaoHistorico[]> {
         orderBy: { dataInicio: "desc" },
         include: {
             participantes: true,
+            ciclo: {
+                select: { nome: true }
+            }
         },
         take: 10,
     })
@@ -90,6 +99,7 @@ export async function getAvaliacaoHistorico(): Promise<AvaliacaoHistorico[]> {
         dataFim: av.dataFim,
         totalParticipantes: av.participantes.length,
         finalizada: av.finalizada,
+        cicloNome: av.ciclo?.nome ?? null,
     }))
 }
 
@@ -181,6 +191,13 @@ export async function getEvolucaoDesempenho(areaId?: number): Promise<EvolucaoDe
 
         const respostas = await prisma.respostaAvaliacao.findMany({
             where: whereCondition,
+            select: {
+                notaEntrega: true,
+                notaCultura: true,
+                avaliacaoFeedback: {
+                    select: { notaFeedback: true }
+                }
+            }
         })
 
         const total = respostas.length
@@ -195,11 +212,22 @@ export async function getEvolucaoDesempenho(areaId?: number): Promise<EvolucaoDe
             const somaEntrega = respostas.reduce((acc, r) => acc + r.notaEntrega, 0)
             const somaCultura = respostas.reduce((acc, r) => acc + r.notaCultura, 0)
 
+            // Filtra apenas feedbacks que possuem nota atribuída
+            const feedbacksComNota = respostas
+                .filter(r => r.avaliacaoFeedback)
+                .map(r => r.avaliacaoFeedback!.notaFeedback)
+
+            const totalFeedbacks = feedbacksComNota.length
+            const somaFeedbacks = feedbacksComNota.reduce((acc, val) => acc + val, 0)
+            const mediaFeedbacks = totalFeedbacks > 0
+                ? Number((somaFeedbacks / totalFeedbacks).toFixed(1))
+                : 0
+
             resultado.push({
                 avaliacao: avaliacao.nome,
                 entrega: Number((somaEntrega / total).toFixed(1)),
                 cultura: Number((somaCultura / total).toFixed(1)),
-                feedbacks: total,
+                feedbacks: mediaFeedbacks,
             })
         }
     }
@@ -210,7 +238,8 @@ export async function getEvolucaoDesempenho(areaId?: number): Promise<EvolucaoDe
 // Criar nova avaliação
 export async function criarAvaliacao(
     nome: string,
-    coordenadorId: number
+    coordenadorId: number,
+    idCiclo: number
 ): Promise<{ success: boolean; error?: string }> {
     try {
         // Verificar se já existe avaliação ativa
@@ -232,6 +261,7 @@ export async function criarAvaliacao(
                 dataInicio,
                 createdById: coordenadorId,
                 dataFim,
+                idCiclo,
             },
         })
 
