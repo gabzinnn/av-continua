@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { SelectHTMLAttributes } from "react"
 
 type SelectSize = "sm" | "md" | "lg"
@@ -71,10 +72,10 @@ export function Select({
       </div>
 
       {(helperText || error) && (
-        <div className={`mt-3 flex items-center gap-2 text-xs ${error ? "text-red-500" : "text-text-muted"}`}>
+        <Link href="/coord" className={`mt-3 flex items-center gap-2 text-xs ${error ? "text-red-500" : "text-text-muted"}`}>
           <span className="material-symbols-outlined text-[16px]">info</span>
           <span>{error || helperText}</span>
-        </div>
+        </Link>
       )}
     </div>
   )
