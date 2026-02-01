@@ -201,6 +201,7 @@ export interface CreateTermometroInput {
     nome: string
     perguntas: string[]
     duracaoDias: number
+    idCiclo?: number | null
 }
 
 export async function criarTermometro(input: CreateTermometroInput): Promise<{ success: boolean; error?: string }> {
@@ -214,6 +215,7 @@ export async function criarTermometro(input: CreateTermometroInput): Promise<{ s
                 dataInicial: hoje,
                 dataFinal: dataFinal,
                 ativo: true,
+                idCiclo: input.idCiclo ?? null,
                 perguntas: {
                     create: input.perguntas.map((texto) => ({ texto })),
                 },
@@ -247,6 +249,7 @@ export interface TermometroDetalhes {
     dataInicial: Date
     dataFinal: Date
     ativo: boolean
+    ciclo: { id: number; nome: string } | null
     perguntas: { id: number; texto: string }[]
     respostasPorMembro: RespostaMembro[]
     mediaPorPergunta: number[]
@@ -261,6 +264,7 @@ export async function getTermometroDetalhes(id: number): Promise<TermometroDetal
     const termometro = await prisma.termometro.findUnique({
         where: { id },
         include: {
+            ciclo: true,
             perguntas: { orderBy: { id: 'asc' } },
             respostas: {
                 include: {
@@ -360,6 +364,7 @@ export async function getTermometroDetalhes(id: number): Promise<TermometroDetal
         dataInicial: termometro.dataInicial,
         dataFinal: termometro.dataFinal,
         ativo: termometro.ativo,
+        ciclo: termometro.ciclo ? { id: termometro.ciclo.id, nome: termometro.ciclo.nome } : null,
         perguntas,
         respostasPorMembro,
         mediaPorPergunta,
@@ -375,13 +380,17 @@ export interface EditTermometroInput {
     id: number
     nome: string
     perguntas: { id?: number; texto: string }[]
+    idCiclo?: number | null
 }
 
 export async function editarTermometro(input: EditTermometroInput): Promise<{ success: boolean; error?: string }> {
     try {
         await prisma.termometro.update({
             where: { id: input.id },
-            data: { nome: input.nome }
+            data: {
+                nome: input.nome,
+                idCiclo: input.idCiclo ?? null
+            }
         })
 
         await prisma.perguntaTermometro.deleteMany({ where: { termometroId: input.id } })

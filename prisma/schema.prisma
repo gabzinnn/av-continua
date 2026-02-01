@@ -15,21 +15,36 @@ model Area {
   demandas   Demanda[]
   membros    Membro[]
   pagamentos Pagamento[]
+  subareas   Subarea[]
+}
+
+model Subarea {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  areaId    Int
+  createdAt DateTime @default(now())
+
+  area     Area      @relation(fields: [areaId], references: [id])
+  membros  Membro[]
+  demandas Demanda[]
 }
 
 model Membro {
-  id            Int      @id @default(autoincrement())
-  nome          String
-  fotoUrl       String?
-  dre           String
-  periodo       String
-  isAtivo       Boolean  @default(true)
-  isCoordenador Boolean  @default(false)
-  areaId        Int
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  nome           String
+  fotoUrl        String?
+  dre            String
+  periodo        String
+  isAtivo        Boolean  @default(true)
+  isCoordenador  Boolean  @default(false)
+  isLiderSubarea Boolean  @default(false)
+  areaId         Int
+  subareaId      Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   area                  Area                    @relation(fields: [areaId], references: [id])
+  subarea               Subarea?                @relation(fields: [subareaId], references: [id])
   avaliacoesFeitas      RespostaAvaliacao[]     @relation("AvaliacoesFeitas")
   avaliacoesRecebidas   RespostaAvaliacao[]     @relation("AvaliacoesRecebidas")
   planosAcao            PlanoAcao[]
@@ -74,7 +89,9 @@ model Ciclo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  avaliacoes Avaliacao[]
+  avaliacoes  Avaliacao[]
+  demandas    Demanda[]
+  termometros Termometro[]
 }
 
 model RespostaAvaliacao {
@@ -144,9 +161,13 @@ model Demanda {
   creditoMembro Float    @default(0)
   creditoLider  Float    @default(0)
   idArea        Int?
+  idSubarea     Int?
+  idCiclo       Int?
   createdAt     DateTime @default(now())
 
   area       Area?             @relation(fields: [idArea], references: [id])
+  subarea    Subarea?          @relation(fields: [idSubarea], references: [id])
+  ciclo      Ciclo?            @relation(fields: [idCiclo], references: [id])
   alocacoes  AlocacaoDemanda[]
   pagamentos Pagamento[]
 }
@@ -299,7 +320,7 @@ model ResultadoProva {
   iniciadoEm   DateTime        @default(now())
   finalizadoEm DateTime?
 
-  prova     Prova             @relation(fields: [provaId], references: [id])
+  prova     Prova             @relation(fields: [provaId], references: [id], onDelete: Cascade)
   candidato Candidato         @relation(fields: [candidatoId], references: [id])
   respostas RespostaQuestao[]
 
@@ -316,7 +337,7 @@ model RespostaQuestao {
   corrigida     Boolean  @default(false)
 
   resultado ResultadoProva @relation(fields: [resultadoId], references: [id], onDelete: Cascade)
-  questao   Questao        @relation(fields: [questaoId], references: [id])
+  questao   Questao        @relation(fields: [questaoId], references: [id], onDelete: Cascade)
 
   @@unique([resultadoId, questaoId])
 }
@@ -331,8 +352,10 @@ model Termometro {
   dataInicial DateTime @db.Date()
   dataFinal   DateTime @db.Date()
   ativo       Boolean  @default(true)
+  idCiclo     Int?
   createdAt   DateTime @default(now())
 
+  ciclo     Ciclo?               @relation(fields: [idCiclo], references: [id])
   perguntas PerguntaTermometro[]
   respostas RespostaTermometro[]
 }
@@ -343,7 +366,7 @@ model PerguntaTermometro {
   texto        String
   createdAt    DateTime @default(now())
 
-  termometro Termometro @relation(fields: [termometroId], references: [id])
+  termometro Termometro @relation(fields: [termometroId], references: [id], onDelete: Cascade)
 }
 
 model RespostaTermometro {
@@ -353,5 +376,5 @@ model RespostaTermometro {
   nota         Int
 
   membro     Membro     @relation(fields: [idMembro], references: [id])
-  termometro Termometro @relation(fields: [idTermometro], references: [id])
+  termometro Termometro @relation(fields: [idTermometro], references: [id], onDelete: Cascade)
 }

@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Download, Edit, ChevronRight } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import { getTermometroDetalhes, exportarRespostas, TermometroDetalhes } from "@/src/actions/termometroActions"
+import { getCiclos, Ciclo } from "@/src/actions/cicloActions"
 import { TermometroStatsCards } from "./TermometroStatsCards"
 import { EditarTermometroModal } from "./EditarTermometroModal"
 import { TermometroDemandasList } from "./TermometroDemandasList"
@@ -21,14 +22,19 @@ interface TermometroDetalhesContentProps {
 export function TermometroDetalhesContent({ termometroId }: TermometroDetalhesContentProps) {
     const router = useRouter()
     const [data, setData] = useState<TermometroDetalhes | null>(null)
+    const [ciclos, setCiclos] = useState<Ciclo[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isVerTudoModalOpen, setIsVerTudoModalOpen] = useState(false)
 
     const fetchData = async () => {
         try {
-            const result = await getTermometroDetalhes(termometroId)
+            const [result, ciclosData] = await Promise.all([
+                getTermometroDetalhes(termometroId),
+                getCiclos(),
+            ])
             setData(result)
+            setCiclos(ciclosData)
         } catch (error) {
             console.error("Erro ao carregar dados:", error)
         } finally {
@@ -156,6 +162,7 @@ export function TermometroDetalhesContent({ termometroId }: TermometroDetalhesCo
                     onClose={() => setIsEditModalOpen(false)}
                     onSuccess={handleEditSuccess}
                     termometro={data}
+                    ciclos={ciclos}
                 />
 
                 <VerTudoModal

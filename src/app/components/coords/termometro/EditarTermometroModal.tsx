@@ -4,24 +4,28 @@ import { useState, useEffect } from "react"
 import { X, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import { editarTermometro, TermometroDetalhes } from "@/src/actions/termometroActions"
+import { Ciclo } from "@/src/actions/cicloActions"
 
 interface EditarTermometroModalProps {
     isOpen: boolean
     onClose: () => void
     onSuccess: () => void
     termometro: TermometroDetalhes
+    ciclos: Ciclo[]
 }
 
-export function EditarTermometroModal({ isOpen, onClose, onSuccess, termometro }: EditarTermometroModalProps) {
+export function EditarTermometroModal({ isOpen, onClose, onSuccess, termometro, ciclos }: EditarTermometroModalProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
     const [nome, setNome] = useState(termometro.nome)
     const [perguntas, setPerguntas] = useState<string[]>(termometro.perguntas.map(p => p.texto))
+    const [idCiclo, setIdCiclo] = useState<number | null>(termometro.ciclo?.id || null)
 
     useEffect(() => {
         if (isOpen) {
             setNome(termometro.nome)
             setPerguntas(termometro.perguntas.map(p => p.texto))
+            setIdCiclo(termometro.ciclo?.id || null)
             setError("")
         }
     }, [isOpen, termometro])
@@ -46,6 +50,7 @@ export function EditarTermometroModal({ isOpen, onClose, onSuccess, termometro }
             id: termometro.id,
             nome,
             perguntas: perguntasValidas.map(texto => ({ texto })),
+            idCiclo,
         })
 
         if (result.success) {
@@ -96,6 +101,21 @@ export function EditarTermometroModal({ isOpen, onClose, onSuccess, termometro }
                             className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary"
                             placeholder="Nome do termômetro"
                         />
+                    </div>
+
+                    {/* Ciclo */}
+                    <div>
+                        <label className="block text-sm font-medium text-text-main mb-1">Ciclo</label>
+                        <select
+                            value={idCiclo || ""}
+                            onChange={(e) => setIdCiclo(e.target.value ? Number(e.target.value) : null)}
+                            className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary cursor-pointer"
+                        >
+                            <option value="">Sem ciclo específico</option>
+                            {ciclos.map((ciclo) => (
+                                <option key={ciclo.id} value={ciclo.id}>{ciclo.nome}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div>

@@ -15,6 +15,14 @@ export interface DemandaCompleta {
         id: number
         nome: string
     } | null
+    subarea: {
+        id: number
+        nome: string
+    } | null
+    ciclo: {
+        id: number
+        nome: string
+    } | null
     alocacoes: {
         id: number
         isLider: boolean
@@ -52,6 +60,8 @@ export async function getAllDemandas(busca?: string): Promise<DemandaCompleta[]>
     const demandas = await prisma.demanda.findMany({
         include: {
             area: true,
+            subarea: true,
+            ciclo: true,
             alocacoes: {
                 include: {
                     membro: {
@@ -75,6 +85,8 @@ export async function getAllDemandas(busca?: string): Promise<DemandaCompleta[]>
         creditoMembro: d.creditoMembro,
         creditoLider: d.creditoLider,
         area: d.area ? { id: d.area.id, nome: d.area.nome } : null,
+        subarea: d.subarea ? { id: d.subarea.id, nome: d.subarea.nome } : null,
+        ciclo: d.ciclo ? { id: d.ciclo.id, nome: d.ciclo.nome } : null,
         alocacoes: d.alocacoes.map(a => ({
             id: a.id,
             isLider: a.isLider,
@@ -136,6 +148,8 @@ export async function getAllDemandas(busca?: string): Promise<DemandaCompleta[]>
             creditoMembro: d.demanda.creditoMembro,
             creditoLider: d.demanda.creditoLider,
             area: d.demanda.area ? { id: d.demanda.area.id, nome: d.demanda.area.nome } : null,
+            subarea: d.demanda.subarea ? { id: d.demanda.subarea.id, nome: d.demanda.subarea.nome } : null,
+            ciclo: d.demanda.ciclo ? { id: d.demanda.ciclo.id, nome: d.demanda.ciclo.nome } : null,
             alocacoes: d.demanda.alocacoes.map(a => ({
                 id: a.id,
                 isLider: a.isLider,
@@ -169,6 +183,8 @@ export interface CreateDemandaInput {
     nome: string
     descricao?: string
     idArea?: number
+    idSubarea?: number | null
+    idCiclo?: number | null
     creditoMembro?: number
     creditoLider?: number
 }
@@ -180,6 +196,8 @@ export async function createDemanda(data: CreateDemandaInput): Promise<{ success
                 nome: data.nome,
                 descricao: data.descricao || null,
                 idArea: data.idArea || null,
+                idSubarea: data.idSubarea ?? null,
+                idCiclo: data.idCiclo ?? null,
                 creditoMembro: data.creditoMembro || 0,
                 creditoLider: data.creditoLider || 0,
                 finalizada: false,
@@ -199,6 +217,8 @@ export interface UpdateDemandaInput {
     nome: string
     descricao?: string
     idArea?: number
+    idSubarea?: number | null
+    idCiclo?: number | null
     creditoMembro?: number
     creditoLider?: number
     finalizada?: boolean
@@ -212,6 +232,8 @@ export async function updateDemanda(data: UpdateDemandaInput): Promise<{ success
                 nome: data.nome,
                 descricao: data.descricao || null,
                 idArea: data.idArea || null,
+                idSubarea: data.idSubarea ?? null,
+                idCiclo: data.idCiclo ?? null,
                 creditoMembro: data.creditoMembro ?? 0,
                 creditoLider: data.creditoLider ?? 0,
                 finalizada: data.finalizada ?? false,

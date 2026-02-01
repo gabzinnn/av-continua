@@ -15,6 +15,7 @@ import {
     MembroParaAlocacao 
 } from "@/src/actions/demandasActions"
 import { getAllAreas, AreaOption } from "@/src/actions/membrosActions"
+import { getCiclos, Ciclo } from "@/src/actions/cicloActions"
 import coresAreas from "@/src/utils/coresAreas"
 import dynamic from "next/dynamic"
 import { TableColumn } from "react-data-table-component"
@@ -77,6 +78,7 @@ export function DemandasContent() {
     const [demandas, setDemandas] = useState<DemandaCompleta[]>([])
     const [areas, setAreas] = useState<AreaOption[]>([])
     const [membros, setMembros] = useState<MembroParaAlocacao[]>([])
+    const [ciclos, setCiclos] = useState<Ciclo[]>([])
     const [busca, setBusca] = useState("")
     const [isLoading, setIsLoading] = useState(true)
     const [showFinalizadas, setShowFinalizadas] = useState(false)
@@ -93,14 +95,16 @@ export function DemandasContent() {
 
     const loadData = useCallback(async () => {
         setIsLoading(true)
-        const [demandasData, areasData, membrosData] = await Promise.all([
+        const [demandasData, areasData, membrosData, ciclosData] = await Promise.all([
             getAllDemandas(busca),
             getAllAreas(),
             getMembrosParaAlocacao(),
+            getCiclos(),
         ])
         setDemandas(demandasData)
         setAreas(areasData)
         setMembros(membrosData)
+        setCiclos(ciclosData)
         
         // Update selectedDemanda with fresh data if it exists
         setSelectedDemanda(prev => {
@@ -171,12 +175,17 @@ export function DemandasContent() {
             selector: (row) => row.area?.nome || "",
             sortable: true,
             cell: (row) => row.area ? (
-                <span 
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-text-main whitespace-nowrap"
-                    style={{ backgroundColor: coresAreas(row.area.nome) }}
-                >
-                    {row.area.nome}
-                </span>
+                <div className="flex flex-col gap-1">
+                    <span 
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-text-main whitespace-nowrap"
+                        style={{ backgroundColor: coresAreas(row.area.nome) }}
+                    >
+                        {row.area.nome}
+                    </span>
+                    {row.subarea && (
+                        <span className="text-xs text-gray-500">{row.subarea.nome}</span>
+                    )}
+                </div>
             ) : (
                 <span className="text-gray-400 text-sm">—</span>
             ),
@@ -374,6 +383,7 @@ export function DemandasContent() {
                 onClose={() => setShowAddModal(false)}
                 onSuccess={loadData}
                 areas={areas}
+                ciclos={ciclos}
             />
 
             <EditDemandaModal
@@ -381,6 +391,7 @@ export function DemandasContent() {
                 onClose={() => setShowEditModal(false)}
                 onSuccess={loadData}
                 areas={areas}
+                ciclos={ciclos}
                 demanda={selectedDemanda}
             />
 
@@ -401,3 +412,4 @@ export function DemandasContent() {
         </div>
     )
 }
+

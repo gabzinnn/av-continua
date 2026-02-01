@@ -315,13 +315,13 @@ export interface PreviewMembro {
 export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
     // Buscar todos os dados necessários de uma vez
     const [membrosAtivos, todasAlocacoes, coordenadoresObrigatoriosPorArea] = await Promise.all([
-        // Todos os membros ativos
+        // Todos os membros ativos com subárea
         prisma.membro.findMany({
             where: { isAtivo: true },
-            include: { area: true },
+            include: { area: true, subarea: true },
             orderBy: [{ area: { nome: "asc" } }, { nome: "asc" }],
         }),
-        // Todas as alocações com info de demanda
+        // Todas as alocações com info de demanda (incluindo subárea)
         prisma.alocacaoDemanda.findMany({
             where: {
                 membro: { isAtivo: true },
@@ -331,7 +331,7 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
                 demandaId: true,
                 isLider: true,
                 demanda: {
-                    select: { idArea: true, finalizada: true }
+                    select: { idArea: true, idSubarea: true, finalizada: true }
                 }
             },
         }),
@@ -352,8 +352,12 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
     const demandasPorMembro = new Map<number, number[]>()
     // Mapa de demandaId -> membroIds
     const membrosPorDemanda = new Map<number, number[]>()
-    // Mapa de areaId -> líderes (membros que são líderes de demandas dessa área)
+    // Mapa de areaId -> líderes (membros que são líderes de demandas dessa área - para áreas SEM subáreas)
     const lideresPorArea = new Map<number, number[]>()
+    // Mapa de subareaId -> líderes de demanda (para áreas COM subáreas)
+    const lideresPorSubarea = new Map<number, number[]>()
+    // Mapa de membroId -> subareaIds onde é líder de demanda
+    const subareasOndeEhLider = new Map<number, number[]>()
 
     for (const aloc of todasAlocacoes) {
         // Demandas por membro
@@ -368,12 +372,27 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
         }
         membrosPorDemanda.get(aloc.demandaId)!.push(aloc.membroId)
 
-        // Líderes por área (demandas não finalizadas)
-        if (aloc.isLider && !aloc.demanda.finalizada && aloc.demanda.idArea) {
-            if (!lideresPorArea.has(aloc.demanda.idArea)) {
-                lideresPorArea.set(aloc.demanda.idArea, [])
+        // Líderes por área/subárea (demandas não finalizadas)
+        if (aloc.isLider && !aloc.demanda.finalizada) {
+            if (aloc.demanda.idSubarea) {
+                // Demanda com subárea
+                if (!lideresPorSubarea.has(aloc.demanda.idSubarea)) {
+                    lideresPorSubarea.set(aloc.demanda.idSubarea, [])
+                }
+                lideresPorSubarea.get(aloc.demanda.idSubarea)!.push(aloc.membroId)
+
+                // Rastrear em quais subáreas o membro é líder
+                if (!subareasOndeEhLider.has(aloc.membroId)) {
+                    subareasOndeEhLider.set(aloc.membroId, [])
+                }
+                subareasOndeEhLider.get(aloc.membroId)!.push(aloc.demanda.idSubarea)
+            } else if (aloc.demanda.idArea) {
+                // Demanda sem subárea
+                if (!lideresPorArea.has(aloc.demanda.idArea)) {
+                    lideresPorArea.set(aloc.demanda.idArea, [])
+                }
+                lideresPorArea.get(aloc.demanda.idArea)!.push(aloc.membroId)
             }
-            lideresPorArea.get(aloc.demanda.idArea)!.push(aloc.membroId)
         }
     }
 
@@ -392,6 +411,17 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
             coordenadorPorArea.set(coord.areaId, [])
         }
         coordenadorPorArea.get(coord.areaId)!.push(coord.id)
+    }
+
+    // Mapa de areaId -> líderes de subárea dessa área
+    const lideresSubareaPorArea = new Map<number, number[]>()
+    for (const membro of membrosAtivos) {
+        if (membro.isLiderSubarea && membro.subareaId) {
+            if (!lideresSubareaPorArea.has(membro.areaId)) {
+                lideresSubareaPorArea.set(membro.areaId, [])
+            }
+            lideresSubareaPorArea.get(membro.areaId)!.push(membro.id)
+        }
     }
 
     const resultado: PreviewMembro[] = []
@@ -423,8 +453,21 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
             }
         }
 
-        // 3. Se é coordenador: líderes da área + todos os outros coordenadores
+        // ============================================
+        // LÓGICA HÍBRIDA: Depende se CADA DEMANDA tem subárea
+        // Aplicamos AMBAS as lógicas simultaneamente
+        // ============================================
+
         if (membro.isCoordenador) {
+            // Coordenador avalia líderes de subárea da sua área (se existirem)
+            const lideresSubarea = lideresSubareaPorArea.get(membro.areaId) || []
+            for (const liderId of lideresSubarea) {
+                if (liderId !== membro.id) {
+                    membrosAvaliadosIds.add(liderId)
+                }
+            }
+
+            // Coordenador avalia líderes de demandas SEM SUBÁREA da sua área
             const lideresDaArea = lideresPorArea.get(membro.areaId) || []
             for (const liderId of lideresDaArea) {
                 if (liderId !== membro.id) {
@@ -432,10 +475,31 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
                 }
             }
 
-            // Todos os outros coordenadores
+            // Coordenadores avaliam outros coordenadores
             for (const coordId of todosCoordenadoresIds) {
                 if (coordId !== membro.id) {
                     membrosAvaliadosIds.add(coordId)
+                }
+            }
+        }
+
+        // Líder de subárea avalia líderes de demanda da sua subárea
+        if (membro.isLiderSubarea && membro.subareaId) {
+            const lideresDemanda = lideresPorSubarea.get(membro.subareaId) || []
+            for (const liderId of lideresDemanda) {
+                if (liderId !== membro.id) {
+                    membrosAvaliadosIds.add(liderId)
+                }
+            }
+        }
+
+        // Líder de demanda (em demanda COM subárea) avalia líder da subárea
+        const subareasLider = subareasOndeEhLider.get(membro.id) || []
+        for (const subareaId of subareasLider) {
+            // Encontrar o líder dessa subárea
+            for (const outroMembro of membrosAtivos) {
+                if (outroMembro.isLiderSubarea && outroMembro.subareaId === subareaId && outroMembro.id !== membro.id) {
+                    membrosAvaliadosIds.add(outroMembro.id)
                 }
             }
         }

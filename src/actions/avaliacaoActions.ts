@@ -49,10 +49,13 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
         }
     }
 
-    // Buscar dados do avaliador para saber sua área
+    // Buscar dados do avaliador para saber sua área e subárea
     const avaliador = await prisma.membro.findUnique({
         where: { id: membroId },
-        include: { area: true }
+        include: {
+            area: true,
+            subarea: true
+        }
     })
 
     if (!avaliador) {
@@ -65,10 +68,15 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
         }
     }
 
+
     // Buscar demandas em que o avaliador está alocado
     const demandasDoAvaliador = await prisma.alocacaoDemanda.findMany({
         where: { membroId },
-        select: { demandaId: true }
+        include: {
+            demanda: {
+                select: { idSubarea: true }
+            }
+        }
     })
 
     const demandaIds = demandasDoAvaliador.map(d => d.demandaId)
@@ -107,14 +115,35 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
     const coordenadorIds = coordenadoresObrigatorios.map(c => c.id)
     membrosIds = [...new Set([...membrosIds, ...coordenadorIds])]
 
-    // Se o avaliador é coordenador, adicionar líderes de demandas da sua área
+    // ============================================
+    // LÓGICA HÍBRIDA: Depende se CADA DEMANDA tem subárea
+    // - Demandas COM subárea: líder de subárea ↔ líder de demanda
+    // - Demandas SEM subárea: coordenador ↔ líder de demanda  
+    // ============================================
+
+    // Se o avaliador é COORDENADOR
     if (avaliador.isCoordenador) {
-        const lideresDemandasDaArea = await prisma.alocacaoDemanda.findMany({
+        // 1. Coordenador avalia líderes de subárea da sua área (se existirem)
+        const lideresSubareasDaArea = await prisma.membro.findMany({
+            where: {
+                areaId: avaliador.areaId,
+                isLiderSubarea: true,
+                isAtivo: true,
+                id: { not: membroId }
+            },
+            select: { id: true }
+        })
+        const liderSubareaIds = lideresSubareasDaArea.map(l => l.id)
+        membrosIds = [...new Set([...membrosIds, ...liderSubareaIds])]
+
+        // 2. Coordenador avalia líderes de demandas SEM SUBÁREA da sua área
+        const lideresDemandasSemSubarea = await prisma.alocacaoDemanda.findMany({
             where: {
                 isLider: true,
                 membroId: { not: membroId },
                 demanda: {
                     idArea: avaliador.areaId,
+                    idSubarea: null, // Apenas demandas SEM subárea
                     finalizada: false
                 },
                 membro: { isAtivo: true }
@@ -122,20 +151,67 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
             select: { membroId: true },
             distinct: ['membroId']
         })
-        const liderIds = lideresDemandasDaArea.map(l => l.membroId)
-        membrosIds = [...new Set([...membrosIds, ...liderIds])]
+        const liderSemSubareaIds = lideresDemandasSemSubarea.map(l => l.membroId)
+        membrosIds = [...new Set([...membrosIds, ...liderSemSubareaIds])]
 
-        // Coordenadores também precisam avaliar TODOS os outros coordenadores ativos
+        // 3. Coordenadores também avaliam outros coordenadores
         const outrosCoordenadores = await prisma.membro.findMany({
             where: {
                 isCoordenador: true,
                 isAtivo: true,
-                id: { not: membroId } // Não incluir o próprio avaliador
+                id: { not: membroId }
             },
             select: { id: true }
         })
         const outrosCoordenadoresIds = outrosCoordenadores.map(c => c.id)
         membrosIds = [...new Set([...membrosIds, ...outrosCoordenadoresIds])]
+    }
+
+    // Se o avaliador é LÍDER DE SUBÁREA
+    if (avaliador.isLiderSubarea && avaliador.subareaId) {
+        // Líder de subárea avalia o coordenador da área (já adicionado acima nos obrigatórios)
+
+        // Líder de subárea avalia líderes de demandas DA SUA SUBÁREA (apenas demandas COM subárea)
+        const lideresDemandaDaSubarea = await prisma.alocacaoDemanda.findMany({
+            where: {
+                isLider: true,
+                membroId: { not: membroId },
+                demanda: {
+                    idSubarea: avaliador.subareaId, // Apenas demandas DESTA subárea
+                    finalizada: false
+                },
+                membro: { isAtivo: true }
+            },
+            select: { membroId: true },
+            distinct: ['membroId']
+        })
+        const liderDemandaIds = lideresDemandaDaSubarea.map(l => l.membroId)
+        membrosIds = [...new Set([...membrosIds, ...liderDemandaIds])]
+    }
+
+    // Se o avaliador é LÍDER DE DEMANDA
+    const demandasOndeEhLider = demandasDoAvaliador.filter(d => d.isLider)
+    if (demandasOndeEhLider.length > 0) {
+        // Para demandas COM subárea: líder de demanda avalia líder de subárea
+        const demandasComSubarea = demandasOndeEhLider.filter(d => d.demanda.idSubarea)
+        if (demandasComSubarea.length > 0) {
+            const subareaIds = demandasComSubarea.map(d => d.demanda.idSubarea).filter((id): id is number => id !== null)
+
+            const lideresSubareasParaAvaliar = await prisma.membro.findMany({
+                where: {
+                    subareaId: { in: subareaIds },
+                    isLiderSubarea: true,
+                    isAtivo: true,
+                    id: { not: membroId }
+                },
+                select: { id: true }
+            })
+            const liderSubareaIds = lideresSubareasParaAvaliar.map(l => l.id)
+            membrosIds = [...new Set([...membrosIds, ...liderSubareaIds])]
+        }
+
+        // Para demandas SEM subárea: líder de demanda avalia coordenador da área
+        // (já está incluído nos coordenadores obrigatórios)
     }
 
     // Buscar dados completos desses membros (apenas ativos)
@@ -314,10 +390,13 @@ export async function salvarResposta(data: SalvarRespostaInput) {
 
 // Verifica se o membro avaliou todos (que compartilham demanda + coordenadores) e atualiza a participação
 async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: number) {
-    // Buscar dados do avaliador para saber sua área
+    // Buscar dados do avaliador para saber sua área e subárea
     const avaliador = await prisma.membro.findUnique({
         where: { id: membroId },
-        include: { area: true }
+        include: {
+            area: true,
+            subarea: true
+        }
     })
 
     if (!avaliador) return
@@ -325,7 +404,11 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
     // Buscar demandas em que o avaliador está alocado
     const demandasDoAvaliador = await prisma.alocacaoDemanda.findMany({
         where: { membroId },
-        select: { demandaId: true }
+        include: {
+            demanda: {
+                select: { idSubarea: true }
+            }
+        }
     })
 
     const demandaIds = demandasDoAvaliador.map(d => d.demandaId)
@@ -362,14 +445,33 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
     const coordenadorIds = coordenadoresObrigatorios.map(c => c.id)
     membrosIds = [...new Set([...membrosIds, ...coordenadorIds])]
 
-    // Se o avaliador é coordenador, adicionar líderes de demandas da sua área
+    // ============================================
+    // LÓGICA HÍBRIDA: Depende se CADA DEMANDA tem subárea
+    // ============================================
+
+    // Se o avaliador é COORDENADOR
     if (avaliador.isCoordenador) {
-        const lideresDemandasDaArea = await prisma.alocacaoDemanda.findMany({
+        // 1. Coordenador avalia líderes de subárea da sua área (se existirem)
+        const lideresSubareasDaArea = await prisma.membro.findMany({
+            where: {
+                areaId: avaliador.areaId,
+                isLiderSubarea: true,
+                isAtivo: true,
+                id: { not: membroId }
+            },
+            select: { id: true }
+        })
+        const liderSubareaIds = lideresSubareasDaArea.map(l => l.id)
+        membrosIds = [...new Set([...membrosIds, ...liderSubareaIds])]
+
+        // 2. Coordenador avalia líderes de demandas SEM SUBÁREA da sua área
+        const lideresDemandasSemSubarea = await prisma.alocacaoDemanda.findMany({
             where: {
                 isLider: true,
                 membroId: { not: membroId },
                 demanda: {
                     idArea: avaliador.areaId,
+                    idSubarea: null,
                     finalizada: false
                 },
                 membro: { isAtivo: true }
@@ -377,10 +479,10 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
             select: { membroId: true },
             distinct: ['membroId']
         })
-        const liderIds = lideresDemandasDaArea.map(l => l.membroId)
-        membrosIds = [...new Set([...membrosIds, ...liderIds])]
+        const liderSemSubareaIds = lideresDemandasSemSubarea.map(l => l.membroId)
+        membrosIds = [...new Set([...membrosIds, ...liderSemSubareaIds])]
 
-        // Coordenadores também precisam avaliar TODOS os outros coordenadores ativos
+        // 3. Coordenadores também avaliam outros coordenadores
         const outrosCoordenadores = await prisma.membro.findMany({
             where: {
                 isCoordenador: true,
@@ -391,6 +493,47 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
         })
         const outrosCoordenadoresIds = outrosCoordenadores.map(c => c.id)
         membrosIds = [...new Set([...membrosIds, ...outrosCoordenadoresIds])]
+    }
+
+    // Se o avaliador é LÍDER DE SUBÁREA
+    if (avaliador.isLiderSubarea && avaliador.subareaId) {
+        const lideresDemandaDaSubarea = await prisma.alocacaoDemanda.findMany({
+            where: {
+                isLider: true,
+                membroId: { not: membroId },
+                demanda: {
+                    idSubarea: avaliador.subareaId,
+                    finalizada: false
+                },
+                membro: { isAtivo: true }
+            },
+            select: { membroId: true },
+            distinct: ['membroId']
+        })
+        const liderDemandaIds = lideresDemandaDaSubarea.map(l => l.membroId)
+        membrosIds = [...new Set([...membrosIds, ...liderDemandaIds])]
+    }
+
+    // Se o avaliador é LÍDER DE DEMANDA
+    const demandasOndeEhLider = demandasDoAvaliador.filter(d => d.isLider)
+    if (demandasOndeEhLider.length > 0) {
+        // Para demandas COM subárea: líder de demanda avalia líder de subárea
+        const demandasComSubarea = demandasOndeEhLider.filter(d => d.demanda.idSubarea)
+        if (demandasComSubarea.length > 0) {
+            const subareaIds = demandasComSubarea.map(d => d.demanda.idSubarea).filter((id): id is number => id !== null)
+
+            const lideresSubareasParaAvaliar = await prisma.membro.findMany({
+                where: {
+                    subareaId: { in: subareaIds },
+                    isLiderSubarea: true,
+                    isAtivo: true,
+                    id: { not: membroId }
+                },
+                select: { id: true }
+            })
+            const liderSubareaIds = lideresSubareasParaAvaliar.map(l => l.id)
+            membrosIds = [...new Set([...membrosIds, ...liderSubareaIds])]
+        }
     }
 
     const totalMembros = membrosIds.length
@@ -464,34 +607,67 @@ export async function getMembroDetalhes(membroId: number) {
 }
 
 // Verifica se o avaliador pode marcar 1:1 para o avaliado
-// Regras:
-// - Coordenadores podem marcar 1:1 para líderes de demandas da sua área
+// Regras (por DEMANDA):
+// - Coordenadores podem marcar 1:1 para líderes de subárea da sua área
+// - Coordenadores podem marcar 1:1 para líderes de demandas SEM SUBÁREA da sua área
+// - Líderes de subárea podem marcar 1:1 para líderes de demandas da sua subárea
 // - Líderes de demandas podem marcar 1:1 para membros das suas demandas
 export async function podeMarcar1on1(avaliadorId: number, avaliadoId: number): Promise<boolean> {
     // Buscar dados do avaliador
     const avaliador = await prisma.membro.findUnique({
         where: { id: avaliadorId },
-        include: { area: true }
+        include: {
+            area: true,
+            subarea: true
+        }
     })
 
     if (!avaliador) return false
 
-    // Caso 1: Coordenador avaliando líder de demanda da sua área
+    // Caso 1: Coordenador
     if (avaliador.isCoordenador) {
-        const avaliadoEhLiderNaArea = await prisma.alocacaoDemanda.findFirst({
+        // Coordenador pode marcar 1:1 para líderes de subárea da sua área
+        const avaliadoEhLiderSubarea = await prisma.membro.findFirst({
+            where: {
+                id: avaliadoId,
+                areaId: avaliador.areaId,
+                isLiderSubarea: true,
+                isAtivo: true
+            }
+        })
+        if (avaliadoEhLiderSubarea) return true
+
+        // Coordenador pode marcar 1:1 para líderes de demandas SEM SUBÁREA da sua área
+        const avaliadoEhLiderDemandaSemSubarea = await prisma.alocacaoDemanda.findFirst({
             where: {
                 membroId: avaliadoId,
                 isLider: true,
                 demanda: {
                     idArea: avaliador.areaId,
+                    idSubarea: null, // Apenas demandas SEM subárea
                     finalizada: false
                 }
             }
         })
-        if (avaliadoEhLiderNaArea) return true
+        if (avaliadoEhLiderDemandaSemSubarea) return true
     }
 
-    // Caso 2: Líder de demanda avaliando membro da sua demanda
+    // Caso 2: Líder de subárea avaliando líder de demanda da sua subárea
+    if (avaliador.isLiderSubarea && avaliador.subareaId) {
+        const avaliadoEhLiderDemandaNaSubarea = await prisma.alocacaoDemanda.findFirst({
+            where: {
+                membroId: avaliadoId,
+                isLider: true,
+                demanda: {
+                    idSubarea: avaliador.subareaId,
+                    finalizada: false
+                }
+            }
+        })
+        if (avaliadoEhLiderDemandaNaSubarea) return true
+    }
+
+    // Caso 3: Líder de demanda avaliando membro da sua demanda
     // Buscar demandas onde o avaliador é líder
     const demandasOndeEhLider = await prisma.alocacaoDemanda.findMany({
         where: {

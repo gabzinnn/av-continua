@@ -39,14 +39,6 @@ export function TermometroHeroCard({ termometro, onEncerrar, onVerDetalhes }: Te
                                 Criado em {formatDate(termometro.dataInicial)} • Expira em {formatDate(termometro.dataFinal)}
                             </p>
                         </div>
-                        <div className="flex gap-2">
-                            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100 cursor-pointer">
-                                <Share2 size={20} />
-                            </button>
-                            <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100 cursor-pointer">
-                                <MoreVertical size={20} />
-                            </button>
-                        </div>
                     </div>
 
                     <div className="mt-8 space-y-3">

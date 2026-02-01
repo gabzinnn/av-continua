@@ -6,6 +6,7 @@ import Image from "next/image"
 import { Button } from "@/src/app/components/Button"
 import { updateMembro, UpdateMembroInput, AreaOption, MembroCompleto } from "@/src/actions/membrosActions"
 import { uploadToCloudinary } from "@/src/actions/uploadActions"
+import { getSubareasByArea, SubareaOption } from "@/src/actions/subareaActions"
 
 interface EditMembroModalProps {
     isOpen: boolean
@@ -20,6 +21,8 @@ export function EditMembroModal({ isOpen, onClose, onSuccess, areas, membro }: E
     const [isUploading, setIsUploading] = useState(false)
     const [error, setError] = useState("")
     const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+    const [subareas, setSubareas] = useState<SubareaOption[]>([])
+    const [loadingSubareas, setLoadingSubareas] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     
     const [formData, setFormData] = useState<UpdateMembroInput>({
@@ -30,6 +33,8 @@ export function EditMembroModal({ isOpen, onClose, onSuccess, areas, membro }: E
         areaId: 0,
         fotoUrl: "",
         isCoordenador: false,
+        isLiderSubarea: false,
+        subareaId: null,
     })
 
     useEffect(() => {
@@ -42,10 +47,38 @@ export function EditMembroModal({ isOpen, onClose, onSuccess, areas, membro }: E
                 areaId: membro.area.id,
                 fotoUrl: membro.fotoUrl || "",
                 isCoordenador: membro.isCoordenador,
+                isLiderSubarea: membro.isLiderSubarea,
+                subareaId: membro.subarea?.id || null,
             })
             setPreviewUrl(membro.fotoUrl)
         }
     }, [membro])
+
+    // Buscar subáreas quando a área mudar
+    useEffect(() => {
+        async function fetchSubareas() {
+            if (formData.areaId && formData.areaId > 0) {
+                setLoadingSubareas(true)
+                const result = await getSubareasByArea(formData.areaId)
+                setSubareas(result)
+                setLoadingSubareas(false)
+            } else {
+                setSubareas([])
+            }
+        }
+        fetchSubareas()
+    }, [formData.areaId])
+
+    // Reset subarea when area changes (except on initial load)
+    const handleAreaChange = (newAreaId: number) => {
+        const areaChanged = formData.areaId !== newAreaId && formData.areaId !== 0
+        setFormData({ 
+            ...formData, 
+            areaId: newAreaId,
+            // Reset subarea only if area actually changed (not initial load)
+            ...(areaChanged ? { subareaId: null, isLiderSubarea: false } : {})
+        })
+    }
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -210,7 +243,7 @@ export function EditMembroModal({ isOpen, onClose, onSuccess, areas, membro }: E
                         <label className="block text-sm font-medium text-text-main mb-1">Área *</label>
                         <select
                             value={formData.areaId}
-                            onChange={(e) => setFormData({ ...formData, areaId: Number(e.target.value) })}
+                            onChange={(e) => handleAreaChange(Number(e.target.value))}
                             className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary cursor-pointer"
                         >
                             <option value={0}>Selecione uma área</option>
@@ -220,17 +253,53 @@ export function EditMembroModal({ isOpen, onClose, onSuccess, areas, membro }: E
                         </select>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="editIsCoordenador"
-                            checked={formData.isCoordenador}
-                            onChange={(e) => setFormData({ ...formData, isCoordenador: e.target.checked })}
-                            className="w-4 h-4 rounded border-border cursor-pointer"
-                        />
-                        <label htmlFor="editIsCoordenador" className="text-sm text-text-main cursor-pointer">
-                            É coordenador de área
-                        </label>
+                    {/* Subárea - só aparece se a área tiver subáreas */}
+                    {subareas.length > 0 && (
+                        <div>
+                            <label className="block text-sm font-medium text-text-main mb-1">Subárea</label>
+                            <select
+                                value={formData.subareaId || ""}
+                                onChange={(e) => setFormData({ ...formData, subareaId: e.target.value ? Number(e.target.value) : null })}
+                                className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary cursor-pointer"
+                                disabled={loadingSubareas}
+                            >
+                                <option value="">Sem subárea específica</option>
+                                {subareas.map((subarea) => (
+                                    <option key={subarea.id} value={subarea.id}>{subarea.nome}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="editIsCoordenador"
+                                checked={formData.isCoordenador}
+                                onChange={(e) => setFormData({ ...formData, isCoordenador: e.target.checked, isLiderSubarea: e.target.checked ? false : formData.isLiderSubarea })}
+                                className="w-4 h-4 rounded border-border cursor-pointer"
+                            />
+                            <label htmlFor="editIsCoordenador" className="text-sm text-text-main cursor-pointer">
+                                É coordenador de área
+                            </label>
+                        </div>
+
+                        {/* Líder de subárea - só aparece se não for coordenador e tiver subárea selecionada */}
+                        {!formData.isCoordenador && formData.subareaId && (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="editIsLiderSubarea"
+                                    checked={formData.isLiderSubarea}
+                                    onChange={(e) => setFormData({ ...formData, isLiderSubarea: e.target.checked })}
+                                    className="w-4 h-4 rounded border-border cursor-pointer"
+                                />
+                                <label htmlFor="editIsLiderSubarea" className="text-sm text-text-main cursor-pointer">
+                                    É líder de subárea
+                                </label>
+                            </div>
+                        )}
                     </div>
 
                     {error && (

@@ -20,10 +20,15 @@ export interface MembroCompleto {
     periodo: string
     isAtivo: boolean
     isCoordenador: boolean
+    isLiderSubarea: boolean
     area: {
         id: number
         nome: string
     }
+    subarea: {
+        id: number
+        nome: string
+    } | null
 }
 
 export interface AreaOption {
@@ -34,7 +39,7 @@ export interface AreaOption {
 // Buscar todos os membros com busca por relevância
 export async function getAllMembros(busca?: string): Promise<MembroCompleto[]> {
     const membros = await prisma.membro.findMany({
-        include: { area: true },
+        include: { area: true, subarea: true },
     })
 
     // Ordenar por área (ordem padrão) e depois alfabeticamente
@@ -54,10 +59,15 @@ export async function getAllMembros(busca?: string): Promise<MembroCompleto[]> {
             periodo: m.periodo,
             isAtivo: m.isAtivo,
             isCoordenador: m.isCoordenador,
+            isLiderSubarea: m.isLiderSubarea,
             area: {
                 id: m.area.id,
                 nome: m.area.nome,
             },
+            subarea: m.subarea ? {
+                id: m.subarea.id,
+                nome: m.subarea.nome,
+            } : null,
         }))
     }
 
@@ -104,10 +114,15 @@ export async function getAllMembros(busca?: string): Promise<MembroCompleto[]> {
             periodo: m.membro.periodo,
             isAtivo: m.membro.isAtivo,
             isCoordenador: m.membro.isCoordenador,
+            isLiderSubarea: m.membro.isLiderSubarea,
             area: {
                 id: m.membro.area.id,
                 nome: m.membro.area.nome,
             },
+            subarea: m.membro.subarea ? {
+                id: m.membro.subarea.id,
+                nome: m.membro.subarea.nome,
+            } : null,
         }))
 }
 
@@ -143,6 +158,8 @@ export interface CreateMembroInput {
     areaId: number
     fotoUrl?: string
     isCoordenador?: boolean
+    isLiderSubarea?: boolean
+    subareaId?: number | null
 }
 
 export async function createMembro(data: CreateMembroInput): Promise<{ success: boolean; error?: string }> {
@@ -155,6 +172,8 @@ export async function createMembro(data: CreateMembroInput): Promise<{ success: 
                 areaId: data.areaId,
                 fotoUrl: data.fotoUrl || null,
                 isCoordenador: data.isCoordenador || false,
+                isLiderSubarea: data.isLiderSubarea || false,
+                subareaId: data.subareaId ?? null,
                 isAtivo: true,
             },
         })
@@ -175,6 +194,8 @@ export interface UpdateMembroInput {
     areaId: number
     fotoUrl?: string
     isCoordenador?: boolean
+    isLiderSubarea?: boolean
+    subareaId?: number | null
 }
 
 export async function updateMembro(data: UpdateMembroInput): Promise<{ success: boolean; error?: string }> {
@@ -188,6 +209,8 @@ export async function updateMembro(data: UpdateMembroInput): Promise<{ success: 
                 areaId: data.areaId,
                 fotoUrl: data.fotoUrl || null,
                 isCoordenador: data.isCoordenador || false,
+                isLiderSubarea: data.isLiderSubarea || false,
+                subareaId: data.subareaId ?? null,
             },
         })
         revalidatePath("/coord/membros")

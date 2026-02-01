@@ -5,23 +5,30 @@ import { X } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import { updateDemanda, UpdateDemandaInput, DemandaCompleta } from "@/src/actions/demandasActions"
 import { AreaOption } from "@/src/actions/membrosActions"
+import { getSubareasByArea, SubareaOption } from "@/src/actions/subareaActions"
+import { Ciclo } from "@/src/actions/cicloActions"
 
 interface EditDemandaModalProps {
     isOpen: boolean
     onClose: () => void
     onSuccess: () => void
     areas: AreaOption[]
+    ciclos: Ciclo[]
     demanda: DemandaCompleta | null
 }
 
-export function EditDemandaModal({ isOpen, onClose, onSuccess, areas, demanda }: EditDemandaModalProps) {
+export function EditDemandaModal({ isOpen, onClose, onSuccess, areas, ciclos, demanda }: EditDemandaModalProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
+    const [subareas, setSubareas] = useState<SubareaOption[]>([])
+    const [loadingSubareas, setLoadingSubareas] = useState(false)
     const [formData, setFormData] = useState<UpdateDemandaInput>({
         id: 0,
         nome: "",
         descricao: "",
         idArea: undefined,
+        idSubarea: null,
+        idCiclo: null,
         creditoMembro: 0,
         creditoLider: 0,
         finalizada: false,
@@ -34,12 +41,40 @@ export function EditDemandaModal({ isOpen, onClose, onSuccess, areas, demanda }:
                 nome: demanda.nome,
                 descricao: demanda.descricao || "",
                 idArea: demanda.area?.id,
+                idSubarea: demanda.subarea?.id || null,
+                idCiclo: demanda.ciclo?.id || null,
                 creditoMembro: demanda.creditoMembro,
                 creditoLider: demanda.creditoLider,
                 finalizada: demanda.finalizada,
             })
         }
     }, [demanda])
+
+    // Buscar subáreas quando a área mudar
+    useEffect(() => {
+        async function fetchSubareas() {
+            if (formData.idArea && formData.idArea > 0) {
+                setLoadingSubareas(true)
+                const result = await getSubareasByArea(formData.idArea)
+                setSubareas(result)
+                setLoadingSubareas(false)
+            } else {
+                setSubareas([])
+            }
+        }
+        fetchSubareas()
+    }, [formData.idArea])
+
+    // Reset subarea when area changes (except on initial load)
+    const handleAreaChange = (newAreaId: number | undefined) => {
+        const areaChanged = formData.idArea !== newAreaId && formData.idArea !== undefined
+        setFormData({ 
+            ...formData, 
+            idArea: newAreaId,
+            // Reset subarea only if area actually changed (not initial load)
+            ...(areaChanged ? { idSubarea: null } : {})
+        })
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -102,12 +137,45 @@ export function EditDemandaModal({ isOpen, onClose, onSuccess, areas, demanda }:
                         <label className="block text-sm font-medium text-text-main mb-1">Área</label>
                         <select
                             value={formData.idArea || ""}
-                            onChange={(e) => setFormData({ ...formData, idArea: e.target.value ? Number(e.target.value) : undefined })}
+                            onChange={(e) => handleAreaChange(e.target.value ? Number(e.target.value) : undefined)}
                             className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary cursor-pointer"
                         >
                             <option value="">Sem área específica</option>
                             {areas.map((area) => (
                                 <option key={area.id} value={area.id}>{area.nome}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Subárea - só aparece se a área tiver subáreas */}
+                    {subareas.length > 0 && (
+                        <div>
+                            <label className="block text-sm font-medium text-text-main mb-1">Subárea</label>
+                            <select
+                                value={formData.idSubarea || ""}
+                                onChange={(e) => setFormData({ ...formData, idSubarea: e.target.value ? Number(e.target.value) : null })}
+                                className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary cursor-pointer"
+                                disabled={loadingSubareas}
+                            >
+                                <option value="">Sem subárea específica</option>
+                                {subareas.map((subarea) => (
+                                    <option key={subarea.id} value={subarea.id}>{subarea.nome}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Ciclo */}
+                    <div>
+                        <label className="block text-sm font-medium text-text-main mb-1">Ciclo</label>
+                        <select
+                            value={formData.idCiclo || ""}
+                            onChange={(e) => setFormData({ ...formData, idCiclo: e.target.value ? Number(e.target.value) : null })}
+                            className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary cursor-pointer"
+                        >
+                            <option value="">Sem ciclo específico</option>
+                            {ciclos.map((ciclo) => (
+                                <option key={ciclo.id} value={ciclo.id}>{ciclo.nome}</option>
                             ))}
                         </select>
                     </div>

@@ -4,11 +4,13 @@ import { useState } from "react"
 import { X, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import { criarTermometro } from "@/src/actions/termometroActions"
+import { Ciclo } from "@/src/actions/cicloActions"
 
 interface CriarTermometroModalProps {
     isOpen: boolean
     onClose: () => void
     onSuccess: () => void
+    ciclos: Ciclo[]
 }
 
 const PERGUNTAS_PADRAO = [
@@ -19,12 +21,13 @@ const PERGUNTAS_PADRAO = [
     'Como você avalia sua perspectiva para a próxima quinzena sendo 1 "Provavelmente estarei pior que nessa quinzena e isso vai afetar significativamente meu rendimento no clube e faculdade e 5 "Provavelmente estarei com a programação mais tranquila e conseguirei me dedicar mais ao clube sem afetar meu desempenho na faculdade"',
 ]
 
-export function CriarTermometroModal({ isOpen, onClose, onSuccess }: CriarTermometroModalProps) {
+export function CriarTermometroModal({ isOpen, onClose, onSuccess, ciclos }: CriarTermometroModalProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
     const [nome, setNome] = useState("Termômetro Quinzenal - Título Provisório")
     const [perguntas, setPerguntas] = useState<string[]>(PERGUNTAS_PADRAO)
     const [duracaoDias, setDuracaoDias] = useState(14) // Quinzenal por padrão
+    const [idCiclo, setIdCiclo] = useState<number | null>(null)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -46,6 +49,7 @@ export function CriarTermometroModal({ isOpen, onClose, onSuccess }: CriarTermom
             nome,
             perguntas: perguntasValidas,
             duracaoDias,
+            idCiclo,
         })
 
         if (result.success) {
@@ -62,6 +66,7 @@ export function CriarTermometroModal({ isOpen, onClose, onSuccess }: CriarTermom
         setNome("Termômetro Quinzenal - Título Provisório")
         setPerguntas(PERGUNTAS_PADRAO)
         setDuracaoDias(14)
+        setIdCiclo(null)
         setError("")
     }
 
@@ -122,6 +127,21 @@ export function CriarTermometroModal({ isOpen, onClose, onSuccess }: CriarTermom
                             className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary"
                         />
                         <p className="text-xs text-gray-500 mt-1">Padrão: 14 dias (quinzenal)</p>
+                    </div>
+
+                    {/* Ciclo */}
+                    <div>
+                        <label className="block text-sm font-medium text-text-main mb-1">Ciclo</label>
+                        <select
+                            value={idCiclo || ""}
+                            onChange={(e) => setIdCiclo(e.target.value ? Number(e.target.value) : null)}
+                            className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary cursor-pointer"
+                        >
+                            <option value="">Sem ciclo específico</option>
+                            {ciclos.map((ciclo) => (
+                                <option key={ciclo.id} value={ciclo.id}>{ciclo.nome}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div>

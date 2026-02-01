@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import { getTermometroPageData, TermometroPageData } from "@/src/actions/termometroActions"
+import { getCiclos, Ciclo } from "@/src/actions/cicloActions"
 import { TermometroHeroCard } from "./TermometroHeroCard"
 import { TermometroChart } from "./TermometroChart"
 import { TermometroHistoricoList } from "./TermometroHistoricoList"
@@ -14,14 +15,19 @@ import { EncerrarTermometroModal } from "./EncerrarTermometroModal"
 export function TermometroContent() {
     const router = useRouter()
     const [data, setData] = useState<TermometroPageData | null>(null)
+    const [ciclos, setCiclos] = useState<Ciclo[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isEncerrarModalOpen, setIsEncerrarModalOpen] = useState(false)
 
     const fetchData = async () => {
         try {
-            const result = await getTermometroPageData()
+            const [result, ciclosData] = await Promise.all([
+                getTermometroPageData(),
+                getCiclos(),
+            ])
             setData(result)
+            setCiclos(ciclosData)
         } catch (error) {
             console.error("Erro ao carregar dados:", error)
         } finally {
@@ -139,6 +145,7 @@ export function TermometroContent() {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onSuccess={handleCriarSuccess}
+                ciclos={ciclos}
             />
 
             {termometroAtivo && (

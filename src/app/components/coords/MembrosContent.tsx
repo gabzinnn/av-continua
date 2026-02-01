@@ -175,12 +175,20 @@ export function MembrosContent() {
             selector: (row) => row.area.nome,
             sortable: true,
             cell: (row) => (
-                <span 
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-text-main whitespace-nowrap"
-                    style={{ backgroundColor: coresAreas(row.area.nome) }}
-                >
-                    {row.area.nome}
-                </span>
+                <div className="flex flex-col gap-1">
+                    <span 
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-text-main whitespace-nowrap"
+                        style={{ backgroundColor: coresAreas(row.area.nome) }}
+                    >
+                        {row.area.nome}
+                    </span>
+                    {row.subarea && (
+                        <span className="text-xs text-gray-500">{row.subarea.nome}</span>
+                    )}
+                    {row.isLiderSubarea && (
+                        <span className="text-xs text-purple-600 font-medium">Líder de Subárea</span>
+                    )}
+                </div>
             ),
             minWidth: "200px",
         },
