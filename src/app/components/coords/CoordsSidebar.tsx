@@ -50,6 +50,7 @@ const navGroups: NavGroup[] = [
         label: "Processo Seletivo",
         children: [
             { href: "/coord/processo-seletivo/provas", icon: ClipboardCheck, label: "Provas" },
+            { href: "/coord/processo-seletivo/candidatos", icon: Users, label: "Gestão de Candidatos" },
         ]
     }
 ]

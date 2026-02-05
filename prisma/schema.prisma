@@ -299,12 +299,20 @@ model Alternativa {
 }
 
 model Candidato {
-  id        Int      @id @default(autoincrement())
-  nome      String
-  email     String   @unique
-  curso     String?
-  periodo   String?
-  dre       String   @unique @default("")
+  id      Int     @id @default(autoincrement())
+  nome    String
+  email   String  @unique
+  curso   String?
+  periodo String?
+  dre     String  @unique @default("")
+
+  notaDinamica   EscalaNotas?
+  notaEntrevista EscalaNotas?
+
+  notaArtigo  Decimal?     @db.Decimal(5, 2)
+  apresArtigo Decimal?     @db.Decimal(5, 2)
+  notaCase    EscalaNotas?
+
   createdAt DateTime @default(now())
 
   resultados ResultadoProva[]
@@ -340,6 +348,16 @@ model RespostaQuestao {
   questao   Questao        @relation(fields: [questaoId], references: [id], onDelete: Cascade)
 
   @@unique([resultadoId, questaoId])
+}
+
+enum EscalaNotas {
+  A
+  P_MAIS
+  P_ALTO
+  P
+  P_BAIXO
+  P_MENOS
+  R
 }
 
 // ==========================================

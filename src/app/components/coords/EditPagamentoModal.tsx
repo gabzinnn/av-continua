@@ -35,7 +35,11 @@ export function EditPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas
         demandaId: undefined,
         responsavelId: undefined,
         status: "ABERTO" as StatusPagamento,
+        createdAt: new Date(),
     })
+    
+    // Auxiliary state for date input (string format YYYY-MM-DD)
+    const [dateInput, setDateInput] = useState("")
 
     useEffect(() => {
         if (pagamento) {
@@ -49,7 +53,12 @@ export function EditPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas
                 demandaId: pagamento.demanda?.id,
                 responsavelId: pagamento.responsavel?.id,
                 status: pagamento.status,
+                createdAt: new Date(pagamento.createdAt),
             })
+            // Format date for input: YYYY-MM-DD
+            const dateObj = new Date(pagamento.createdAt)
+            const formattedDate = dateObj.toISOString().split('T')[0]
+            setDateInput(formattedDate)
         }
     }, [pagamento])
 
@@ -161,6 +170,23 @@ export function EditPagamentoModal({ isOpen, onClose, onSuccess, areas, demandas
                                 onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                                 className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary"
                                 placeholder="Ex: Almoço com cliente"
+                            />
+                        </div>
+
+                        {/* Data */}
+                        <div className="col-span-2">
+                            <label className="block text-sm font-medium text-text-main mb-1">Data</label>
+                            <input
+                                type="date"
+                                value={dateInput}
+                                onChange={(e) => {
+                                    setDateInput(e.target.value)
+                                    if (e.target.value) {
+                                        const newDate = new Date(e.target.value + "T12:00:00")
+                                        setFormData(prev => ({ ...prev, createdAt: newDate }))
+                                    }
+                                }}
+                                className="w-full px-4 py-2.5 border border-border rounded-lg bg-bg-main focus:outline-none focus:border-primary"
                             />
                         </div>
 

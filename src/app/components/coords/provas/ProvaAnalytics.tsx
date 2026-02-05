@@ -35,19 +35,12 @@ export function ProvaAnalytics({ distribuicao, questoesStats }: ProvaAnalyticsPr
                 },
             }
         },
-        dataLabels: {
-            enabled: true,
-            offsetY: -20,
-            style: {
-                fontSize: '12px',
-                colors: ["#304758"]
-            }
-        },
+
         legend: {
             show: false
         },
         xaxis: {
-            categories: ['0-2', '2-4', '4-6', '6-8', '8-10'],
+            categories: ['0-20%', '20-40%', '40-60%', '60-80%', '80-100%'],
             labels: {
                 style: {
                     fontSize: '12px',
@@ -67,11 +60,11 @@ export function ProvaAnalytics({ distribuicao, questoesStats }: ProvaAnalyticsPr
             }
         },
         colors: [
-            '#f87171', // Red 400 (0-2)
-            '#fb923c', // Orange 400 (2-4)
-            '#facc15', // Yellow 400 (4-6) - approximate match for primary/60
-            '#f9d41a', // Primary (6-8)
-            '#22c55e'  // Green 500 (8-10)
+            '#f87171', // Red 400 (0-20%)
+            '#fb923c', // Orange 400 (20-40%)
+            '#facc15', // Yellow 400 (40-60%)
+            '#f9d41a', // Primary (60-80%)
+            '#22c55e'  // Green 500 (80-100%)
         ],
         tooltip: {
             y: {
@@ -79,11 +72,22 @@ export function ProvaAnalytics({ distribuicao, questoesStats }: ProvaAnalyticsPr
                     return val + " alunos"
                 }
             }
-        }
+        },
+        dataLabels: {
+            enabled: true,
+            offsetY: -20,
+            style: {
+                fontSize: '12px',
+                colors: ["#304758"]
+            },
+            formatter: function (val) {
+                return val.toString()
+            }
+        },
     }
 
     const distributionSeries = [{
-        name: 'Alunos',
+        name: 'Quantidade',
         data: distribuicao
     }]
 

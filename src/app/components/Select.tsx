@@ -15,6 +15,7 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "siz
   size?: SelectSize
   helperText?: string
   error?: string
+  secretLinkHref?: string
 }
 
 const sizeStyles: Record<SelectSize, string> = {
@@ -30,6 +31,7 @@ export function Select({
   size = "lg",
   helperText,
   error,
+  secretLinkHref,
   className = "",
   ...props
 }: SelectProps) {
@@ -72,10 +74,19 @@ export function Select({
       </div>
 
       {(helperText || error) && (
-        <Link href="/coord" className={`mt-3 flex items-center gap-2 text-xs ${error ? "text-red-500" : "text-text-muted"}`}>
-          <span className="material-symbols-outlined text-[16px]">info</span>
-          <span>{error || helperText}</span>
-        </Link>
+        secretLinkHref ? (
+          <div className={`mt-3 flex items-center gap-2 text-xs ${error ? "text-red-500" : "text-text-muted"}`}>
+            <Link href={secretLinkHref} className={`flex items-center gap-2 text-xs`}>
+              <span className="material-symbols-outlined text-[16px]">info</span>
+            </Link>
+            <span>{error || helperText}</span>
+          </div>
+        ) : (
+          <div className={`mt-3 flex items-center gap-2 text-xs ${error ? "text-red-500" : "text-text-muted"}`}>
+            <span className="material-symbols-outlined text-[16px]">info</span>
+            <span>{error || helperText}</span>
+          </div>
+        )
       )}
     </div>
   )

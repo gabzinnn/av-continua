@@ -607,6 +607,7 @@ export async function getDetalheAvaliacao(avaliacaoId: number): Promise<DetalheA
     const membrosParticipantes = await prisma.membro.findMany({
         where: {
             createdAt: { lte: avaliacao.dataInicio },
+            isAtivo: true
         },
         include: { area: true },
     })

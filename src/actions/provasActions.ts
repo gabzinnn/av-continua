@@ -367,7 +367,9 @@ export async function updateQuestao(id: number, data: QuestaoData) {
 
         // Update or create alternativas
         for (const alt of data.alternativas) {
-            if (alt.id) {
+            // Check if ID is present and is a valid Postgres Integer (not a timestamp/temp ID)
+            // Postgres Integer max is 2,147,483,647. Timestamps are > 1.7 trillion.
+            if (alt.id && alt.id < 2147483647) {
                 await prisma.alternativa.update({
                     where: { id: alt.id },
                     data: {
@@ -665,6 +667,10 @@ export async function getProvaStats(provaId: number) {
         else if (nota < 8) distribuicao[3]++
         else distribuicao[4]++
     })
+
+    // Keep distribution as absolute counts for the chart
+    // The chart will display X axis as percentage ranges (0-20%, etc)
+    // and Y axis as number of students
 
     // Calculate Hit Rate per Question
     // We need to look at all corrected answers for each question

@@ -50,6 +50,7 @@ export function MemberForm({ options }: MemberFormProps) {
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
           helperText="Seu acesso será registrado automaticamente."
+          secretLinkHref="/coord"
         />
       </Card>
 

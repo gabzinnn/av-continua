@@ -182,6 +182,7 @@ export interface UpdatePagamentoInput {
     areaId?: number
     responsavelId?: number
     status?: StatusPagamento
+    createdAt?: Date
 }
 
 export async function updatePagamento(data: UpdatePagamentoInput): Promise<{ success: boolean; error?: string }> {
@@ -198,6 +199,7 @@ export async function updatePagamento(data: UpdatePagamentoInput): Promise<{ suc
                 areaId: data.areaId || null,
                 responsavelId: data.responsavelId || null,
                 status: data.status,
+                createdAt: data.createdAt
             }
         })
         revalidatePath("/coord/pagamentos")
