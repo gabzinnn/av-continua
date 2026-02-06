@@ -535,7 +535,12 @@ export async function corrigirResposta(respostaId: number, pontuacao: number) {
         include: {
             resultado: {
                 include: {
-                    respostas: true
+                    respostas: true,
+                    prova: {
+                        include: {
+                            questoes: true
+                        }
+                    }
                 }
             }
         }
@@ -545,11 +550,22 @@ export async function corrigirResposta(respostaId: number, pontuacao: number) {
     const allCorrigidas = resposta.resultado.respostas.every(r => r.corrigida)
 
     if (allCorrigidas) {
-        // Calculate final score
-        const notaFinal = resposta.resultado.respostas.reduce(
+        // Calculate total points earned
+        const pontosObtidos = resposta.resultado.respostas.reduce(
             (acc, r) => acc + (r.pontuacao ? Number(r.pontuacao) : 0),
             0
         )
+
+        // Calculate total possible points from the exam
+        const pontosTotais = resposta.resultado.prova.questoes.reduce(
+            (acc, q) => acc + Number(q.pontos),
+            0
+        )
+
+        // Normalize to 0-10 scale
+        const notaFinal = pontosTotais > 0
+            ? (pontosObtidos / pontosTotais) * 10
+            : 0
 
         await prisma.resultadoProva.update({
             where: { id: resposta.resultadoId },
@@ -606,14 +622,33 @@ export async function autoCorrigirMultiplaEscolha(resultadoId: number) {
     // Check if all are now corrigidas
     const updated = await prisma.resultadoProva.findUnique({
         where: { id: resultadoId },
-        include: { respostas: true }
+        include: {
+            respostas: true,
+            prova: {
+                include: {
+                    questoes: true
+                }
+            }
+        }
     })
 
     if (updated && updated.respostas.every(r => r.corrigida)) {
-        const notaFinal = updated.respostas.reduce(
+        // Calculate total points earned
+        const pontosObtidos = updated.respostas.reduce(
             (acc, r) => acc + (r.pontuacao ? Number(r.pontuacao) : 0),
             0
         )
+
+        // Calculate total possible points from the exam
+        const pontosTotais = updated.prova.questoes.reduce(
+            (acc, q) => acc + Number(q.pontos),
+            0
+        )
+
+        // Normalize to 0-10 scale
+        const notaFinal = pontosTotais > 0
+            ? (pontosObtidos / pontosTotais) * 10
+            : 0
 
         await prisma.resultadoProva.update({
             where: { id: resultadoId },
