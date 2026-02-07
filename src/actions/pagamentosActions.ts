@@ -166,7 +166,7 @@ export async function createPagamento(data: CreatePagamentoInput): Promise<{ suc
         return { success: true }
     } catch (error) {
         console.error("Erro ao criar pagamento:", error)
-        return { success: false, error: "Erro ao criar pagamento" }
+        return { success: false, error: error instanceof Error ? error.message : "Erro desconhecido ao criar pagamento" }
     }
 }
 
@@ -206,7 +206,7 @@ export async function updatePagamento(data: UpdatePagamentoInput): Promise<{ suc
         return { success: true }
     } catch (error) {
         console.error("Erro ao atualizar pagamento:", error)
-        return { success: false, error: "Erro ao atualizar pagamento" }
+        return { success: false, error: error instanceof Error ? error.message : "Erro desconhecido ao atualizar pagamento" }
     }
 }
 
@@ -218,7 +218,7 @@ export async function deletePagamento(id: number): Promise<{ success: boolean; e
         return { success: true }
     } catch (error) {
         console.error("Erro ao excluir pagamento:", error)
-        return { success: false, error: "Erro ao excluir pagamento" }
+        return { success: false, error: error instanceof Error ? error.message : "Erro desconhecido ao excluir pagamento" }
     }
 }
 
@@ -240,7 +240,7 @@ export async function toggleStatusPagamento(id: number): Promise<{ success: bool
         return { success: true }
     } catch (error) {
         console.error("Erro ao alterar status:", error)
-        return { success: false, error: "Erro ao alterar status" }
+        return { success: false, error: error instanceof Error ? error.message : "Erro desconhecido ao alterar status" }
     }
 }
 
