@@ -273,18 +273,45 @@ export function PagamentosContent() {
         {
             name: "Nota Fiscal",
             cell: (row) => {
+                const handleDownloadPdf = async (e: React.MouseEvent) => {
+                    e.preventDefault()
+                    if (!row.pdfUrl) return
+
+                    try {
+                        const response = await fetch(row.pdfUrl)
+                        const blob = await response.blob()
+                        const url = window.URL.createObjectURL(blob)
+                        const a = document.createElement("a")
+                        a.href = url
+                        
+                        // Define filename: use notaFiscal or "documento" and ensure .pdf extension
+                        let filename = row.notaFiscal || `Nota Fiscal - ${row.nome} - ${formatDate(row.createdAt)}`
+                        if (!filename.toLowerCase().endsWith(".pdf")) {
+                            filename += ".pdf"
+                        }
+                        
+                        a.download = filename
+                        document.body.appendChild(a)
+                        a.click()
+                        window.URL.revokeObjectURL(url)
+                        document.body.removeChild(a)
+                    } catch (error) {
+                        console.error("Erro ao baixar PDF:", error)
+                        // Fallback: open in new tab if download fails
+                        window.open(row.pdfUrl, "_blank")
+                    }
+                }
+
                 if (row.pdfUrl) {
                     return (
-                        <a 
-                            href={row.pdfUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-hover hover:underline"
+                        <button 
+                            onClick={handleDownloadPdf}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-hover hover:underline cursor-pointer bg-transparent border-none p-0"
                         >
                             <FileText size={14} />
-                            {row.notaFiscal || "Ver PDF"}
-                            <ExternalLink size={12} />
-                        </a>
+                            {row.notaFiscal || "Baixar PDF"}
+                            <Download size={12} />
+                        </button>
                     )
                 }
                 return row.notaFiscal ? (

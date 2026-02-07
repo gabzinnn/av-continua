@@ -133,14 +133,25 @@ export async function uploadPdfToCloudinary(formData: FormData): Promise<{ succe
         const base64 = buffer.toString("base64")
         const dataUri = `data:${file.type};base64,${base64}`
 
-        // Upload to Cloudinary as raw file (for PDFs)
+        // Upload to Cloudinary - use 'image' resource type with page delivery for PDF viewing
         const result = await cloudinary.uploader.upload(dataUri, {
             folder: "av-continua/notas-fiscais",
             resource_type: "raw",
-            format: "pdf",
+            type: "upload",
+            access_mode: "public",
         })
 
-        return { success: true, url: result.secure_url }
+        // Modify URL to allow inline viewing instead of download
+        // Add fl_attachment:false flag to prevent forced download
+        let viewableUrl = result.secure_url
+
+        // For raw PDFs, we need to use a different approach
+        // Replace /raw/upload/ with /raw/upload/fl_attachment:false/ to allow browser viewing
+        if (viewableUrl.includes("/raw/upload/")) {
+            viewableUrl = viewableUrl.replace("/raw/upload/", "/raw/upload/fl_attachment:false/")
+        }
+
+        return { success: true, url: viewableUrl }
     } catch (error) {
         console.error("Upload PDF error:", error)
         return { success: false, error: "Erro ao fazer upload do PDF" }
