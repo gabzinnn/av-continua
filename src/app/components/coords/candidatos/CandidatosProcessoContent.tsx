@@ -254,6 +254,7 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
                 candidato={drawerCandidato}
                 isOpen={!!drawerCandidato}
                 onClose={() => setDrawerCandidato(null)}
+                onCandidatoAtualizado={loadData}
             />
         </div>
     )

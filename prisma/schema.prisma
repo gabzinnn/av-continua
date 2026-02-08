@@ -313,6 +313,8 @@ model Candidato {
   apresArtigo Decimal?     @db.Decimal(5, 2)
   notaCase    EscalaNotas?
 
+  observacao String?
+
   createdAt DateTime @default(now())
 
   resultados ResultadoProva[]

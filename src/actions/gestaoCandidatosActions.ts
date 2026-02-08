@@ -390,7 +390,7 @@ export async function getCandidatosDetalhados(processoId: number): Promise<Candi
             entrevistaStatus,
             capacitacaoStatus: capacitacaoResult.status
         })
-        
+
         const curso = cursosUFRJ.find(curso => curso.value === c.curso)?.label
 
         return {
@@ -401,6 +401,7 @@ export async function getCandidatosDetalhados(processoId: number): Promise<Candi
             periodo: c.periodo,
             dre: c.dre,
             createdAt: c.createdAt,
+            observacao: c.observacao,
             prova: {
                 status: provaStatus,
                 notaFinal: resultado?.notaFinal ? Number(resultado.notaFinal) : null,
@@ -470,4 +471,96 @@ export async function getProcessoSeletivoInfo(id: number): Promise<{
         }
     })
     return processo
+}
+
+// ==========================================
+// AÇÕES DE GESTÃO DE CANDIDATOS
+// ==========================================
+
+/**
+ * Reprova um candidato na etapa atual.
+ * Define a nota da etapa como "R" (Reprovado).
+ */
+export async function reprovarCandidato(
+    candidatoId: number,
+    etapa: number
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const updateData: Record<string, unknown> = {}
+
+        switch (etapa) {
+            case 2: // Dinâmica
+                updateData.notaDinamica = "R"
+                break
+            case 3: // Entrevista
+                updateData.notaEntrevista = "R"
+                break
+            case 4: // Capacitação - reprova no case
+                updateData.notaCase = "R"
+                break
+            default:
+                return { success: false, error: "Etapa inválida para reprovação direta. A prova é corrigida automaticamente." }
+        }
+
+        await prisma.candidato.update({
+            where: { id: candidatoId },
+            data: updateData
+        })
+
+        return { success: true }
+    } catch {
+        return { success: false, error: "Erro ao reprovar candidato" }
+    }
+}
+
+/**
+ * Avança o candidato na etapa atual com a nota informada.
+ */
+export async function avancarEtapaCandidato(
+    candidatoId: number,
+    etapa: number,
+    nota: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const updateData: Record<string, unknown> = {}
+
+        switch (etapa) {
+            case 2: // Dinâmica
+                updateData.notaDinamica = nota
+                break
+            case 3: // Entrevista
+                updateData.notaEntrevista = nota
+                break
+            default:
+                return { success: false, error: "Etapa inválida. Use a aba de notas para editar capacitação." }
+        }
+
+        await prisma.candidato.update({
+            where: { id: candidatoId },
+            data: updateData
+        })
+
+        return { success: true }
+    } catch {
+        return { success: false, error: "Erro ao avançar candidato na etapa" }
+    }
+}
+
+/**
+ * Atualiza a observação de um candidato.
+ */
+export async function atualizarObservacaoCandidato(
+    candidatoId: number,
+    observacao: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await prisma.candidato.update({
+            where: { id: candidatoId },
+            data: { observacao }
+        })
+
+        return { success: true }
+    } catch {
+        return { success: false, error: "Erro ao atualizar observação" }
+    }
 }

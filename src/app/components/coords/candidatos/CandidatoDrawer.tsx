@@ -2,13 +2,16 @@
 
 import { CandidatoDetalhado, ESCALA_NOTAS_MAP, EscalaNotasLabel } from "@/src/types/candidatos"
 import { StatusBadge } from "./StatusBadge"
-import { X, Mail, School } from "lucide-react"
+import { AvaliarEtapaModal } from "./AvaliarEtapaModal"
+import { X, Mail, School, AlertTriangle } from "lucide-react"
 import { useState } from "react"
+import { avancarEtapaCandidato, atualizarObservacaoCandidato } from "@/src/actions/gestaoCandidatosActions"
 
 interface CandidatoDrawerProps {
     candidato: CandidatoDetalhado | null
     isOpen: boolean
     onClose: () => void
+    onCandidatoAtualizado?: () => void
 }
 
 function getInitials(nome: string): string {
@@ -28,12 +31,46 @@ function getStatusGeralLabel(status: string): { label: string; classes: string }
     }
 }
 
-type TabType = "resumo" | "dados" | "notas" | "historico"
+type TabType = "resumo" | "dados" | "notas" | "observacoes"
 
-export function CandidatoDrawer({ candidato, isOpen, onClose }: CandidatoDrawerProps) {
+export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualizado }: CandidatoDrawerProps) {
     const [activeTab, setActiveTab] = useState<TabType>("resumo")
+    const [isAvaliarModalOpen, setIsAvaliarModalOpen] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
+    const [isSavingObs, setIsSavingObs] = useState(false)
+    const [candidateObs, setCandidateObs] = useState<string | null>(null)
+    const [error, setError] = useState<string | null>(null)
     
     if (!candidato) return null
+
+    // Inicializa o estado da observação quando o candidato muda
+    if (candidato.observacao !== candidateObs && !isSavingObs) {
+        setCandidateObs(candidato.observacao)
+    }
+    
+    // Determina se as ações devem estar disponíveis
+    const podeAgir = candidato.statusGeral === "ATIVO" && candidato.etapaAtual >= 2
+    const etapaNome = candidato.etapaAtual === 2 ? "Dinâmica" : 
+                      candidato.etapaAtual === 3 ? "Entrevista" : 
+                      candidato.etapaAtual === 4 ? "Capacitação" : "Prova"
+    
+    const handleAtribuirNota = async (nota: string) => {
+        setIsLoading(true)
+        setError(null)
+        try {
+            const result = await avancarEtapaCandidato(candidato.id, candidato.etapaAtual, nota)
+            if (result.success) {
+                onCandidatoAtualizado?.()
+                onClose()
+            } else {
+                setError(result.error || "Erro ao atribuir nota")
+            }
+        } catch {
+            setError("Erro inesperado ao atribuir nota")
+        } finally {
+            setIsLoading(false)
+        }
+    }
     
     const statusGeral = getStatusGeralLabel(candidato.statusGeral)
     
@@ -84,7 +121,7 @@ export function CandidatoDrawer({ candidato, isOpen, onClose }: CandidatoDrawerP
                 
                 {/* Tabs */}
                 <div className="flex border-b border-border px-6">
-                    {(["resumo", "dados", "notas", "historico"] as TabType[]).map((tab) => (
+                    {(["resumo", "dados", "notas", "observacoes"] as TabType[]).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -94,7 +131,7 @@ export function CandidatoDrawer({ candidato, isOpen, onClose }: CandidatoDrawerP
                                     : "text-text-muted hover:text-text-main"
                             }`}
                         >
-                            {tab === "historico" ? "Histórico" : tab}
+                            {tab === "observacoes" ? "Observações" : tab}
                         </button>
                     ))}
                 </div>
@@ -265,23 +302,77 @@ export function CandidatoDrawer({ candidato, isOpen, onClose }: CandidatoDrawerP
                         </div>
                     )}
                     
-                    {activeTab === "historico" && (
-                        <div className="text-center py-8 text-text-muted">
-                            <p className="text-sm">Histórico de ações em breve...</p>
+                    {activeTab === "observacoes" && (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-semibold text-text-main">Observações do Candidato</h3>
+                                {isSavingObs && <span className="text-xs text-text-muted animate-pulse">Salvando...</span>}
+                            </div>
+                            <textarea
+                                className="w-full h-64 p-4 rounded-lg border border-border bg-gray-50 text-sm text-text-main focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-shadow resize-none"
+                                placeholder="Digite aqui observações importantes sobre o candidato..."
+                                defaultValue={candidato.observacao || ""}
+                                onBlur={async (e) => {
+                                    const value = e.target.value
+                                    if (value === candidateObs) return
+                                    
+                                    setIsSavingObs(true)
+                                    try {
+                                        await atualizarObservacaoCandidato(candidato.id, value)
+                                        setCandidateObs(value)
+                                        onCandidatoAtualizado?.()
+                                    } catch {
+                                        setError("Erro ao salvar observação")
+                                    } finally {
+                                        setIsSavingObs(false)
+                                    }
+                                }}
+                            />
+                            <p className="text-xs text-text-muted">
+                                As alterações são salvas automaticamente ao sair do campo.
+                            </p>
                         </div>
                     )}
                 </div>
                 
                 {/* Footer */}
-                <div className="p-6 border-t border-border bg-gray-50/50 flex gap-3">
-                    <button className="flex-1 py-2.5 px-4 rounded-lg bg-red-100 text-red-700 font-semibold hover:bg-red-200 transition-colors text-sm cursor-pointer">
-                        Reprovar
+                <div className="p-6 border-t border-border bg-gray-50/50 flex flex-col gap-3">
+                    {/* Error display */}
+                    {error && (
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                            <AlertTriangle size={16} />
+                            {error}
+                        </div>
+                    )}
+                    
+                    <button
+                        onClick={() => setIsAvaliarModalOpen(true)}
+                        disabled={!podeAgir || isLoading}
+                        className="w-full py-3 px-4 rounded-lg bg-primary text-text-main font-bold hover:bg-primary-hover shadow-md hover:shadow-lg transition-all text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        <span className="material-symbols-outlined text-lg">edit_note</span>
+                        Atribuir Nota da Etapa
                     </button>
-                    <button className="flex-1 py-2.5 px-4 rounded-lg bg-primary text-text-main font-bold hover:bg-primary-hover shadow-md hover:shadow-lg transition-all text-sm cursor-pointer">
-                        Aprovar Etapa
-                    </button>
+                    
+                    {!podeAgir && (
+                        <p className="text-xs text-text-muted text-center">
+                            {candidato.statusGeral === "REPROVADO" ? "Candidato já reprovado." :
+                             candidato.statusGeral === "APROVADO" ? "Candidato já aprovado no PS." :
+                             candidato.etapaAtual === 1 ? "A prova é corrigida automaticamente." :
+                             ""}
+                        </p>
+                    )}
                 </div>
             </div>
+            
+            {/* Modal de avaliação */}
+            <AvaliarEtapaModal
+                isOpen={isAvaliarModalOpen}
+                onClose={() => setIsAvaliarModalOpen(false)}
+                onConfirm={handleAtribuirNota}
+                etapaNome={etapaNome}
+                isLoading={isLoading}
+            />
         </>
     )
 }

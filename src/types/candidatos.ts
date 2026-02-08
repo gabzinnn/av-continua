@@ -29,6 +29,7 @@ export type CandidatoDetalhado = {
     periodo: string | null
     dre: string
     createdAt: Date
+    observacao: string | null
     // Etapa 1: Prova
     prova: {
         status: StatusEtapa
