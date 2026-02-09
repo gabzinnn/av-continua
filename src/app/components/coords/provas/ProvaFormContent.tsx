@@ -373,7 +373,7 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
                             <textarea
                                 value={descricao}
                                 onChange={(e) => setDescricao(e.target.value)}
-                                placeholder="Instruções para os candidatos..."
+                                placeholder="Observações internas..."
                                 rows={3}
                                 className="w-full rounded-lg border border-border p-4 bg-gray-50 text-text-main focus:border-primary focus:ring-primary min-h-[80px] text-sm resize-y outline-none"
                             />
