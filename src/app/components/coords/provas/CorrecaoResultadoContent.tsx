@@ -8,7 +8,8 @@ import { Button } from "@/src/app/components/Button"
 import {
     getResultadoDetalhado,
     corrigirResposta,
-    autoCorrigirMultiplaEscolha
+    autoCorrigirMultiplaEscolha,
+    aprovarCandidatoProva
 } from "@/src/actions/provasActions"
 import { TipoQuestao } from "@/src/generated/prisma/client"
 
@@ -43,6 +44,7 @@ type ResultadoDetalhado = {
     id: number
     status: string
     notaFinal: number | null
+    aprovadoProva: boolean | null
     tempoGasto: number | null
     iniciadoEm: Date
     finalizadoEm: Date | null
@@ -76,6 +78,7 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
     const [isLoading, setIsLoading] = useState(true)
     const [localPontuacoes, setLocalPontuacoes] = useState<Record<number, number>>({})
     const [savingId, setSavingId] = useState<number | null>(null)
+    const [savingAprovacao, setSavingAprovacao] = useState(false)
 
     useEffect(() => {
         loadData()
@@ -107,6 +110,13 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
         await corrigirResposta(respostaId, localPontuacoes[respostaId] || 0)
         await loadData()
         setSavingId(null)
+    }
+
+    const handleAprovar = async (aprovado: boolean) => {
+        setSavingAprovacao(true)
+        await aprovarCandidatoProva(resultadoId, aprovado)
+        await loadData()
+        setSavingAprovacao(false)
     }
 
     const getQuestaoFromProva = (questaoId: number) => {
@@ -212,6 +222,61 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                         </div>
                     </div>
                 </div>
+
+                {/* Seção de Aprovação Manual */}
+                {resultado.status === "CORRIGIDA" && (
+                    <div className="bg-white rounded-xl border border-border shadow-sm p-6">
+                        <h3 className="text-lg font-bold text-text-main mb-4">Aprovação do Candidato</h3>
+                        <p className="text-sm text-text-muted mb-4">
+                            A aprovação é <strong>independente da nota</strong>. Defina manualmente se o candidato foi aprovado ou reprovado na prova.
+                        </p>
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-text-muted">Nota Final:</span>
+                                <span className="text-lg font-bold text-text-main">
+                                    {notaParcial.toFixed(1)} / {pontuacaoTotal.toFixed(1)}
+                                </span>
+                            </div>
+                            <div className="h-8 w-px bg-border" />
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-text-muted">Status:</span>
+                                {resultado.aprovadoProva === null ? (
+                                    <span className="px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 text-sm font-medium">Aguardando decisão</span>
+                                ) : resultado.aprovadoProva ? (
+                                    <span className="px-2 py-0.5 rounded bg-green-100 text-green-700 text-sm font-medium">Aprovado</span>
+                                ) : (
+                                    <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 text-sm font-medium">Reprovado</span>
+                                )}
+                            </div>
+                            <div className="ml-auto flex gap-3">
+                                <button
+                                    onClick={() => handleAprovar(false)}
+                                    disabled={savingAprovacao}
+                                    className={`flex items-center gap-2 h-10 px-4 rounded-lg text-sm font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                                        resultado.aprovadoProva === false
+                                            ? "bg-red-600 text-white"
+                                            : "bg-white border border-red-300 text-red-600 hover:bg-red-50"
+                                    }`}
+                                >
+                                    <XCircle size={18} />
+                                    Reprovar
+                                </button>
+                                <button
+                                    onClick={() => handleAprovar(true)}
+                                    disabled={savingAprovacao}
+                                    className={`flex items-center gap-2 h-10 px-4 rounded-lg text-sm font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                                        resultado.aprovadoProva === true
+                                            ? "bg-green-600 text-white"
+                                            : "bg-white border border-green-300 text-green-600 hover:bg-green-50"
+                                    }`}
+                                >
+                                    <CheckCircle size={18} />
+                                    Aprovar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Questões */}
                 <div className="space-y-4">

@@ -74,9 +74,9 @@ export async function getProcessosSeletivosComStats(): Promise<ProcessoSeletivoC
         const inscritosIds = new Set(todosResultados.map(r => r.candidato.id))
         const totalInscritos = inscritosIds.size
 
-        // Contar candidatos únicos (aprovados) - considera aprovado se tiver pelo menos uma nota >= 6
+        // Contar candidatos únicos (aprovados) - considera aprovado APENAS quem passou na Capacitação (etapa final)
         const aprovadosIds = new Set(todosResultados.filter(r =>
-            r.status === "CORRIGIDA" && r.notaFinal !== null && Number(r.notaFinal) >= 6
+            r.candidato.aprovadoCapacitacao === true
         ).map(r => r.candidato.id))
         const totalAprovados = aprovadosIds.size
 
@@ -130,7 +130,7 @@ export async function getProcessoSeletivoDetalhes(id: number) {
     const finalizadosIds = new Set(todosResultados.filter(r => r.finalizadoEm !== null).map(r => r.candidato.id))
     const corrigidosIds = new Set(todosResultados.filter(r => r.status === "CORRIGIDA").map(r => r.candidato.id))
     const aprovadosIds = new Set(todosResultados.filter(r =>
-        r.status === "CORRIGIDA" && r.notaFinal !== null && Number(r.notaFinal) >= 6
+        r.candidato.aprovadoCapacitacao === true
     ).map(r => r.candidato.id))
 
     return {
@@ -233,29 +233,41 @@ function getEscalaNotasLabel(valor: string | null): EscalaNotasLabel | null {
     return ESCALA_NOTAS_MAP[valor] || null
 }
 
-function calcularStatusProva(notaFinal: number | null, status: string | null): StatusEtapa {
+function calcularStatusProva(aprovadoProva: boolean | null, status: string | null): StatusEtapa {
     if (!status || status === "PENDENTE") return "AGUARDANDO"
-    if (status === "CORRIGIDA" && notaFinal !== null) {
-        return notaFinal >= 6 ? "APROVADO" : "REPROVADO"
+    if (status === "CORRIGIDA") {
+        if (aprovadoProva === true) return "APROVADO"
+        if (aprovadoProva === false) return "REPROVADO"
+        return "PENDENTE" // Corrigido mas sem decisão de aprovação ainda
     }
     return "PENDENTE"
 }
 
-function calcularStatusEscala(nota: string | null, etapaAnteriorAprovada: boolean): StatusEtapa {
+function calcularStatusEscala(nota: string | null, etapaAnteriorAprovada: boolean, aprovadoManual: boolean | null): StatusEtapa {
     if (!etapaAnteriorAprovada) return "BLOQUEADO"
-    if (!nota) return "PENDENTE"
-    const label = ESCALA_NOTAS_MAP[nota]
-    if (label?.cor === "red") return "REPROVADO"
-    return "APROVADO"
+
+    // Prioridade total para a decisão manual
+    if (aprovadoManual === true) return "APROVADO"
+    if (aprovadoManual === false) return "REPROVADO"
+
+    // Se tem nota mas não tem decisão, está em andamento (aguardando decisão)
+    if (nota) return "EM_ANDAMENTO"
+
+    return "PENDENTE"
 }
 
 function calcularStatusCapacitacao(
     notaArtigo: number | null,
     apresArtigo: number | null,
     notaCase: string | null,
-    entrevistaAprovada: boolean
+    entrevistaAprovada: boolean,
+    aprovadoManual: boolean | null
 ): { status: StatusEtapa; progresso: number } {
     if (!entrevistaAprovada) return { status: "BLOQUEADO", progresso: 0 }
+
+    // Prioridade total para a decisão manual
+    if (aprovadoManual === true) return { status: "APROVADO", progresso: 100 }
+    if (aprovadoManual === false) return { status: "REPROVADO", progresso: 100 }
 
     let completados = 0
     if (notaArtigo !== null) completados++
@@ -264,15 +276,9 @@ function calcularStatusCapacitacao(
 
     const progresso = Math.round((completados / 3) * 100)
 
-    if (completados === 0) return { status: "PENDENTE", progresso: 0 }
-    if (completados < 3) return { status: "EM_ANDAMENTO", progresso }
+    if (completados > 0) return { status: "EM_ANDAMENTO", progresso }
 
-    // Verificar se foi reprovado no case
-    if (notaCase && ESCALA_NOTAS_MAP[notaCase]?.cor === "red") {
-        return { status: "REPROVADO", progresso: 100 }
-    }
-
-    return { status: "APROVADO", progresso: 100 }
+    return { status: "PENDENTE", progresso: 0 }
 }
 
 function calcularStatusGeral(candidato: {
@@ -325,7 +331,8 @@ export async function getCandidatosDetalhados(processoId: number): Promise<Candi
         where: {
             resultados: {
                 some: {
-                    provaId: { in: provaIds }
+                    provaId: { in: provaIds },
+                    aprovadoProva: true // Filtrar apenas candidatos aprovados na prova
                 }
             }
         },
@@ -353,28 +360,34 @@ export async function getCandidatosDetalhados(processoId: number): Promise<Candi
 
         // Calcular status da prova
         const provaStatus = calcularStatusProva(
-            resultado?.notaFinal ? Number(resultado.notaFinal) : null,
+            resultado?.aprovadoProva ?? null,
             resultado?.status || null
         )
         const provaAprovada = provaStatus === "APROVADO"
 
         // Calcular status da dinâmica
-        const dinamicaStatus = calcularStatusEscala(c.notaDinamica, provaAprovada)
+        const dinamicaStatus = calcularStatusEscala(
+            c.notaDinamica,
+            provaAprovada,
+            c.aprovadoDinamica
+        )
         const dinamicaAprovada = dinamicaStatus === "APROVADO"
 
         // Calcular status da entrevista
         const entrevistaStatus = calcularStatusEscala(
             c.notaEntrevista,
-            provaAprovada && dinamicaAprovada
+            provaAprovada && dinamicaAprovada,
+            c.aprovadoEntrevista
         )
         const entrevistaAprovada = entrevistaStatus === "APROVADO"
 
         // Calcular status da capacitação
         const capacitacaoResult = calcularStatusCapacitacao(
-            c.notaArtigo ? Number(c.notaArtigo) : null,
-            c.apresArtigo ? Number(c.apresArtigo) : null,
+            c.notaArtigo !== null ? Number(c.notaArtigo) : null,
+            c.apresArtigo !== null ? Number(c.apresArtigo) : null,
             c.notaCase,
-            entrevistaAprovada
+            entrevistaAprovada,
+            c.aprovadoCapacitacao
         )
 
         const statusGeral = calcularStatusGeral({
@@ -411,20 +424,23 @@ export async function getCandidatosDetalhados(processoId: number): Promise<Candi
             dinamica: {
                 status: dinamicaStatus,
                 nota: c.notaDinamica,
-                notaLabel: getEscalaNotasLabel(c.notaDinamica)
+                notaLabel: getEscalaNotasLabel(c.notaDinamica),
+                aprovado: c.aprovadoDinamica
             },
             entrevista: {
                 status: entrevistaStatus,
                 nota: c.notaEntrevista,
-                notaLabel: getEscalaNotasLabel(c.notaEntrevista)
+                notaLabel: getEscalaNotasLabel(c.notaEntrevista),
+                aprovado: c.aprovadoEntrevista
             },
             capacitacao: {
                 status: capacitacaoResult.status,
                 progresso: capacitacaoResult.progresso,
-                notaArtigo: c.notaArtigo ? Number(c.notaArtigo) : null,
-                apresArtigo: c.apresArtigo ? Number(c.apresArtigo) : null,
+                notaArtigo: c.notaArtigo !== null ? Number(c.notaArtigo) : null,
+                apresArtigo: c.apresArtigo !== null ? Number(c.apresArtigo) : null,
                 notaCase: c.notaCase,
-                notaCaseLabel: getEscalaNotasLabel(c.notaCase)
+                notaCaseLabel: getEscalaNotasLabel(c.notaCase),
+                aprovado: c.aprovadoCapacitacao
             },
             statusGeral,
             etapaAtual
@@ -562,5 +578,69 @@ export async function atualizarObservacaoCandidato(
         return { success: true }
     } catch {
         return { success: false, error: "Erro ao atualizar observação" }
+    }
+}
+
+/**
+ * Aprova ou reprova um candidato em uma etapa específica.
+ * Isso é separado da atribuição de nota - pode ser feito em momentos diferentes.
+ */
+export async function aprovarEtapaCandidato(
+    candidatoId: number,
+    etapa: number,
+    aprovado: boolean
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const updateData: Record<string, unknown> = {}
+
+        switch (etapa) {
+            case 2: // Dinâmica
+                updateData.aprovadoDinamica = aprovado
+                break
+            case 3: // Entrevista
+                updateData.aprovadoEntrevista = aprovado
+                break
+            case 4: // Capacitação
+                updateData.aprovadoCapacitacao = aprovado
+                break
+            default:
+                return { success: false, error: "Etapa inválida. Use a correção de prova para aprovar na etapa 1." }
+        }
+
+        await prisma.candidato.update({
+            where: { id: candidatoId },
+            data: updateData
+        })
+
+        return { success: true }
+    } catch {
+        return { success: false, error: "Erro ao atualizar status de aprovação" }
+    }
+}
+
+/**
+ * Salva as notas da etapa de capacitação.
+ */
+export async function salvarNotasCapacitacao(
+    candidatoId: number,
+    dados: {
+        notaArtigo: number | null
+        apresArtigo: number | null
+        notaCase: string | null
+    }
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await prisma.candidato.update({
+            where: { id: candidatoId },
+            data: {
+                notaArtigo: dados.notaArtigo,
+                apresArtigo: dados.apresArtigo,
+                notaCase: dados.notaCase ? (dados.notaCase as any) : null
+            }
+        })
+
+        return { success: true }
+    } catch {
+        return { success: false, error: "Erro ao salvar notas da capacitação" }
     }
 }

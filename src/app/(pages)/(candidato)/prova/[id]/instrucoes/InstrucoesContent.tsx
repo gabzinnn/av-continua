@@ -20,24 +20,34 @@ interface InstrucoesContentProps {
 
 const instrucoes = [
     {
-        icon: "check_circle",
-        title: "Conexão de Internet",
-        description: "Verifique se sua conexão está estável. Interrupções podem afetar o envio das respostas.",
+        icon: "info",
+        title: "Sobre a Prova",
+        description: "A Prova é composta por questões objetivas e discursivas, e pode ser realizada sem qualquer conhecimento prévio sobre temas de consultoria e negócios.",
     },
     {
-        icon: "check_circle",
-        title: "Ambiente do Navegador",
-        description: "Não feche a janela ou troque de aba durante a prova. O sistema monitora a atividade.",
+        icon: "edit_note",
+        title: "Material Recomendado",
+        description: "Recomendamos que tenha em mãos papel e caneta para eventuais anotações e cálculos.",
+    },
+    {
+        icon: "person",
+        title: "Execução Individual",
+        description: "A realização deve ocorrer de forma individual, sem auxílio externo.",
+    },
+    {
+        icon: "quiz",
+        title: "Interpretação",
+        description: "As interpretações dos enunciados fazem parte da avaliação, portanto, não serão prestados esclarecimentos adicionais.",
+    },
+    {
+        icon: "wifi",
+        title: "Conexão de Internet",
+        description: "Verifique se sua conexão está estável. Interrupções podem afetar o envio das respostas.",
     },
     {
         icon: "schedule",
         title: "Duração",
         description: "", // Será preenchido dinamicamente
-    },
-    {
-        icon: "rule",
-        title: "Pontuação",
-        description: "Questões não respondidas serão automaticamente zeradas ao fim do tempo.",
     },
     {
         icon: "forward",

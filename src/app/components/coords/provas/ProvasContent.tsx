@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Search, Plus, MoreVertical, Clock, ListChecks, FileText, BarChart3, Trash2, Edit, Eye } from "lucide-react"
+import { Search, Plus, MoreVertical, Clock, ListChecks, FileText, BarChart3, Trash2, Edit, Eye, Copy, ArrowUpDown } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
-import { getAllProvas, deleteProva, ProvaCompleta } from "@/src/actions/provasActions"
+import { getAllProvas, deleteProva, duplicateProva, ProvaCompleta, OrderByOption } from "@/src/actions/provasActions"
 import { StatusProva } from "@/src/generated/prisma/client"
 import { DeleteProvaModal } from "./DeleteProvaModal"
 
@@ -59,17 +59,19 @@ export function ProvasContent() {
     const [provas, setProvas] = useState<ProvaCompleta[]>([])
     const [busca, setBusca] = useState("")
     const [statusFilter, setStatusFilter] = useState<StatusProva | "">("")
+    const [orderBy, setOrderBy] = useState<OrderByOption>("updatedAt_desc")
     const [isLoading, setIsLoading] = useState(true)
+    const [isDuplicating, setIsDuplicating] = useState(false)
     const [openMenuId, setOpenMenuId] = useState<number | null>(null)
     const [provaToDelete, setProvaToDelete] = useState<ProvaCompleta | null>(null)
     const router = useRouter()
 
     const loadData = useCallback(async () => {
         setIsLoading(true)
-        const data = await getAllProvas(busca, statusFilter || undefined)
+        const data = await getAllProvas(busca, statusFilter || undefined, orderBy)
         setProvas(data)
         setIsLoading(false)
-    }, [busca, statusFilter])
+    }, [busca, statusFilter, orderBy])
 
     useEffect(() => {
         loadData()
@@ -80,6 +82,20 @@ export function ProvasContent() {
             await deleteProva(provaToDelete.id)
             setProvaToDelete(null)
             loadData()
+        }
+    }
+
+    const handleDuplicate = async (id: number) => {
+        setIsDuplicating(true)
+        try {
+            await duplicateProva(id)
+            setOpenMenuId(null)
+            loadData()
+        } catch (error) {
+            console.error("Erro ao duplicar prova:", error)
+            alert("Erro ao duplicar prova")
+        } finally {
+            setIsDuplicating(false)
         }
     }
 
@@ -136,6 +152,23 @@ export function ProvasContent() {
                                 <option value="PUBLICADA">Publicada</option>
                                 <option value="ENCERRADA">Encerrada</option>
                             </select>
+                        </div>
+
+                        {/* Sort Order */}
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <ArrowUpDown size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                                <select
+                                    value={orderBy}
+                                    onChange={(e) => setOrderBy(e.target.value as OrderByOption)}
+                                    className="h-11 pl-10 pr-4 bg-white border border-border rounded-lg text-text-main focus:ring-2 focus:ring-primary focus:border-transparent outline-none cursor-pointer appearance-none min-w-[180px]"
+                                >
+                                    <option value="updatedAt_desc">Mais recentes</option>
+                                    <option value="updatedAt_asc">Mais antigas</option>
+                                    <option value="titulo_asc">Nome (A-Z)</option>
+                                    <option value="titulo_desc">Nome (Z-A)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -198,6 +231,16 @@ export function ProvasContent() {
                                                                             Ver Resultados
                                                                         </Link>
                                                                     )}
+
+                                                                    <button
+                                                                        onClick={() => handleDuplicate(prova.id)}
+                                                                        disabled={isDuplicating}
+                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-text-main hover:bg-gray-50 cursor-pointer disabled:opacity-50"
+                                                                    >
+                                                                        <Copy size={16} />
+                                                                        Duplicar
+                                                                    </button>
+                                                                    <div className="h-px bg-border my-1"></div>
                                                                     <button
                                                                         onClick={() => {
                                                                             setProvaToDelete(prova)

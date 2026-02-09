@@ -306,12 +306,16 @@ model Candidato {
   periodo String?
   dre     String  @unique @default("")
 
-  notaDinamica   EscalaNotas?
-  notaEntrevista EscalaNotas?
+  notaDinamica     EscalaNotas?
+  aprovadoDinamica Boolean? // null = não decidido, true = aprovado, false = reprovado
 
-  notaArtigo  Decimal?     @db.Decimal(5, 2)
-  apresArtigo Decimal?     @db.Decimal(5, 2)
-  notaCase    EscalaNotas?
+  notaEntrevista     EscalaNotas?
+  aprovadoEntrevista Boolean? // null = não decidido, true = aprovado, false = reprovado
+
+  notaArtigo          Decimal?     @db.Decimal(5, 2)
+  apresArtigo         Decimal?     @db.Decimal(5, 2)
+  notaCase            EscalaNotas?
+  aprovadoCapacitacao Boolean? // null = não decidido, true = aprovado, false = reprovado
 
   observacao String?
 
@@ -321,14 +325,15 @@ model Candidato {
 }
 
 model ResultadoProva {
-  id           Int             @id @default(autoincrement())
-  provaId      Int
-  candidatoId  Int
-  status       StatusResultado @default(PENDENTE)
-  notaFinal    Decimal?        @db.Decimal(10, 2)
-  tempoGasto   Int?
-  iniciadoEm   DateTime        @default(now())
-  finalizadoEm DateTime?
+  id            Int             @id @default(autoincrement())
+  provaId       Int
+  candidatoId   Int
+  status        StatusResultado @default(PENDENTE)
+  notaFinal     Decimal?        @db.Decimal(10, 2)
+  aprovadoProva Boolean? // null = não decidido, true = aprovado, false = reprovado
+  tempoGasto    Int?
+  iniciadoEm    DateTime        @default(now())
+  finalizadoEm  DateTime?
 
   prova     Prova             @relation(fields: [provaId], references: [id], onDelete: Cascade)
   candidato Candidato         @relation(fields: [candidatoId], references: [id])

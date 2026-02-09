@@ -638,7 +638,8 @@ function QuestaoEditor({
                             </label>
                             <input
                                 type="number"
-                                step="0.5"
+                                step="0.01"
+                                min="0"
                                 value={questao.pontos}
                                 onChange={(e) => onUpdate({ pontos: parseFloat(e.target.value) || 0 })}
                                 className="w-full rounded-lg border border-border px-2 bg-gray-50 text-text-main focus:border-primary focus:ring-primary h-10 text-center font-bold outline-none"

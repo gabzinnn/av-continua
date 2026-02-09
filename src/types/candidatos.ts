@@ -42,12 +42,14 @@ export type CandidatoDetalhado = {
         status: StatusEtapa
         nota: string | null
         notaLabel: EscalaNotasLabel | null
+        aprovado: boolean | null
     }
     // Etapa 3: Entrevista
     entrevista: {
         status: StatusEtapa
         nota: string | null
         notaLabel: EscalaNotasLabel | null
+        aprovado: boolean | null
     }
     // Etapa 4: Capacitação
     capacitacao: {
@@ -57,6 +59,7 @@ export type CandidatoDetalhado = {
         apresArtigo: number | null
         notaCase: string | null
         notaCaseLabel: EscalaNotasLabel | null
+        aprovado: boolean | null
     }
     // Status geral
     statusGeral: StatusCandidato

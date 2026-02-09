@@ -106,6 +106,7 @@ export type ResultadoProvaCompleto = {
     candidatoId: number
     status: StatusResultado
     notaFinal: number | null
+    aprovadoProva: boolean | null
     tempoGasto: number | null
     iniciadoEm: Date
     finalizadoEm: Date | null
@@ -129,7 +130,27 @@ export type ResultadoProvaCompleto = {
 // PROVA CRUD
 // ==========================================
 
-export async function getAllProvas(busca?: string, status?: StatusProva) {
+export type OrderByOption = "updatedAt_desc" | "updatedAt_asc" | "titulo_asc" | "titulo_desc"
+
+export async function getAllProvas(busca?: string, status?: StatusProva, orderBy: OrderByOption = "updatedAt_desc") {
+    let orderByClause: any = { updatedAt: "desc" }
+
+    switch (orderBy) {
+        case "updatedAt_asc":
+            orderByClause = { updatedAt: "asc" }
+            break
+        case "titulo_asc":
+            orderByClause = { titulo: "asc" }
+            break
+        case "titulo_desc":
+            orderByClause = { titulo: "desc" }
+            break
+        case "updatedAt_desc":
+        default:
+            orderByClause = { updatedAt: "desc" }
+            break
+    }
+
     const provas = await prisma.prova.findMany({
         where: {
             AND: [
@@ -167,7 +188,7 @@ export async function getAllProvas(busca?: string, status?: StatusProva) {
                 }
             }
         },
-        orderBy: { updatedAt: "desc" }
+        orderBy: orderByClause
     })
 
     return provas.map(prova => ({
@@ -222,6 +243,66 @@ export async function getProvaById(id: number) {
         })),
         pontuacaoTotal: prova.questoes.reduce((acc, q) => acc + Number(q.pontos), 0)
     } as ProvaCompleta
+}
+
+export async function duplicateProva(id: number) {
+    // 1. Buscar a prova original com todas as relações
+    const original = await prisma.prova.findUnique({
+        where: { id },
+        include: {
+            questoes: {
+                include: {
+                    alternativas: true,
+                    imagens: true
+                }
+            }
+        }
+    })
+
+    if (!original) throw new Error("Prova não encontrada")
+
+    // 2. Criar a nova prova com os dados básicos
+    const novaProva = await prisma.prova.create({
+        data: {
+            titulo: `${original.titulo} (Cópia)`,
+            descricao: original.descricao,
+            tempoLimite: original.tempoLimite,
+            embaralhar: original.embaralhar,
+            status: "RASCUNHO", // Sempre começa como rascunho
+            processoSeletivoId: original.processoSeletivoId
+            // createdAt e updatedAt são automáticos
+        }
+    })
+
+    // 3. Criar as questões, alternativas e imagens para a nova prova
+    if (original.questoes && original.questoes.length > 0) {
+        for (const questao of original.questoes) {
+            await prisma.questao.create({
+                data: {
+                    provaId: novaProva.id,
+                    tipo: questao.tipo,
+                    enunciado: questao.enunciado,
+                    pontos: questao.pontos,
+                    ordem: questao.ordem,
+                    imagens: {
+                        create: questao.imagens.map(img => ({
+                            url: img.url,
+                            ordem: img.ordem
+                        }))
+                    },
+                    alternativas: {
+                        create: questao.alternativas.map(alt => ({
+                            texto: alt.texto,
+                            correta: alt.correta,
+                            ordem: alt.ordem
+                        }))
+                    }
+                }
+            })
+        }
+    }
+
+    return novaProva
 }
 
 export async function createProva(data: ProvaData) {
@@ -668,6 +749,25 @@ export async function autoCorrigirMultiplaEscolha(resultadoId: number) {
             ...r,
             pontuacao: r.pontuacao ? Number(r.pontuacao) : null
         }))
+    }
+}
+
+// ==========================================
+// APROVAÇÃO MANUAL DE CANDIDATOS
+// ==========================================
+
+export async function aprovarCandidatoProva(
+    resultadoId: number,
+    aprovado: boolean
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await prisma.resultadoProva.update({
+            where: { id: resultadoId },
+            data: { aprovadoProva: aprovado }
+        })
+        return { success: true }
+    } catch {
+        return { success: false, error: "Erro ao atualizar status de aprovação" }
     }
 }
 

@@ -3,9 +3,9 @@
 import { CandidatoDetalhado, ESCALA_NOTAS_MAP, EscalaNotasLabel } from "@/src/types/candidatos"
 import { StatusBadge } from "./StatusBadge"
 import { AvaliarEtapaModal } from "./AvaliarEtapaModal"
-import { X, Mail, School, AlertTriangle } from "lucide-react"
+import { X, Mail, School, AlertTriangle, CheckCircle, XCircle } from "lucide-react"
 import { useState } from "react"
-import { avancarEtapaCandidato, atualizarObservacaoCandidato } from "@/src/actions/gestaoCandidatosActions"
+import { avancarEtapaCandidato, atualizarObservacaoCandidato, aprovarEtapaCandidato, salvarNotasCapacitacao } from "@/src/actions/gestaoCandidatosActions"
 
 interface CandidatoDrawerProps {
     candidato: CandidatoDetalhado | null
@@ -48,20 +48,26 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
         setCandidateObs(candidato.observacao)
     }
     
-    // Determina se as ações devem estar disponíveis
-    const podeAgir = candidato.statusGeral === "ATIVO" && candidato.etapaAtual >= 2
+    // Determina se as ações devem estar disponíveis (permite editar reprovados para correção)
+    const podeAgir = (candidato.statusGeral === "ATIVO" || candidato.statusGeral === "REPROVADO") && candidato.etapaAtual >= 2
     const etapaNome = candidato.etapaAtual === 2 ? "Dinâmica" : 
                       candidato.etapaAtual === 3 ? "Entrevista" : 
                       candidato.etapaAtual === 4 ? "Capacitação" : "Prova"
     
-    const handleAtribuirNota = async (nota: string) => {
+    const handleAtribuirNota = async (data: any) => {
         setIsLoading(true)
         setError(null)
         try {
-            const result = await avancarEtapaCandidato(candidato.id, candidato.etapaAtual, nota)
+            let result;
+            if (candidato.etapaAtual === 4) {
+                 result = await salvarNotasCapacitacao(candidato.id, data)
+            } else {
+                 result = await avancarEtapaCandidato(candidato.id, candidato.etapaAtual, data)
+            }
+
             if (result.success) {
                 onCandidatoAtualizado?.()
-                onClose()
+                setIsAvaliarModalOpen(false)
             } else {
                 setError(result.error || "Erro ao atribuir nota")
             }
@@ -71,6 +77,35 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
             setIsLoading(false)
         }
     }
+    
+    const handleAprovar = async (aprovado: boolean) => {
+        setIsLoading(true)
+        setError(null)
+        try {
+            const result = await aprovarEtapaCandidato(candidato.id, candidato.etapaAtual, aprovado)
+            if (result.success) {
+                onCandidatoAtualizado?.()
+                onClose()
+            } else {
+                setError(result.error || "Erro ao atualizar aprovação")
+            }
+        } catch {
+            setError("Erro inesperado ao atualizar aprovação")
+        } finally {
+            setIsLoading(false)
+        }
+    }
+    
+    // Obter status de aprovação da etapa atual
+    const getAprovacaoAtual = (): boolean | null => {
+        switch (candidato.etapaAtual) {
+            case 2: return candidato.dinamica.aprovado
+            case 3: return candidato.entrevista.aprovado
+            case 4: return candidato.capacitacao.aprovado
+            default: return null
+        }
+    }
+    const aprovacaoAtual = getAprovacaoAtual()
     
     const statusGeral = getStatusGeralLabel(candidato.statusGeral)
     
@@ -121,7 +156,7 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
                 
                 {/* Tabs */}
                 <div className="flex border-b border-border px-6">
-                    {(["resumo", "dados", "notas", "observacoes"] as TabType[]).map((tab) => (
+                    {(["resumo", "notas", "dados", "observacoes"] as TabType[]).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -195,6 +230,32 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
                                         status={candidato.capacitacao.status}
                                         etapaAtual={candidato.etapaAtual === 4}
                                         nota={candidato.capacitacao.progresso > 0 ? `${candidato.capacitacao.progresso}%` : null}
+                                        details={
+                                            (candidato.capacitacao.notaArtigo !== null || candidato.capacitacao.apresArtigo !== null || candidato.capacitacao.notaCase !== null) ? (
+                                                <div className="flex flex-col gap-1.5 mt-1.5 pt-1">
+                                                    {candidato.capacitacao.notaArtigo !== null && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-text-muted">Artigo:</span>
+                                                            <span className="font-semibold text-text-main">{candidato.capacitacao.notaArtigo.toFixed(1)} <span className="text-[10px] text-text-muted font-normal">/ 5.0</span></span>
+                                                        </div>
+                                                    )}
+                                                    {candidato.capacitacao.apresArtigo !== null && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-text-muted">Apres.:</span>
+                                                            <span className="font-semibold text-text-main">{candidato.capacitacao.apresArtigo.toFixed(1)} <span className="text-[10px] text-text-muted font-normal">/ 5.0</span></span>
+                                                        </div>
+                                                    )}
+                                                    {candidato.capacitacao.notaCase !== null && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-text-muted">Case:</span>
+                                                            <span className={`font-bold ${candidato.capacitacao.notaCaseLabel?.cor === "red" ? "text-red-600" : "text-green-600"}`}>
+                                                                {candidato.capacitacao.notaCaseLabel?.valor || candidato.capacitacao.notaCase}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : null
+                                        }
                                     />
                                 </div>
                             </div>
@@ -345,6 +406,7 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
                         </div>
                     )}
                     
+                    {/* Botão de atribuir nota */}
                     <button
                         onClick={() => setIsAvaliarModalOpen(true)}
                         disabled={!podeAgir || isLoading}
@@ -353,6 +415,56 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
                         <span className="material-symbols-outlined text-lg">edit_note</span>
                         Atribuir Nota da Etapa
                     </button>
+                    
+                    {/* Seção de Aprovação - separada do botão de nota */}
+                    {podeAgir && (
+                        <div className="pt-3 border-t border-border flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                                    Decisão de Aprovação
+                                </span>
+                                {aprovacaoAtual === null ? (
+                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">
+                                        Aguardando
+                                    </span>
+                                ) : aprovacaoAtual ? (
+                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                                        Aprovado
+                                    </span>
+                                ) : (
+                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
+                                        Reprovado
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => handleAprovar(false)}
+                                    disabled={isLoading}
+                                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                                        aprovacaoAtual === false
+                                            ? "bg-red-600 text-white"
+                                            : "border border-red-300 text-red-600 hover:bg-red-50"
+                                    }`}
+                                >
+                                    <XCircle size={16} />
+                                    Reprovar
+                                </button>
+                                <button
+                                    onClick={() => handleAprovar(true)}
+                                    disabled={isLoading}
+                                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                                        aprovacaoAtual === true
+                                            ? "bg-green-600 text-white"
+                                            : "border border-green-300 text-green-600 hover:bg-green-50"
+                                    }`}
+                                >
+                                    <CheckCircle size={16} />
+                                    Aprovar
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     
                     {!podeAgir && (
                         <p className="text-xs text-text-muted text-center">
@@ -371,6 +483,14 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
                 onClose={() => setIsAvaliarModalOpen(false)}
                 onConfirm={handleAtribuirNota}
                 etapaNome={etapaNome}
+                etapaAtual={candidato.etapaAtual}
+                valoresAtuais={{
+                    notaDinamica: candidato.dinamica.nota,
+                    notaEntrevista: candidato.entrevista.nota,
+                    notaArtigo: candidato.capacitacao.notaArtigo,
+                    apresArtigo: candidato.capacitacao.apresArtigo,
+                    notaCase: candidato.capacitacao.notaCase
+                }}
                 isLoading={isLoading}
             />
         </>
@@ -384,7 +504,8 @@ function TimelineItem({
     etapaAtual, 
     nota, 
     notaLabel,
-    notaSuffix 
+    notaSuffix,
+    details
 }: { 
     title: string
     status: string
@@ -392,6 +513,7 @@ function TimelineItem({
     nota: string | null
     notaLabel?: string
     notaSuffix?: string
+    details?: React.ReactNode
 }) {
     const dotColor = status === "APROVADO" ? "bg-green-500" :
                      status === "REPROVADO" ? "bg-red-500" :
@@ -400,7 +522,7 @@ function TimelineItem({
     
     return (
         <div className="relative">
-            <div className={`absolute -left-[21px] top-0 h-4 w-4 rounded-full ${dotColor} border-2 border-white`} />
+            <div className={`absolute -left-[25px] top-0.5 h-4 w-4 rounded-full ${dotColor} border-2 border-white`} />
             <div className="flex justify-between items-start">
                 <div>
                     <p className="text-sm font-bold text-text-main">{title}</p>
@@ -420,6 +542,11 @@ function TimelineItem({
                     </div>
                 )}
             </div>
+            {details && (
+                <div className="mt-2 text-xs text-text-muted pl-1 border-l-2 border-gray-100">
+                    {details}
+                </div>
+            )}
         </div>
     )
 }

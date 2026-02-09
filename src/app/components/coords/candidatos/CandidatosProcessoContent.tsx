@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Search, ArrowLeft } from "lucide-react"
+import { Search, ArrowLeft, ChevronUp, ChevronDown } from "lucide-react"
 import { CandidatoRow } from "./CandidatoRow"
 import { CandidatoDrawer } from "./CandidatoDrawer"
 import { 
@@ -18,7 +18,8 @@ interface CandidatosProcessoContentProps {
 
 type FiltroStatus = "todos" | StatusCandidato
 type FiltroEtapa = "todas" | "1" | "2" | "3" | "4"
-type OrdemOpcao = "nome" | "etapa"
+type OrdemColuna = "nome" | "curso" | "etapa" | "notaProva" | "notaDinamica" | "notaEntrevista"
+type OrdemDirecao = "asc" | "desc"
 
 export function CandidatosProcessoContent({ processoId }: CandidatosProcessoContentProps) {
     const router = useRouter()
@@ -32,7 +33,24 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
     const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("todos")
     const [filtroEtapa, setFiltroEtapa] = useState<FiltroEtapa>("todas")
     const [filtroCurso, setFiltroCurso] = useState("")
-    const [ordem, setOrdem] = useState<OrdemOpcao>("nome")
+    const [ordemColuna, setOrdemColuna] = useState<OrdemColuna>("nome")
+    const [ordemDirecao, setOrdemDirecao] = useState<OrdemDirecao>("asc")
+    
+    const toggleOrdem = (coluna: OrdemColuna) => {
+        if (ordemColuna === coluna) {
+            setOrdemDirecao(prev => prev === "asc" ? "desc" : "asc")
+        } else {
+            setOrdemColuna(coluna)
+            setOrdemDirecao("asc")
+        }
+    }
+
+    const SortIcon = ({ coluna }: { coluna: OrdemColuna }) => {
+        if (ordemColuna !== coluna) return <ChevronUp size={14} className="opacity-20" />
+        return ordemDirecao === "asc" 
+            ? <ChevronUp size={14} className="text-primary" />
+            : <ChevronDown size={14} className="text-primary" />
+    }
     
     const loadData = useCallback(async () => {
         setIsLoading(true)
@@ -76,10 +94,31 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
     
     // Ordenar candidatos
     const candidatosOrdenados = [...candidatosFiltrados].sort((a, b) => {
-        if (ordem === "etapa") {
-            return b.etapaAtual - a.etapaAtual
+        let comparacao = 0
+        switch (ordemColuna) {
+            case "nome":
+                comparacao = a.nome.localeCompare(b.nome)
+                break
+            case "curso":
+                comparacao = (a.curso || "").localeCompare(b.curso || "")
+                break
+            case "etapa":
+                comparacao = a.etapaAtual - b.etapaAtual
+                break
+            case "notaProva":
+                comparacao = (a.prova.notaFinal || 0) - (b.prova.notaFinal || 0)
+                break
+            case "notaDinamica":
+                // Ordenar por nota da dinâmica (A > P_MAIS > P_ALTO > P > P_BAIXO > P_MENOS > R)
+                const ordemNotas: Record<string, number> = { "A": 7, "P_MAIS": 6, "P_ALTO": 5, "P": 4, "P_BAIXO": 3, "P_MENOS": 2, "R": 1 }
+                comparacao = (ordemNotas[a.dinamica.nota || ""] || 0) - (ordemNotas[b.dinamica.nota || ""] || 0)
+                break
+            case "notaEntrevista":
+                const ordemNotasEnt: Record<string, number> = { "A": 7, "P_MAIS": 6, "P_ALTO": 5, "P": 4, "P_BAIXO": 3, "P_MENOS": 2, "R": 1 }
+                comparacao = (ordemNotasEnt[a.entrevista.nota || ""] || 0) - (ordemNotasEnt[b.entrevista.nota || ""] || 0)
+                break
         }
-        return a.nome.localeCompare(b.nome)
+        return ordemDirecao === "asc" ? comparacao : -comparacao
     })
     
     // Lista de cursos únicos para filtro
@@ -172,18 +211,6 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
                                     ...cursosUnicos.map(c => ({ value: c!, label: c! }))
                                 ]}
                             />
-                            
-                            {/* Ordenar */}
-                            <FilterSelect
-                                label="Ordenar por"
-                                value={ordem}
-                                onChange={(v) => setOrdem(v as OrdemOpcao)}
-                                options={[
-                                    { value: "nome", label: "Nome" },
-                                    { value: "etapa", label: "Etapa mais avançada" }
-                                ]}
-                                icon="sort"
-                            />
                         </div>
                         
                         {/* Search */}
@@ -208,11 +235,21 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
                 <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-4">
                     {/* Table Header */}
                     <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 text-xs font-bold text-text-muted uppercase tracking-wider border-b border-border bg-white rounded-lg shadow-sm">
-                        <div className="col-span-3">Candidato</div>
-                        <div className="col-span-2 text-center">1. Prova</div>
-                        <div className="col-span-2 text-center">2. Dinâmica</div>
-                        <div className="col-span-2 text-center">3. Entrevista</div>
-                        <div className="col-span-1 text-center">4. Capacitação</div>
+                        <button onClick={() => toggleOrdem("nome")} className="col-span-3 flex items-center gap-1 cursor-pointer hover:text-text-main transition-colors">
+                            Candidato <SortIcon coluna="nome" />
+                        </button>
+                        <button onClick={() => toggleOrdem("notaProva")} className="col-span-2 flex items-center justify-center gap-1 cursor-pointer hover:text-text-main transition-colors">
+                            1. Prova <SortIcon coluna="notaProva" />
+                        </button>
+                        <button onClick={() => toggleOrdem("notaDinamica")} className="col-span-2 flex items-center justify-center gap-1 cursor-pointer hover:text-text-main transition-colors">
+                            2. Dinâmica <SortIcon coluna="notaDinamica" />
+                        </button>
+                        <button onClick={() => toggleOrdem("notaEntrevista")} className="col-span-2 flex items-center justify-center gap-1 cursor-pointer hover:text-text-main transition-colors">
+                            3. Entrevista <SortIcon coluna="notaEntrevista" />
+                        </button>
+                        <button onClick={() => toggleOrdem("etapa")} className="col-span-1 flex items-center justify-center gap-1 cursor-pointer hover:text-text-main transition-colors">
+                            4. Cap. <SortIcon coluna="etapa" />
+                        </button>
                         <div className="col-span-2 text-right">Ações</div>
                     </div>
                     

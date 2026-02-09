@@ -145,6 +145,33 @@ export function ProvaResultadosContent({ provaId }: ProvaResultadosContentProps)
             )
         },
         {
+            name: 'Aprovação',
+            selector: row => row.aprovadoProva === null ? 0 : row.aprovadoProva ? 1 : -1,
+            sortable: true,
+            width: '130px',
+            cell: (row) => (
+                <div className="flex justify-center">
+                    {row.status !== "CORRIGIDA" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            Pendente
+                        </span>
+                    ) : row.aprovadoProva === null ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Aguardando
+                        </span>
+                    ) : row.aprovadoProva ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Aprovado
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Reprovado
+                        </span>
+                    )}
+                </div>
+            )
+        },
+        {
             name: 'Status',
             selector: row => row.status,
             sortable: true,
