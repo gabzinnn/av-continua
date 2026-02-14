@@ -53,6 +53,8 @@ model Membro {
   participacoes         ParticipacaoAvaliacao[]
   pagamentosResponsavel Pagamento[]
   respostasTermometro   RespostaTermometro[]
+  participacoesPCO      ParticipacaoPCO[]
+  respostasPCO          RespostaPCO[]
 }
 
 model Coordenador {
@@ -92,6 +94,7 @@ model Ciclo {
   avaliacoes  Avaliacao[]
   demandas    Demanda[]
   termometros Termometro[]
+  pcos        PCO[]
 }
 
 model RespostaAvaliacao {
@@ -402,4 +405,108 @@ model RespostaTermometro {
 
   membro     Membro     @relation(fields: [idMembro], references: [id])
   termometro Termometro @relation(fields: [idTermometro], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// PCO - PESQUISA DE CLIMA ORGANIZACIONAL
+// ==========================================
+
+enum StatusPCO {
+  RASCUNHO
+  ATIVA
+  ENCERRADA
+}
+
+enum TipoPerguntaPCO {
+  ESCALA
+  MULTIPLA_ESCOLHA
+  TEXTO_LIVRE
+}
+
+model PCO {
+  id         Int       @id @default(autoincrement())
+  nome       String
+  descricao  String?
+  status     StatusPCO @default(RASCUNHO)
+  dataInicio DateTime?
+  dataFim    DateTime?
+  idCiclo    Int?
+  anonima    Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  ciclo         Ciclo?            @relation(fields: [idCiclo], references: [id])
+  participacoes ParticipacaoPCO[]
+  secoes        SecaoPCO[]
+}
+
+model SecaoPCO {
+  id        Int      @id @default(autoincrement())
+  pcoId     Int
+  titulo    String
+  descricao String?
+  ordem     Int
+  createdAt DateTime @default(now())
+
+  pco       PCO           @relation(fields: [pcoId], references: [id], onDelete: Cascade)
+  perguntas PerguntaPCO[]
+
+  @@index([pcoId])
+}
+
+model PerguntaPCO {
+  id          Int             @id @default(autoincrement())
+  secaoId     Int
+  texto       String
+  tipo        TipoPerguntaPCO @default(ESCALA)
+  obrigatoria Boolean         @default(true)
+  ordem       Int
+  createdAt   DateTime        @default(now())
+
+  secao     SecaoPCO           @relation(fields: [secaoId], references: [id], onDelete: Cascade)
+  opcoes    OpcaoPerguntaPCO[]
+  respostas RespostaPCO[]
+
+  @@index([secaoId])
+}
+
+model OpcaoPerguntaPCO {
+  id         Int    @id @default(autoincrement())
+  perguntaId Int
+  texto      String
+  ordem      Int
+
+  pergunta PerguntaPCO @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+
+  @@index([perguntaId])
+}
+
+model ParticipacaoPCO {
+  id        Int     @id @default(autoincrement())
+  pcoId     Int
+  membroId  Int
+  respondeu Boolean @default(false)
+
+  pco    PCO    @relation(fields: [pcoId], references: [id], onDelete: Cascade)
+  membro Membro @relation(fields: [membroId], references: [id])
+
+  @@unique([pcoId, membroId])
+}
+
+model RespostaPCO {
+  id            Int      @id @default(autoincrement())
+  perguntaId    Int
+  membroId      Int
+  pcoId         Int
+  nota          Int?
+  opcaoId       Int?
+  texto         String?
+  justificativa String?
+  createdAt     DateTime @default(now())
+
+  pergunta PerguntaPCO @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+  membro   Membro      @relation(fields: [membroId], references: [id])
+
+  @@unique([perguntaId, membroId])
+  @@index([pcoId])
 }

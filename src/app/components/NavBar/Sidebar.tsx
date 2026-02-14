@@ -5,7 +5,8 @@ import { useRouter, usePathname } from "next/navigation"
 import { useMember } from "@/src/context/memberContext"
 import { NavItem } from "./NavItem"
 import { UserCard } from "./UserCard"
-import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon, Thermometer } from "lucide-react"
+import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon, Thermometer, ClipboardList } from "lucide-react"
+import { temPCOAtiva } from "@/src/actions/pcoActions"
 
 interface NavRoute {
   href: string
@@ -13,7 +14,7 @@ interface NavRoute {
   label: string
 }
 
-const navRoutes: NavRoute[] = [
+const baseRoutes: NavRoute[] = [
   { href: "/home", icon: Home, label: "Home" },
   { href: "/avatual", icon: FileEdit, label: "Avaliação atual" },
   { href: "/termometro", icon: Thermometer, label: "Termômetro" },
@@ -21,11 +22,22 @@ const navRoutes: NavRoute[] = [
   { href: "/avaliacoes", icon: Archive, label: "Avaliações recebidas" },
 ]
 
+const pcoRoute: NavRoute = { href: "/pco", icon: ClipboardList, label: "Pesquisa de Clima" }
+
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [showPCO, setShowPCO] = useState(false)
   const { selectedMember, clearMember } = useMember()
   const router = useRouter()
   const pathname = usePathname()
+
+  // Check if there's an active PCO for this member
+  useEffect(() => {
+    if (!selectedMember) return
+    temPCOAtiva(Number(selectedMember.id))
+      .then(setShowPCO)
+      .catch(() => setShowPCO(false))
+  }, [selectedMember, pathname])
 
   // Fecha o menu ao mudar de rota
   useEffect(() => {
@@ -63,6 +75,11 @@ export function Sidebar() {
   }
 
   if (!selectedMember) return null
+
+  // Build nav routes dynamically
+  const navRoutes = showPCO
+    ? [...baseRoutes.slice(0, 3), pcoRoute, ...baseRoutes.slice(3)]
+    : baseRoutes
 
   return (
     <>
