@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import DataTable, { TableColumn } from "react-data-table-component"
-import { ArrowLeft, Download, Users, BarChart3, Trophy, TrendingDown, CheckCircle, Search, Filter, Clock, Percent } from "lucide-react"
-import { Button } from "@/src/app/components/Button"
-import { getProvaById, getResultadosProva, getProvaStats, ProvaCompleta, ResultadoProvaCompleto } from "@/src/actions/provasActions"
-import { StatusResultado, TipoQuestao } from "@/src/generated/prisma/client"
+import { ArrowLeft, Download, Users, BarChart3, Trophy, TrendingDown, CheckCircle, Search, Filter, Clock, Percent, Trash2 } from "lucide-react"
+import { Button } from "../../Button"
+import { getProvaById, getResultadosProva, getProvaStats, ProvaCompleta, ResultadoProvaCompleto, deleteResultadoProva } from "../../../../actions/provasActions"
+import { StatusResultado, TipoQuestao } from "../../../../generated/prisma/client"
 import { ProvaAnalytics } from "./ProvaAnalytics"
 
 interface ProvaResultadosContentProps {
@@ -72,6 +72,17 @@ export function ProvaResultadosContent({ provaId }: ProvaResultadosContentProps)
 
     const aprovados = resultados.filter(r => r.status === "CORRIGIDA" && (r.notaFinal || 0) >= (stats?.pontuacaoTotal || 0) * 0.6).length
     const taxaAprovacao = stats?.totalCorrigidos ? (aprovados / stats.totalCorrigidos) * 100 : 0
+
+    const handleDeleteResultado = async (id: number) => {
+        if (!confirm("Tem certeza que deseja excluir este resultado? Esta ação não pode ser desfeita.")) return
+
+        const res = await deleteResultadoProva(id)
+        if (res.success) {
+            loadData()
+        } else {
+            alert("Erro ao excluir resultado: " + res.error)
+        }
+    }
 
     const columns: TableColumn<ResultadoProvaCompleto>[] = [
         {
@@ -201,6 +212,13 @@ export function ProvaResultadosContent({ provaId }: ProvaResultadosContentProps)
                     >
                         Ver detalhes
                     </Link>
+                    <button
+                        onClick={() => handleDeleteResultado(row.id)}
+                        className="ml-4 p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors cursor-pointer"
+                        title="Excluir resultado"
+                    >
+                        <Trash2 size={16} />
+                    </button>
                 </div>
             )
         }

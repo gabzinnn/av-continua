@@ -1,7 +1,7 @@
 "use server"
 
-import prisma from "@/src/lib/prisma"
-import { StatusProva, TipoQuestao, StatusResultado, Prova, Questao, Alternativa, Candidato, ResultadoProva, RespostaQuestao } from "@/src/generated/prisma/client"
+import prisma from "../lib/prisma"
+import { StatusProva, TipoQuestao, StatusResultado, Prova, Questao, Alternativa, Candidato, ResultadoProva, RespostaQuestao } from "../generated/prisma/client"
 
 // ==========================================
 // TYPES
@@ -285,13 +285,13 @@ export async function duplicateProva(id: number) {
                     pontos: questao.pontos,
                     ordem: questao.ordem,
                     imagens: {
-                        create: questao.imagens.map(img => ({
+                        create: questao.imagens.map((img: { url: any; ordem: any }) => ({
                             url: img.url,
                             ordem: img.ordem
                         }))
                     },
                     alternativas: {
-                        create: questao.alternativas.map(alt => ({
+                        create: questao.alternativas.map((alt: { texto: any; correta: any; ordem: any }) => ({
                             texto: alt.texto,
                             correta: alt.correta,
                             ordem: alt.ordem
@@ -435,11 +435,11 @@ export async function updateQuestao(id: number, data: QuestaoData) {
             where: { questaoId: id }
         })
 
-        const existingIds = existingAlternativas.map(a => a.id)
+        const existingIds = existingAlternativas.map((a: { id: any }) => a.id)
         const incomingIds = data.alternativas.filter(a => a.id).map(a => a.id!)
 
         // Delete removed alternativas
-        const idsToDelete = existingIds.filter(id => !incomingIds.includes(id))
+        const idsToDelete = existingIds.filter((id: number) => !incomingIds.includes(id))
         if (idsToDelete.length > 0) {
             await prisma.alternativa.deleteMany({
                 where: { id: { in: idsToDelete } }
@@ -504,6 +504,18 @@ export async function reorderQuestoes(provaId: number, ordem: { id: number; orde
         })
     )
     await prisma.$transaction(updates)
+}
+
+export async function deleteResultadoProva(resultadoId: number): Promise<{ success: boolean; error?: string }> {
+    try {
+        await prisma.resultadoProva.delete({
+            where: { id: resultadoId }
+        })
+        return { success: true }
+    } catch (error) {
+        console.error("Erro ao deletar resultado:", error)
+        return { success: false, error: "Erro ao deletar resultado" }
+    }
 }
 
 // ==========================================
@@ -628,18 +640,18 @@ export async function corrigirResposta(respostaId: number, pontuacao: number) {
     })
 
     // Check if all respostas are corrigidas
-    const allCorrigidas = resposta.resultado.respostas.every(r => r.corrigida)
+    const allCorrigidas = resposta.resultado.respostas.every((r: { corrigida: any }) => r.corrigida)
 
     if (allCorrigidas) {
         // Calculate total points earned
         const pontosObtidos = resposta.resultado.respostas.reduce(
-            (acc, r) => acc + (r.pontuacao ? Number(r.pontuacao) : 0),
+            (acc: number, r: { pontuacao: any }) => acc + (r.pontuacao ? Number(r.pontuacao) : 0),
             0
         )
 
         // Calculate total possible points from the exam
         const pontosTotais = resposta.resultado.prova.questoes.reduce(
-            (acc, q) => acc + Number(q.pontos),
+            (acc: number, q: { pontos: any }) => acc + Number(q.pontos),
             0
         )
 
@@ -687,7 +699,7 @@ export async function autoCorrigirMultiplaEscolha(resultadoId: number) {
 
     for (const resposta of resultado.respostas) {
         if ((resposta.questao.tipo === "MULTIPLA_ESCOLHA" || resposta.questao.tipo === "VERDADEIRO_FALSO") && !resposta.corrigida) {
-            const alternativaCorreta = resposta.questao.alternativas.find(a => a.correta)
+            const alternativaCorreta = resposta.questao.alternativas.find((a: { correta: any }) => a.correta)
             const acertou = resposta.alternativaId === alternativaCorreta?.id
 
             await prisma.respostaQuestao.update({
@@ -713,16 +725,16 @@ export async function autoCorrigirMultiplaEscolha(resultadoId: number) {
         }
     })
 
-    if (updated && updated.respostas.every(r => r.corrigida)) {
+    if (updated && updated.respostas.every((r: { corrigida: any }) => r.corrigida)) {
         // Calculate total points earned
         const pontosObtidos = updated.respostas.reduce(
-            (acc, r) => acc + (r.pontuacao ? Number(r.pontuacao) : 0),
+            (acc: number, r: { pontuacao: any }) => acc + (r.pontuacao ? Number(r.pontuacao) : 0),
             0
         )
 
         // Calculate total possible points from the exam
         const pontosTotais = updated.prova.questoes.reduce(
-            (acc, q) => acc + Number(q.pontos),
+            (acc: number, q: { pontos: any }) => acc + Number(q.pontos),
             0
         )
 
@@ -745,7 +757,7 @@ export async function autoCorrigirMultiplaEscolha(resultadoId: number) {
     return {
         ...updated,
         notaFinal: updated.notaFinal ? Number(updated.notaFinal) : null,
-        respostas: updated.respostas.map(r => ({
+        respostas: updated.respostas.map((r: { pontuacao: any }) => ({
             ...r,
             pontuacao: r.pontuacao ? Number(r.pontuacao) : null
         }))
@@ -789,13 +801,13 @@ export async function getProvaStats(provaId: number) {
 
     if (!prova) return null
 
-    const pontuacaoTotal = prova.questoes.reduce((acc, q) => acc + Number(q.pontos), 0)
+    const pontuacaoTotal = prova.questoes.reduce((acc: number, q: { pontos: any }) => acc + Number(q.pontos), 0)
     const resultadosCorrigidos = prova.resultados
-    const notas = resultadosCorrigidos.map(r => Number(r.notaFinal || 0))
+    const notas = resultadosCorrigidos.map((r: { notaFinal: any }) => Number(r.notaFinal || 0))
 
     const distribuicao = [0, 0, 0, 0, 0] // 0-2, 2-4, 4-6, 6-8, 8-10
 
-    notas.forEach(nota => {
+    notas.forEach((nota: number) => {
         if (nota < 2) distribuicao[0]++
         else if (nota < 4) distribuicao[1]++
         else if (nota < 6) distribuicao[2]++
@@ -809,12 +821,12 @@ export async function getProvaStats(provaId: number) {
 
     // Calculate Hit Rate per Question
     // We need to look at all corrected answers for each question
-    const questoesStats = prova.questoes.map(q => {
+    const questoesStats = prova.questoes.map((q: { id: any; pontos: any; enunciado: any; tipo: any }) => {
         let totalRespostas = 0
         let totalAcertos = 0
 
-        resultadosCorrigidos.forEach(r => {
-            const resposta = r.respostas.find(resp => resp.questaoId === q.id)
+        resultadosCorrigidos.forEach((r: { respostas: any[] }) => {
+            const resposta = r.respostas.find((resp: { questaoId: any }) => resp.questaoId === q.id)
             if (resposta && resposta.corrigida) {
                 totalRespostas++
                 // Consider "Acerto" if pontuacao is equal to max points (full credit)
@@ -843,10 +855,10 @@ export async function getProvaStats(provaId: number) {
         totalParticipantes: prova.resultados.length,
         totalCorrigidos: resultadosCorrigidos.length,
         pontuacaoTotal,
-        mediaGeral: notas.length > 0 ? notas.reduce((a, b) => a + b, 0) / notas.length : 0,
+        mediaGeral: notas.length > 0 ? notas.reduce((a: any, b: any) => a + b, 0) / notas.length : 0,
         maiorNota: notas.length > 0 ? Math.max(...notas) : 0,
         menorNota: notas.length > 0 ? Math.min(...notas) : 0,
         distribuicao,
-        questoesStats: questoesStats.sort((a, b) => b.taxaAcerto - a.taxaAcerto) // Order by easiest to hardest
+        questoesStats: questoesStats.sort((a: { taxaAcerto: number }, b: { taxaAcerto: number }) => b.taxaAcerto - a.taxaAcerto) // Order by easiest to hardest
     }
 }

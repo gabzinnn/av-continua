@@ -153,7 +153,7 @@ export async function iniciarPCO(id: number): Promise<{ success: boolean; error?
                 dataInicio: new Date(),
                 participacoes: {
                     createMany: {
-                        data: membrosAtivos.map((m) => ({
+                        data: membrosAtivos.map((m: { id: any }) => ({
                             membroId: m.id,
                             respondeu: false,
                         })),
@@ -274,11 +274,11 @@ export async function getPCOsAtivasParaMembro(membroId: number): Promise<PCOPara
         orderBy: { createdAt: "desc" },
     })
 
-    return pcos.map((pco) => {
+    return pcos.map((pco: { participacoes: any[]; secoes: any[]; id: any; nome: any; descricao: any; dataFim: any }) => {
         const participacao = pco.participacoes[0]
         const jaRespondeu = participacao?.respondeu ?? false
 
-        const totalPerguntas = pco.secoes.reduce((acc, s) => acc + s.perguntas.length, 0)
+        const totalPerguntas = pco.secoes.reduce((acc: number, s: { perguntas: string | any[] }) => acc + s.perguntas.length, 0)
 
         return {
             id: pco.id,
@@ -287,18 +287,18 @@ export async function getPCOsAtivasParaMembro(membroId: number): Promise<PCOPara
             dataFim: pco.dataFim,
             totalPerguntas,
             jaRespondeu,
-            secoes: pco.secoes.map((s) => ({
+            secoes: pco.secoes.map((s: { id: any; titulo: any; descricao: any; ordem: any; perguntas: any[] }) => ({
                 id: s.id,
                 titulo: s.titulo,
                 descricao: s.descricao,
                 ordem: s.ordem,
-                perguntas: s.perguntas.map((p) => ({
+                perguntas: s.perguntas.map((p: { id: any; texto: any; tipo: any; obrigatoria: any; ordem: any; opcoes: any[] }) => ({
                     id: p.id,
                     texto: p.texto,
                     tipo: p.tipo,
                     obrigatoria: p.obrigatoria,
                     ordem: p.ordem,
-                    opcoes: p.opcoes.map((o) => ({
+                    opcoes: p.opcoes.map((o: { id: any; texto: any; ordem: any }) => ({
                         id: o.id,
                         texto: o.texto,
                         ordem: o.ordem,
@@ -469,20 +469,20 @@ export async function getPCODetalhes(pcoId: number): Promise<PCODetalhes | null>
     if (!pco) return null
 
     const totalParticipantes = pco.participacoes.length
-    const totalRespostas = pco.participacoes.filter((p) => p.respondeu).length
+    const totalRespostas = pco.participacoes.filter((p: { respondeu: any }) => p.respondeu).length
     const taxaResposta = totalParticipantes > 0
         ? Math.round((totalRespostas / totalParticipantes) * 100)
         : 0
 
     // Discover area names
-    const areaNames = [...new Set(pco.participacoes.map((p) => p.membro.area.nome))].sort()
+    const areaNames = [...new Set(pco.participacoes.map((p: { membro: { area: { nome: any } } }) => p.membro.area.nome))].sort()
     const grupos = ["Geral", "Coord", ...areaNames]
 
     // Helper: compute escala stats for a filtered set of respostas
     function computeEscalaStats(respostas: { nota: number | null }[]) {
         const notasValidas = respostas.filter((r) => r.nota !== null && r.nota !== 0)
         const media = notasValidas.length > 0
-            ? notasValidas.reduce((sum, r) => sum + (r.nota ?? 0), 0) / notasValidas.length
+            ? notasValidas.reduce((sum: number, r) => sum + (r.nota ?? 0), 0) / notasValidas.length
             : 0
 
         const dist: DistribuicaoGrupo = { concordo: 0, concordoParcial: 0, discordoParcial: 0, discordo: 0, naoConsigo: 0, total: respostas.length }
@@ -497,71 +497,73 @@ export async function getPCODetalhes(pcoId: number): Promise<PCODetalhes | null>
         return { media, dist }
     }
 
-    const secoes: SecaoDetalhes[] = pco.secoes.map((s) => ({
-        id: s.id,
-        titulo: s.titulo,
-        descricao: s.descricao,
-        ordem: s.ordem,
-        perguntas: s.perguntas.map((p) => {
-            const respostas = p.respostas
+    const secoes: SecaoDetalhes[] = pco.secoes.map((s: { titulo: any; id: any; descricao: any; ordem: any; perguntas: any[] }) => {
+        return {
+            id: s.id,
+            titulo: s.titulo,
+            descricao: s.descricao,
+            ordem: s.ordem,
+            perguntas: s.perguntas.map((p: { respostas: any; opcoes: any[]; texto: any; tipo: "ESCALA" | "MULTIPLA_ESCOLHA" | "TEXTO_LIVRE"; id: any; ordem: any }) => {
+                const respostas = p.respostas
 
-            const mediaPorGrupo: Record<string, number> = {}
-            const distribuicaoPorGrupo: Record<string, DistribuicaoGrupo> = {}
+                // Default calculated stats
+                let mediaPorGrupo: Record<string, number> = {}
+                let distribuicaoPorGrupo: Record<string, DistribuicaoGrupo> = {}
+                let distribuicaoOpcoes = p.opcoes.map((opcao: { texto: any; id: any }) => ({
+                    texto: opcao.texto,
+                    count: respostas.filter((r: { opcaoId: any }) => r.opcaoId === opcao.id).length,
+                }))
 
-            if (p.tipo === "ESCALA") {
-                // Geral
-                const geralStats = computeEscalaStats(respostas)
-                mediaPorGrupo["Geral"] = geralStats.media
-                distribuicaoPorGrupo["Geral"] = geralStats.dist
+                if (p.tipo === "ESCALA") {
+                    // Calculate from responses (Normal logic)
+                    // Geral
+                    const geralStats = computeEscalaStats(respostas)
+                    mediaPorGrupo["Geral"] = geralStats.media
+                    distribuicaoPorGrupo["Geral"] = geralStats.dist
 
-                // Coord
-                const coordRespostas = respostas.filter((r) => r.membro.isCoordenador)
-                const coordStats = computeEscalaStats(coordRespostas)
-                mediaPorGrupo["Coord"] = coordStats.media
-                distribuicaoPorGrupo["Coord"] = coordStats.dist
+                    // Coord
+                    const coordRespostas = respostas.filter((r: { membro: { isCoordenador: any } }) => r.membro.isCoordenador)
+                    const coordStats = computeEscalaStats(coordRespostas)
+                    mediaPorGrupo["Coord"] = coordStats.media
+                    distribuicaoPorGrupo["Coord"] = coordStats.dist
 
-                // Per area
-                for (const areaNome of areaNames) {
-                    const areaRespostas = respostas.filter((r) => r.membro.area.nome === areaNome)
-                    const areaStats = computeEscalaStats(areaRespostas)
-                    mediaPorGrupo[areaNome] = areaStats.media
-                    distribuicaoPorGrupo[areaNome] = areaStats.dist
+                    // Per area
+                    for (const areaNome of areaNames) {
+                        const areaRespostas = respostas.filter((r: { membro: { area: { nome: unknown } } }) => r.membro.area.nome === areaNome)
+                        const areaStats = computeEscalaStats(areaRespostas)
+                        mediaPorGrupo[areaNome] = areaStats.media
+                        distribuicaoPorGrupo[areaNome] = areaStats.dist
+                    }
                 }
-            }
 
-            // Múltipla escolha
-            const distribuicaoOpcoes = p.opcoes.map((opcao) => ({
-                texto: opcao.texto,
-                count: respostas.filter((r) => r.opcaoId === opcao.id).length,
-            }))
+                // Texto livre
+                const respostasTexto = p.tipo === "TEXTO_LIVRE"
+                    ? respostas.filter((r: { texto: string }) => r.texto && r.texto.trim()).map((r: { texto: any }) => r.texto!)
+                    : []
 
-            // Texto livre
-            const respostasTexto = p.tipo === "TEXTO_LIVRE"
-                ? respostas.filter((r) => r.texto && r.texto.trim()).map((r) => r.texto!)
-                : []
+                // Justificativas (escala)
+                const justificativas = p.tipo === "ESCALA"
+                    ? respostas
+                        .filter((r: { justificativa: string }) => r.justificativa && r.justificativa.trim())
+                        .map((r: { justificativa: any }) => r.justificativa!)
+                    : []
 
-            // Justificativas (escala)
-            const justificativas = p.tipo === "ESCALA"
-                ? respostas
-                    .filter((r) => r.justificativa && r.justificativa.trim())
-                    .map((r) => r.justificativa!)
-                : []
+                return {
+                    id: p.id,
+                    texto: p.texto,
+                    tipo: p.tipo,
+                    ordem: p.ordem,
+                    mediaPorGrupo,
+                    distribuicaoPorGrupo,
+                    distribuicaoOpcoes,
+                    respostasTexto,
+                    justificativas,
+                }
+            })
+        }
+    })
 
-            return {
-                id: p.id,
-                texto: p.texto,
-                tipo: p.tipo,
-                ordem: p.ordem,
-                mediaPorGrupo,
-                distribuicaoPorGrupo,
-                distribuicaoOpcoes,
-                respostasTexto,
-                justificativas,
-            }
-        })
-    }))
-
-    const participantes: ParticipanteDetalhes[] = pco.participacoes.map((p) => ({
+    const participantes: ParticipanteDetalhes[] = pco.participacoes.map((p: { membro: { id: any; nome: any; area: { nome: any }; isCoordenador: any }; respondeu: any }) => ({
         membroId: p.membro.id,
         nome: p.membro.nome,
         respondeu: p.respondeu,
@@ -624,9 +626,9 @@ export async function exportarRespostasPCO(pcoId: number): Promise<{ headers: st
     })
 
     // Flatten perguntas from sections for CSV columns
-    const perguntasOrdenadas = pco.secoes.flatMap(s => s.perguntas)
+    const perguntasOrdenadas = pco.secoes.flatMap((s: { perguntas: any }) => s.perguntas)
 
-    const headers = ["Membro", ...perguntasOrdenadas.flatMap((p) => {
+    const headers = ["Membro", ...perguntasOrdenadas.flatMap((p: { ordem: any; texto: any; tipo: string }) => {
         const base = `Q${p.ordem} - ${p.texto}`
         if (p.tipo === "ESCALA") return [base, `${base} (Justificativa)`]
         return [base]
@@ -655,7 +657,7 @@ export async function exportarRespostasPCO(pcoId: number): Promise<{ headers: st
                 row.push(`"${label}"`)
                 row.push(`"${(r?.justificativa ?? "").replace(/"/g, '""')}"`)
             } else if (p.tipo === "MULTIPLA_ESCOLHA") {
-                const opcao = p.opcoes.find((o) => o.id === r?.opcaoId)
+                const opcao = p.opcoes.find((o: { id: any }) => o.id === r?.opcaoId)
                 row.push(`"${opcao?.texto ?? ""}"`)
             } else {
                 row.push(`"${(r?.texto ?? "").replace(/"/g, '""')}"`)

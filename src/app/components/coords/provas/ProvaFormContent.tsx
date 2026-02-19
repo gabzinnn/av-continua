@@ -7,7 +7,7 @@ import Image from "next/image"
 import CreatableSelect from "react-select/creatable"
 import { ArrowLeft, Save, Eye, Send, Plus, GripVertical, Copy, Trash2, ChevronDown, ChevronUp, Image as ImageIcon, Upload, X, Loader2 } from "lucide-react"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
-import { Button } from "@/src/app/components/Button"
+import { Button } from "../../Button"
 import {
     getProvaById,
     createProva,
@@ -23,9 +23,10 @@ import {
     QuestaoData,
     QuestaoCompleta,
     ProcessoSeletivoSimples
-} from "@/src/actions/provasActions"
-import { uploadQuestaoImageToCloudinary } from "@/src/actions/uploadActions"
-import { StatusProva, TipoQuestao } from "@/src/generated/prisma/client"
+} from "../../../../actions/provasActions"
+import { uploadQuestaoImageToCloudinary } from "../../../../actions/uploadActions"
+import { StatusProva, TipoQuestao } from "../../../../generated/prisma/client"
+import RichTextEditor from "../../RichTextEditor"
 
 interface ProvaFormContentProps {
     mode: "create" | "edit"
@@ -415,7 +416,7 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
                                     onChange={(e) => setEmbaralhar(e.target.checked)}
                                     className="sr-only peer"
                                 />
-                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:inset-s-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                                 <span className="ms-3 text-sm font-medium text-text-main group-hover:text-primary transition-colors">
                                     Embaralhar ordem das questões
                                 </span>
@@ -649,15 +650,12 @@ function QuestaoEditor({
 
                     {/* Enunciado */}
                     <div>
-                        <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
-                            Enunciado
-                        </label>
-                        <textarea
+                        <RichTextEditor
+                            label="Enunciado"
                             value={questao.enunciado}
-                            onChange={(e) => onUpdate({ enunciado: e.target.value })}
+                            onChange={(html) => onUpdate({ enunciado: html })}
                             placeholder="Digite a pergunta aqui..."
-                            rows={3}
-                            className="w-full rounded-lg border border-border p-4 bg-gray-50 text-text-main focus:border-primary focus:ring-primary min-h-[100px] text-base outline-none"
+                            minHeight={150}
                         />
                     </div>
 

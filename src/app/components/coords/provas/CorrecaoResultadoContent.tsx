@@ -4,14 +4,16 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, Save, CheckCircle, XCircle, Clock, User, Mail, FileText } from "lucide-react"
-import { Button } from "@/src/app/components/Button"
+import { Button } from "../../Button"
+import { renderMathInHtml } from "../../../../utils/mathUtils"
+import "katex/dist/katex.min.css"
 import {
     getResultadoDetalhado,
     corrigirResposta,
     autoCorrigirMultiplaEscolha,
     aprovarCandidatoProva
-} from "@/src/actions/provasActions"
-import { TipoQuestao } from "@/src/generated/prisma/client"
+} from "../../../../actions/provasActions"
+import { TipoQuestao } from "../../../../generated/prisma/client"
 
 interface CorrecaoResultadoContentProps {
     provaId: number
@@ -92,7 +94,7 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
         // Initialize local pontuacoes
         if (data) {
             const pontuacoes: Record<number, number> = {}
-            data.respostas.forEach((r) => {
+            data.respostas.forEach((r: any) => {
                 pontuacoes[+r.id] = r.pontuacao ?? 0
             })
             setLocalPontuacoes(pontuacoes)
@@ -252,11 +254,10 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                 <button
                                     onClick={() => handleAprovar(false)}
                                     disabled={savingAprovacao}
-                                    className={`flex items-center gap-2 h-10 px-4 rounded-lg text-sm font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                                        resultado.aprovadoProva === false
-                                            ? "bg-red-600 text-white"
-                                            : "bg-white border border-red-300 text-red-600 hover:bg-red-50"
-                                    }`}
+                                    className={`flex items-center gap-2 h-10 px-4 rounded-lg text-sm font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${resultado.aprovadoProva === false
+                                        ? "bg-red-600 text-white"
+                                        : "bg-white border border-red-300 text-red-600 hover:bg-red-50"
+                                        }`}
                                 >
                                     <XCircle size={18} />
                                     Reprovar
@@ -264,11 +265,10 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                 <button
                                     onClick={() => handleAprovar(true)}
                                     disabled={savingAprovacao}
-                                    className={`flex items-center gap-2 h-10 px-4 rounded-lg text-sm font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                                        resultado.aprovadoProva === true
-                                            ? "bg-green-600 text-white"
-                                            : "bg-white border border-green-300 text-green-600 hover:bg-green-50"
-                                    }`}
+                                    className={`flex items-center gap-2 h-10 px-4 rounded-lg text-sm font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${resultado.aprovadoProva === true
+                                        ? "bg-green-600 text-white"
+                                        : "bg-white border border-green-300 text-green-600 hover:bg-green-50"
+                                        }`}
                                 >
                                     <CheckCircle size={18} />
                                     Aprovar
@@ -288,12 +288,14 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                         const alternativaSelecionada = questao.alternativas.find(a => a.id === resposta?.alternativaId)
                         const isCorrect = alternativaSelecionada?.id === alternativaCorreta?.id
 
+                        const isZeroPoints = (resposta?.pontuacao || 0) === 0
+
                         return (
-                            <div key={questao.id} className={`bg-white rounded-xl border ${resposta?.corrigida ? "border-green-200" : "border-border"} shadow-sm overflow-hidden`}>
-                                <div className={`p-4 ${resposta?.corrigida ? "bg-green-50" : "bg-gray-50"} border-b border-border`}>
+                            <div key={questao.id} className={`bg-white rounded-xl border ${resposta?.corrigida ? (isZeroPoints ? "border-red-300" : "border-green-200") : "border-border"} shadow-sm overflow-hidden`}>
+                                <div className={`p-4 ${resposta?.corrigida ? (isZeroPoints ? "bg-red-50" : "bg-green-50") : "bg-gray-50"} border-b border-border`}>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${resposta?.corrigida ? "bg-green-500 text-white" : "bg-gray-200 text-text-muted"}`}>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${resposta?.corrigida ? (isZeroPoints ? "bg-red-500 text-white" : "bg-green-500 text-white") : "bg-gray-200 text-text-muted"}`}>
                                                 {index + 1}
                                             </div>
                                             <span className="text-xs font-bold uppercase tracking-wider text-text-muted bg-white px-2 py-1 rounded border border-border">
@@ -305,10 +307,14 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                         </div>
                                         {resposta?.corrigida && (
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm font-bold text-green-600">
+                                                <span className={`text-sm font-bold ${isZeroPoints ? "text-red-600" : "text-green-600"}`}>
                                                     {resposta.pontuacao?.toFixed(1)} pts
                                                 </span>
-                                                <CheckCircle size={18} className="text-green-500" />
+                                                {isZeroPoints ? (
+                                                    <XCircle size={18} className="text-red-500" />
+                                                ) : (
+                                                    <CheckCircle size={18} className="text-green-500" />
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -318,7 +324,13 @@ export function CorrecaoResultadoContent({ provaId, resultadoId }: CorrecaoResul
                                     {/* Enunciado */}
                                     <div>
                                         <p className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-2">Enunciado</p>
-                                        <p className="text-text-main">{questao.enunciado}</p>
+                                        <div
+                                            className="text-text-main prose prose-sm max-w-none
+                                            [&_p]:mb-2 [&_ul]:list-disc [&_ul]:ml-5 [&_ol]:list-decimal [&_ol]:ml-5
+                                            [&_blockquote]:border-l-4 [&_blockquote]:border-primary [&_blockquote]:pl-4 [&_blockquote]:italic
+                                            [&_pre]:bg-gray-900 [&_pre]:text-green-400 [&_pre]:p-3 [&_pre]:rounded-md [&_pre]:overflow-x-auto"
+                                            dangerouslySetInnerHTML={{ __html: renderMathInHtml(questao.enunciado) }}
+                                        />
                                     </div>
 
                                     {/* Imagem da questão */}

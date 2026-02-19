@@ -7,8 +7,11 @@ import {
     getProvaParaCandidato,
     salvarResposta,
     finalizarProva,
-} from "@/src/actions/candidatoActions";
-import { Button } from "@/src/app/components/Button";
+} from "../../../../../../actions/candidatoActions";
+
+import { Button } from "../../../../../components/Button";
+import { renderMathInHtml } from "../../../../../../utils/mathUtils";
+import "katex/dist/katex.min.css";
 
 // Types (Simplificados para o front)
 type Questao = {
@@ -279,11 +282,15 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
                             </div>
                         </div>
 
-                        <div className="flex flex-col lg:flex-row gap-8">
-                            <div className="flex-1 space-y-4">
-                                <h3 className="text-xl md:text-2xl font-medium text-text-main leading-relaxed">
-                                    {currentQuestion.enunciado}
-                                </h3>
+                        <div className="flex flex-col gap-8">
+                            <div className="space-y-4">
+                                <div
+                                    className="text-xl md:text-2xl font-medium text-text-main leading-relaxed prose prose-lg max-w-none
+                                    [&_p]:mb-4 [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:mb-1
+                                    [&_blockquote]:border-l-4 [&_blockquote]:border-primary [&_blockquote]:pl-4 [&_blockquote]:italic
+                                    [&_pre]:bg-gray-900 [&_pre]:text-green-400 [&_pre]:p-4 [&_pre]:rounded-lg [&_pre]:overflow-x-auto"
+                                    dangerouslySetInnerHTML={{ __html: renderMathInHtml(currentQuestion.enunciado) }}
+                                />
                                 <p className="text-text-muted text-base leading-relaxed">
                                     Valor: {currentQuestion.pontos} pontos
                                 </p>
@@ -291,10 +298,14 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
 
                             {/* Images */}
                             {currentQuestion.imagens && currentQuestion.imagens.length > 0 && (
-                                <div className="lg:w-1/3 shrink-0 flex flex-col gap-2">
+                                <div className="w-full flex flex-col gap-4">
                                     {currentQuestion.imagens.map((img, idx) => (
-                                        <div key={img.id} className="aspect-4/3 rounded-lg bg-stone-100 overflow-hidden border border-border-ui relative group">
-                                            <img src={img.url} alt={`Imagem ${idx + 1}`} className="w-full h-full object-cover" />
+                                        <div key={img.id} className="w-full max-h-[500px] rounded-lg bg-white overflow-hidden relative group flex justify-center">
+                                            <img
+                                                src={img.url}
+                                                alt={`Imagem ${idx + 1}`}
+                                                className="max-w-full max-h-[500px] w-auto h-auto object-contain"
+                                            />
                                         </div>
                                     ))}
                                 </div>

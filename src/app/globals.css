@@ -60,3 +60,7 @@
     'GRAD' 0,
     'opsz' 24;
 }
+
+button {
+  cursor: pointer;
+}
