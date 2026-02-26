@@ -2,7 +2,7 @@ import Image from "next/image"
 import { getActiveMembers } from "@/src/actions/membroActions"
 import { MemberForm } from "./components/MemberForm"
 
-//export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const memberOptions = await getActiveMembers()
