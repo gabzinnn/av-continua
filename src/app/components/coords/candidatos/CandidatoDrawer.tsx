@@ -3,9 +3,9 @@
 import { CandidatoDetalhado, ESCALA_NOTAS_MAP, EscalaNotasLabel } from "@/src/types/candidatos"
 import { StatusBadge } from "./StatusBadge"
 import { AvaliarEtapaModal } from "./AvaliarEtapaModal"
-import { X, Mail, School, AlertTriangle, CheckCircle, XCircle } from "lucide-react"
+import { X, Mail, School, AlertTriangle, CheckCircle, XCircle, Trash2 } from "lucide-react"
 import { useState } from "react"
-import { avancarEtapaCandidato, atualizarObservacaoCandidato, aprovarEtapaCandidato, salvarNotasCapacitacao } from "@/src/actions/gestaoCandidatosActions"
+import { avancarEtapaCandidato, atualizarObservacaoCandidato, aprovarEtapaCandidato, salvarNotasCapacitacao, excluirCandidato } from "@/src/actions/gestaoCandidatosActions"
 
 interface CandidatoDrawerProps {
     candidato: CandidatoDetalhado | null
@@ -40,6 +40,8 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
     const [isSavingObs, setIsSavingObs] = useState(false)
     const [candidateObs, setCandidateObs] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
     
     if (!candidato) return null
 
@@ -96,6 +98,27 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
         }
     }
     
+    const handleExcluir = async () => {
+        setIsDeleting(true)
+        setError(null)
+        try {
+            const result = await excluirCandidato(candidato.id)
+            if (result.success) {
+                setIsDeleteModalOpen(false)
+                onCandidatoAtualizado?.()
+                onClose()
+            } else {
+                setError(result.error || "Erro ao excluir candidato")
+                setIsDeleteModalOpen(false)
+            }
+        } catch {
+            setError("Erro inesperado ao excluir candidato")
+            setIsDeleteModalOpen(false)
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
     // Obter status de aprovação da etapa atual
     const getAprovacaoAtual = (): boolean | null => {
         switch (candidato.etapaAtual) {
@@ -360,6 +383,21 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
                             <DataRow label="Curso" value={candidato.curso || "N/A"} />
                             <DataRow label="Período" value={candidato.periodo || "N/A"} />
                             <DataRow label="Inscrito em" value={new Date(candidato.createdAt).toLocaleDateString("pt-BR")} />
+                            
+                            {/* Zona de Perigo */}
+                            <div className="mt-8 pt-6 border-t border-red-200">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-red-500 mb-3">Zona de Perigo</h4>
+                                <button
+                                    onClick={() => setIsDeleteModalOpen(true)}
+                                    className="w-full py-3 px-4 rounded-lg border-2 border-red-300 text-red-600 font-bold hover:bg-red-50 transition-all text-sm cursor-pointer flex items-center justify-center gap-2"
+                                >
+                                    <Trash2 size={16} />
+                                    Excluir Candidato
+                                </button>
+                                <p className="text-xs text-text-muted mt-2">
+                                    Esta ação é irreversível. Todos os dados, notas e resultados do candidato serão removidos permanentemente.
+                                </p>
+                            </div>
                         </div>
                     )}
                     
@@ -493,6 +531,58 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
                 }}
                 isLoading={isLoading}
             />
+
+            {/* Modal de confirmação de exclusão */}
+            {isDeleteModalOpen && (
+                <>
+                    <div 
+                        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+                        onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
+                    />
+                    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
+                                    <AlertTriangle size={20} className="text-red-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-text-main">Excluir Candidato</h3>
+                                    <p className="text-xs text-text-muted">Ação irreversível</p>
+                                </div>
+                            </div>
+                            
+                            <p className="text-sm text-text-muted">
+                                Tem certeza de que deseja excluir <strong className="text-text-main">{candidato.nome}</strong>? 
+                                Todos os dados, resultados de provas e notas serão removidos permanentemente.
+                            </p>
+                            
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setIsDeleteModalOpen(false)}
+                                    disabled={isDeleting}
+                                    className="flex-1 py-2.5 px-4 rounded-lg border border-border text-sm font-medium text-text-muted hover:bg-gray-50 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleExcluir}
+                                    disabled={isDeleting}
+                                    className="flex-1 py-2.5 px-4 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {isDeleting ? (
+                                        <span className="animate-pulse">Excluindo...</span>
+                                    ) : (
+                                        <>
+                                            <Trash2 size={14} />
+                                            Excluir
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </>
     )
 }

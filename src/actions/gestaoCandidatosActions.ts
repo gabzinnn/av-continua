@@ -644,3 +644,44 @@ export async function salvarNotasCapacitacao(
         return { success: false, error: "Erro ao salvar notas da capacitação" }
     }
 }
+
+/**
+ * Exclui um candidato e todos os seus dados relacionados (resultados e respostas).
+ * Usa uma transação para garantir atomicidade.
+ */
+export async function excluirCandidato(
+    candidatoId: number
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await prisma.$transaction(async (tx) => {
+            // 1. Buscar todos os resultados do candidato
+            const resultados = await tx.resultadoProva.findMany({
+                where: { candidatoId },
+                select: { id: true }
+            })
+
+            const resultadoIds = resultados.map(r => r.id)
+
+            // 2. Deletar todas as respostas dos resultados
+            if (resultadoIds.length > 0) {
+                await tx.respostaQuestao.deleteMany({
+                    where: { resultadoId: { in: resultadoIds } }
+                })
+            }
+
+            // 3. Deletar todos os resultados do candidato
+            await tx.resultadoProva.deleteMany({
+                where: { candidatoId }
+            })
+
+            // 4. Deletar o candidato
+            await tx.candidato.delete({
+                where: { id: candidatoId }
+            })
+        })
+
+        return { success: true }
+    } catch {
+        return { success: false, error: "Erro ao excluir candidato. Verifique se não há dados dependentes." }
+    }
+}
