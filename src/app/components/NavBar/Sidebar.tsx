@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { useMember } from "@/src/context/memberContext"
 import { NavItem } from "./NavItem"
 import { UserCard } from "./UserCard"
-import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon, Thermometer, ClipboardList } from "lucide-react"
+import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon, Thermometer, ClipboardList, Activity } from "lucide-react"
 import { temPCOAtiva } from "@/src/actions/pcoActions"
 
 interface NavRoute {
@@ -18,6 +18,7 @@ const baseRoutes: NavRoute[] = [
   { href: "/home", icon: Home, label: "Home" },
   { href: "/avatual", icon: FileEdit, label: "Avaliação atual" },
   { href: "/termometro", icon: Thermometer, label: "Termômetro" },
+  { href: "/historico-termometro", icon: Activity, label: "Histórico Termômetro" },
   { href: "/historico", icon: History, label: "Histórico" },
   { href: "/avaliacoes", icon: Archive, label: "Avaliações recebidas" },
 ]

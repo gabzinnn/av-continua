@@ -420,3 +420,67 @@ export async function exportarRespostas(termometroId: number): Promise<{ headers
 
     return { headers, rows }
 }
+
+// ==========================================
+// MEMBER-SIDE: HISTÓRICO DE TERMÔMETROS
+// ==========================================
+
+export interface TermometroHistoricoEntry {
+    id: number
+    nome: string
+    dataInicial: Date
+    dataFinal: Date
+    perguntas: string[]
+    minhasNotas: number[]
+    minhaMedia: number
+    mediaGeral: number
+}
+
+export interface TermometroHistoricoData {
+    termometros: TermometroHistoricoEntry[]
+    evolucao: { nome: string; minhaMedia: number }[]
+}
+
+export async function getHistoricoTermometro(membroId: number): Promise<TermometroHistoricoData> {
+    // Buscar todos os termômetros onde o membro respondeu
+    const termometros = await prisma.termometro.findMany({
+        where: {
+            ativo: false,
+            respostas: { some: { idMembro: membroId } }
+        },
+        include: {
+            perguntas: { orderBy: { id: "asc" } },
+            respostas: true,
+        },
+        orderBy: { dataFinal: "asc" },
+    })
+
+    const entries: TermometroHistoricoEntry[] = termometros.map(t => {
+        const minhasRespostas = t.respostas.filter(r => r.idMembro === membroId)
+        const minhaMedia = minhasRespostas.length > 0
+            ? minhasRespostas.reduce((sum, r) => sum + r.nota, 0) / minhasRespostas.length
+            : 0
+
+        const mediaGeral = t.respostas.length > 0
+            ? t.respostas.reduce((sum, r) => sum + r.nota, 0) / t.respostas.length
+            : 0
+
+        return {
+            id: t.id,
+            nome: t.nome,
+            dataInicial: t.dataInicial,
+            dataFinal: t.dataFinal,
+            perguntas: t.perguntas.map(p => p.texto),
+            minhasNotas: minhasRespostas.map(r => r.nota),
+            minhaMedia: Math.round(minhaMedia * 10) / 10,
+            mediaGeral: Math.round(mediaGeral * 10) / 10,
+        }
+    })
+
+    const evolucao = entries.map(e => ({
+        nome: e.nome,
+        minhaMedia: e.minhaMedia,
+    }))
+
+    return { termometros: entries, evolucao }
+}

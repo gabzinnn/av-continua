@@ -54,6 +54,11 @@ const instrucoes = [
         title: "Navegação Única",
         description: "Atenção: Não é possível voltar para questões anteriores. Avance apenas quando tiver certeza.",
     },
+    {
+        icon: "exit_to_app",
+        title: "Saída da Tela",
+        description: "Se você sair da tela da prova duas vezes, a prova será encerrada automaticamente e a perda será irreversível. Mantenha-se na tela durante toda a realização.",
+    },
 ];
 
 export default function InstrucoesContent({ prova }: InstrucoesContentProps) {
@@ -162,6 +167,10 @@ export default function InstrucoesContent({ prova }: InstrucoesContentProps) {
                                 </span>
                                 , a prova será iniciada imediatamente e o cronômetro não poderá
                                 ser pausado.
+                            </p>
+                            <p className="text-text-main font-medium leading-relaxed mt-2">
+                                <span className="font-bold text-red-600">⚠ Sair da tela duas vezes</span>{" "}
+                                resultará na perda irreversível da prova. Certifique-se de permanecer na página durante toda a realização.
                             </p>
                         </div>
                     </div>
