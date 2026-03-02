@@ -65,6 +65,7 @@ export function AvaliacaoContent() {
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isDirty, setIsDirty] = useState(false)
 
   // Estado do 1:1
   const [podeMarcar1on1Checkbox, setPodeMarcar1on1Checkbox] = useState(false)
@@ -157,12 +158,14 @@ export function AvaliacaoContent() {
             planosAcao: respostaExistente.planosAcao.join("\n"),
             oneOnOneFeito: respostaExistente.oneOnOneFeito
           })
+          setIsDirty(false)
           setRespostaFinalizada(respostaExistente.finalizada)
           setNotaFeedbackRecebida(respostaExistente.notaFeedbackRecebida)
           // Readonly quando finalizada E já tem feedback avaliado
           setIsReadonly(respostaExistente.finalizada && respostaExistente.notaFeedbackRecebida !== null)
         } else {
           setFormData(initialFormData)
+          setIsDirty(false)
           setRespostaFinalizada(false)
           setNotaFeedbackRecebida(null)
           setIsReadonly(false)
@@ -181,7 +184,19 @@ export function AvaliacaoContent() {
 
   const handleFormChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    setIsDirty(true)
   }
+
+  // Debounce para salvar rascunho automaticamente
+  useEffect(() => {
+    if (!isDirty || isSaving || isReadonly || respostaFinalizada || !avaliacaoId || !selectedMembroId) return
+
+    const timeoutId = setTimeout(() => {
+      handleSave(false)
+    }, 2000)
+
+    return () => clearTimeout(timeoutId)
+  }, [formData, isDirty, isSaving, isReadonly, respostaFinalizada, avaliacaoId, selectedMembroId])
 
   const handleSave = async (finalizada: boolean = false) => {
     if (!avaliacaoId || !selectedMember?.id || !selectedMembroId) return
@@ -203,6 +218,7 @@ export function AvaliacaoContent() {
 
       // Recarrega dados para atualizar status
       await loadAvaliacaoData()
+      setIsDirty(false)
     } catch (error) {
       console.error("Erro ao salvar:", error)
     } finally {
