@@ -39,6 +39,7 @@ const navRoutes: NavRoute[] = [
     { href: "/coord/home", icon: Home, label: "Home" },
     { href: "/coord/alocacao", icon: PieChart, label: "Overview de Alocação" },
     { href: "/coord/avaliacoes", icon: ClipboardList, label: "Controle de Avaliações" },
+    { href: "/coord/avaliacoes-360", icon: ClipboardCheck, label: "Avaliações 360" },
     { href: "/coord/termometro", icon: Thermometer, label: "Controle de Termômetros" },
     { href: "/coord/pco", icon: BarChart3, label: "Pesquisa de Clima (PCO)" },
     { href: "/coord/pagamentos", icon: CircleDollarSign, label: "Controle de Gastos" },

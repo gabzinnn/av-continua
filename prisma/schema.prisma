@@ -55,6 +55,9 @@ model Membro {
   respostasTermometro   RespostaTermometro[]
   participacoesPCO      ParticipacaoPCO[]
   respostasPCO          RespostaPCO[]
+
+  avaliacoes360Feitas    Feedback360[] @relation("Avaliador360")
+  avaliacoes360Recebidas Feedback360[] @relation("Avaliado360")
 }
 
 model Coordenador {
@@ -91,10 +94,11 @@ model Ciclo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  avaliacoes  Avaliacao[]
-  demandas    Demanda[]
-  termometros Termometro[]
-  pcos        PCO[]
+  avaliacoes    Avaliacao[]
+  demandas      Demanda[]
+  termometros   Termometro[]
+  pcos          PCO[]
+  avaliacoes360 Avaliacao360[]
 }
 
 model RespostaAvaliacao {
@@ -510,3 +514,101 @@ model RespostaPCO {
   @@unique([perguntaId, membroId])
   @@index([pcoId])
 }
+
+// ==========================================
+// AVALIAÇÃO 360
+// ==========================================
+
+enum StatusAvaliacao360 {
+  RASCUNHO
+  ATIVA
+  ENCERRADA
+}
+
+enum TipoPergunta360 {
+  ESCALA
+  TEXTO_ABERTO
+}
+
+model Avaliacao360 {
+  id         Int                 @id @default(autoincrement())
+  nome       String
+  descricao  String?
+  status     StatusAvaliacao360  @default(RASCUNHO)
+  dataInicio DateTime?
+  dataFim    DateTime?
+  idCiclo    Int?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  ciclo      Ciclo?              @relation(fields: [idCiclo], references: [id])
+  dimensoes  Dimensao360[]
+  feedbacks  Feedback360[]
+}
+
+model Dimensao360 {
+  id           Int          @id @default(autoincrement())
+  avaliacaoId  Int
+  titulo       String
+  descricao    String?
+  peso         Decimal?     @db.Decimal(5, 2)
+  ordem        Int
+  createdAt    DateTime     @default(now())
+
+  avaliacao    Avaliacao360 @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  perguntas    Pergunta360[]
+
+  @@index([avaliacaoId])
+}
+
+model Pergunta360 {
+  id           Int             @id @default(autoincrement())
+  dimensaoId   Int
+  texto        String
+  tipo         TipoPergunta360 @default(ESCALA)
+  obrigatoria  Boolean         @default(true)
+  ordem        Int
+  createdAt    DateTime        @default(now())
+
+  dimensao     Dimensao360     @relation(fields: [dimensaoId], references: [id], onDelete: Cascade)
+  respostas    RespostaPergunta360[]
+
+  @@index([dimensaoId])
+}
+
+model Feedback360 {
+  id           Int           @id @default(autoincrement())
+  avaliacaoId  Int
+  avaliadorId  Int
+  avaliadoId   Int
+  finalizado   Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  avaliacao    Avaliacao360  @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  avaliador    Membro        @relation("Avaliador360", fields: [avaliadorId], references: [id])
+  avaliado     Membro        @relation("Avaliado360", fields: [avaliadoId], references: [id])
+  respostas    RespostaPergunta360[]
+
+  @@unique([avaliacaoId, avaliadorId, avaliadoId])
+  @@index([avaliacaoId])
+  @@index([avaliadorId])
+  @@index([avaliadoId])
+}
+
+model RespostaPergunta360 {
+  id           Int          @id @default(autoincrement())
+  feedbackId   Int
+  perguntaId   Int
+  nota         Int?
+  texto        String?
+  createdAt    DateTime     @default(now())
+
+  feedback     Feedback360  @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  pergunta     Pergunta360  @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+
+  @@unique([feedbackId, perguntaId])
+  @@index([feedbackId])
+  @@index([perguntaId])
+}
+

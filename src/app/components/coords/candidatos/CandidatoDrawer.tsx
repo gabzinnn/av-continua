@@ -536,10 +536,10 @@ export function CandidatoDrawer({ candidato, isOpen, onClose, onCandidatoAtualiz
             {isDeleteModalOpen && (
                 <>
                     <div 
-                        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+                        className="fixed inset-0 z-60 bg-black/40 backdrop-blur-sm"
                         onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
                     />
-                    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-70 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 space-y-4">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
