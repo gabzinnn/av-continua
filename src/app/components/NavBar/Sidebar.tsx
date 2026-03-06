@@ -3,15 +3,18 @@
 import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useMember } from "@/src/context/memberContext"
+import { useAuth } from "@/src/context/authContext"
 import { NavItem } from "./NavItem"
 import { UserCard } from "./UserCard"
-import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon, Thermometer, ClipboardList, Activity } from "lucide-react"
+import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon, Thermometer, ClipboardList, Activity, BookOpen } from "lucide-react"
 import { temPCOAtiva } from "@/src/actions/pcoActions"
+import { CoordsSidebar } from "../coords/CoordsSidebar"
 
 interface NavRoute {
-  href: string
+  href?: string
   icon: LucideIcon
   label: string
+  subItems?: { href: string; label: string }[]
 }
 
 const baseRoutes: NavRoute[] = [
@@ -21,6 +24,13 @@ const baseRoutes: NavRoute[] = [
   { href: "/historico-termometro", icon: Activity, label: "Histórico Termômetro" },
   { href: "/historico", icon: History, label: "Histórico" },
   { href: "/avaliacoes", icon: Archive, label: "Avaliações recebidas" },
+  {
+    icon: BookOpen,
+    label: "Programa de Preparação",
+    subItems: [
+      { href: "/programa-preparacao/simulados", label: "Simulados" }
+    ]
+  },
 ]
 
 const pcoRoute: NavRoute = { href: "/pco", icon: ClipboardList, label: "Pesquisa de Clima" }
@@ -29,6 +39,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const [showPCO, setShowPCO] = useState(false)
   const { selectedMember, clearMember } = useMember()
+  const { isAuthenticated, isCoordenador, isEquipePS } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -75,7 +86,12 @@ export function Sidebar() {
     router.push("/")
   }
 
-  if (!selectedMember) return null
+  if (!selectedMember) {
+    if (isAuthenticated && (isCoordenador || isEquipePS)) {
+      return <CoordsSidebar />
+    }
+    return null
+  }
 
   // Build nav routes dynamically
   const navRoutes = showPCO
@@ -146,10 +162,11 @@ export function Sidebar() {
         <nav className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
           {navRoutes.map((route) => (
             <NavItem
-              key={route.href}
+              key={route.label}
               href={route.href}
               icon={route.icon}
               label={route.label}
+              subItems={route.subItems}
             />
           ))}
         </nav>

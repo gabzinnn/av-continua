@@ -20,7 +20,8 @@ import {
     ChevronDown,
     ClipboardCheck,
     Thermometer,
-    BarChart3
+    BarChart3,
+    BookOpen
 } from "lucide-react"
 
 interface NavRoute {
@@ -53,6 +54,13 @@ const navGroups: NavGroup[] = [
         children: [
             { href: "/coord/processo-seletivo/provas", icon: ClipboardCheck, label: "Provas" },
             { href: "/coord/processo-seletivo/candidatos", icon: Users, label: "Gestão de Candidatos" },
+        ]
+    },
+    {
+        icon: BookOpen,
+        label: "Programa de Preparação",
+        children: [
+            { href: "/programa-preparacao/simulados", icon: ClipboardCheck, label: "Simulados" }
         ]
     }
 ]

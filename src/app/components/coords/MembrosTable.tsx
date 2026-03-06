@@ -46,7 +46,7 @@ const columns: TableColumn<MembroResumo>[] = [
         ),
         sortable: true,
         selector: (row) => row.nome,
-        minWidth: "180px",
+        width: "180px",
     },
     {
         name: "Área",
@@ -55,7 +55,7 @@ const columns: TableColumn<MembroResumo>[] = [
         cell: (row) => (
             <span className="text-gray-600 text-sm whitespace-nowrap">{row.area}</span>
         ),
-        minWidth: "200px",
+        width: "200px",
     },
     {
         name: "DRE",
@@ -64,20 +64,19 @@ const columns: TableColumn<MembroResumo>[] = [
         cell: (row) => (
             <span className="text-gray-600 text-sm whitespace-nowrap">{row.dre}</span>
         ),
-        minWidth: "100px",
+        width: "100px",
     },
     {
         name: "Status",
         cell: (row) => (
-            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                row.isAtivo ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-            }`}>
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${row.isAtivo ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                }`}>
                 {row.isAtivo ? "Ativo" : "Inativo"}
             </span>
         ),
         sortable: true,
         selector: (row) => row.isAtivo ? "Ativo" : "Inativo",
-        minWidth: "100px",
+        width: "100px",
     },
 ]
 
@@ -130,8 +129,8 @@ export function MembrosTable({ membrosIniciais, total }: MembrosTableProps) {
         <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-text-main">Membros Atuais</h3>
-                <Link 
-                    href="/coord/membros" 
+                <Link
+                    href="/coord/membros"
                     className="text-sm font-bold text-text-muted hover:text-text-main transition-colors"
                 >
                     Ver todos
