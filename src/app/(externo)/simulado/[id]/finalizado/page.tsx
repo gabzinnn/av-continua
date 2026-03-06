@@ -25,7 +25,7 @@ export default function SimuladoFinalizadoPage() {
             return;
         }
 
-        if (session.id !== params.id) {
+        if (session.id !== Number(params.id)) {
             router.replace('/simulado');
             return;
         }
@@ -38,7 +38,7 @@ export default function SimuladoFinalizadoPage() {
 
         // Após a animação de "Processando", permitir a tela final de transição redirecionar
         const timer = setTimeout(() => {
-            if (session.status === "PROCESSANDO" || session.status === "FINALIZADO") {
+            if (session.status === "FINALIZADO") {
                 // Libera botão ver resultados ou auto-navega
                 // Manteremos no clique manual do usuário pra seguir o Mockup
                 // Na vida real você alteraria o status do Contexto de GRAVANDO DB para OK.
