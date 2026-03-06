@@ -51,12 +51,12 @@ export default function RealizacaoSimuladoPage() {
             return;
         }
 
-        if (session.id !== params.id) {
+        if (session.id !== Number(params.id)) {
             router.replace('/simulado');
             return;
         }
 
-        if (session.status === "FINALIZADO" || session.status === "PROCESSANDO") {
+        if (session.status === "FINALIZADO") {
             router.replace(`/simulado/${session.id}/finalizado`);
             return;
         }
@@ -101,9 +101,7 @@ export default function RealizacaoSimuladoPage() {
     const currentQuestion = session.questoes[currentQuestionIndex];
     const currentResposta = session.respostas.find(r => r.questaoId === currentQuestion.id);
 
-    const handleSelectOption = (altId: string) => {
-        responderQuestao(currentQuestion.id, { alternativaId: altId });
-    };
+
 
     const handleTextAnswer = (text: string) => {
         responderQuestao(currentQuestion.id, { respostaDiscursiva: text });
@@ -168,7 +166,7 @@ export default function RealizacaoSimuladoPage() {
                         {/* Enunciado */}
                         <div className="prose prose-sm sm:prose-base max-w-none text-text-main mb-10">
                             <h3 className="text-xl sm:text-2xl font-black mb-4 tracking-tight leading-tight">
-                                {currentQuestion.tipo === "Objetiva" ? "Questão de Multipla Escolha" : "Questão Analítica"}
+                                Questão Analítica
                             </h3>
                             <p className="whitespace-pre-wrap leading-relaxed">
                                 {currentQuestion.enunciado}
@@ -182,43 +180,15 @@ export default function RealizacaoSimuladoPage() {
                             </div>
                         )}
 
-                        {/* Alternativas */}
-                        <div className="space-y-4">
-                            {currentQuestion.tipo === "Objetiva" && currentQuestion.alternativas?.map((alt) => {
-                                const isSelected = currentResposta?.alternativaId === alt.id;
-                                return (
-                                    <button
-                                        key={alt.id}
-                                        onClick={() => handleSelectOption(alt.id)}
-                                        className={`w-full text-left flex items-start p-5 rounded-2xl border-2 transition-all cursor-pointer group hover:-translate-y-0.5
-                                            ${isSelected
-                                                ? "border-[#FAD419] bg-[#FCE98C]/10 shadow-sm"
-                                                : "border-gray-100 bg-white hover:border-[#FAD419]/50 hover:bg-gray-50 shadow-sm"
-                                            }`}
-                                    >
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mr-4 font-black text-sm transition-colors
-                                            ${isSelected ? "bg-[#FAD419] text-text-main" : "bg-gray-100 text-gray-500 group-hover:bg-[#FAD419]/20"}`}>
-                                            {alt.id}
-                                        </div>
-                                        <div className={`pt-1.5 leading-relaxed text-sm lg:text-base font-semibold transition-colors
-                                            ${isSelected ? "text-text-main" : "text-gray-600 group-hover:text-text-main"}`}>
-                                            {alt.texto}
-                                        </div>
-                                    </button>
-                                );
-                            })}
-
-                            {currentQuestion.tipo === "Discursiva" && (
-                                <div className="space-y-3">
-                                    <label className="text-sm font-bold text-gray-700 uppercase tracking-widest block">Sua Resposta</label>
-                                    <textarea
-                                        value={currentResposta?.respostaDiscursiva || ""}
-                                        onChange={(e) => handleTextAnswer(e.target.value)}
-                                        className="w-full min-h-[200px] p-5 rounded-2xl border-2 border-gray-200 bg-gray-50 text-text-main focus:ring-4 focus:ring-[#FAD419]/20 focus:border-[#FAD419] outline-none transition-all placeholder:text-gray-400 resize-y text-base leading-relaxed"
-                                        placeholder="Estruture sua resposta lógica aqui..."
-                                    />
-                                </div>
-                            )}
+                        {/* Resposta Discursiva */}
+                        <div className="space-y-3">
+                            <label className="text-sm font-bold text-gray-700 uppercase tracking-widest block">Sua Resposta</label>
+                            <textarea
+                                value={currentResposta?.respostaDiscursiva || ""}
+                                onChange={(e) => handleTextAnswer(e.target.value)}
+                                className="w-full min-h-[200px] p-5 rounded-2xl border-2 border-gray-200 bg-gray-50 text-text-main focus:ring-4 focus:ring-[#FAD419]/20 focus:border-[#FAD419] outline-none transition-all placeholder:text-gray-400 resize-y text-base leading-relaxed"
+                                placeholder="Estruture sua resposta lógica aqui..."
+                            />
                         </div>
                     </div>
 
@@ -262,7 +232,7 @@ export default function RealizacaoSimuladoPage() {
                         {/* Grid */}
                         <div className="grid grid-cols-5 gap-3 mb-8">
                             {session.questoes.map((q, idx) => {
-                                const isAnswered = session.respostas.some(r => r.questaoId === q.id && (r.alternativaId || r.respostaDiscursiva));
+                                const isAnswered = session.respostas.some(r => r.questaoId === q.id && r.respostaDiscursiva);
                                 const isCurrent = currentQuestionIndex === idx;
 
                                 return (

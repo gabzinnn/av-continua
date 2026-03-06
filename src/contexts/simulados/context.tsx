@@ -2,25 +2,16 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-export type TipoQuestao = "Objetiva" | "Discursiva";
 export type BancoQuestao = "GMAT" | "Business Case";
 export type DificuldadeQuestao = "Fácil" | "Médio" | "Difícil";
-
-export interface Alternativa {
-    id: string;
-    texto: string;
-    correta: boolean;
-}
 
 export interface QuestaoSimulado {
     id: number;
     enunciado: string;
-    tipo: TipoQuestao;
     banco: BancoQuestao;
     data: string;
     colorBanco: string;
     dificuldade?: string;
-    alternativas?: Alternativa[];
     respostaModelo?: string;
     imagem?: string | null;
 }
@@ -29,7 +20,6 @@ const defaultQuestions: QuestaoSimulado[] = [
     {
         id: 1,
         enunciado: "Considerando uma empresa de varejo com queda de 15% no EBITDA, quais as alavancas de rentabilidade...",
-        tipo: "Discursiva",
         banco: "Business Case",
         data: "12 Out 2023",
         colorBanco: "blue"
@@ -37,7 +27,6 @@ const defaultQuestions: QuestaoSimulado[] = [
     {
         id: 2,
         enunciado: "If x is an integer and y = x^2 + 5x + 6, which of the following must be true about the parity of y?",
-        tipo: "Objetiva",
         banco: "GMAT",
         data: "10 Out 2023",
         colorBanco: "purple"
@@ -45,7 +34,6 @@ const defaultQuestions: QuestaoSimulado[] = [
     {
         id: 3,
         enunciado: "Qual é o custo de aquisição de cliente (CAC) aceitável para um LTV de R$ 500 num modelo SaaS B2B?",
-        tipo: "Objetiva",
         banco: "Business Case",
         data: "05 Set 2023",
         colorBanco: "blue"
@@ -53,7 +41,6 @@ const defaultQuestions: QuestaoSimulado[] = [
     {
         id: 4,
         enunciado: "What is the greatest prime factor of 4^17 - 2^28?",
-        tipo: "Objetiva",
         banco: "GMAT",
         data: "01 Set 2023",
         colorBanco: "purple"
@@ -61,7 +48,6 @@ const defaultQuestions: QuestaoSimulado[] = [
     {
         id: 5,
         enunciado: "Como estruturar um framework para avaliar a entrada de um banco de varejo no mercado de crédito rural?",
-        tipo: "Discursiva",
         banco: "Business Case",
         data: "20 Ago 2023",
         colorBanco: "blue"

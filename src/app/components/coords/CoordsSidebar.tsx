@@ -60,7 +60,7 @@ const navGroups: NavGroup[] = [
         icon: BookOpen,
         label: "Programa de Preparação",
         children: [
-            { href: "/programa-preparacao/simulados", icon: ClipboardCheck, label: "Simulados" }
+            { href: "/coord/programa-preparacao/simulados", icon: ClipboardCheck, label: "Simulados" }
         ]
     }
 ]

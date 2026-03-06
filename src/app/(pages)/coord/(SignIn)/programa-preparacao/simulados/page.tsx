@@ -1,13 +1,59 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSimulados } from "./context";
 import { CustomAlert, AlertType } from "@/src/app/components/CustomAlert";
+import { ChevronRight } from "lucide-react";
+import {
+    getAllQuestoesSimulado,
+    deleteQuestaoSimulado,
+    getSimuladosStats,
+    getUltimasSessoes,
+    type QuestaoSimuladoCompleta
+} from "@/src/actions/simuladosActions";
+
+// Helper to format banco enum to display label
+function bancoLabel(banco: string) {
+    return banco === "BUSINESS_CASE" ? "Business Case" : "GMAT";
+}
+
+function bancoColor(banco: string) {
+    return banco === "BUSINESS_CASE" ? "blue" : "purple";
+}
+
+function formatDate(date: Date) {
+    const d = new Date(date);
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    return `${d.getDate().toString().padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatTimeAgo(date: Date) {
+    const d = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+        return `Hoje, ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    } else if (diffDays === 1) {
+        return `Ontem, ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    } else {
+        return formatDate(d);
+    }
+}
+
+function formatTimeRemaining(seconds: number) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
+}
 
 export default function SimuladosDashboardPage() {
-    const { questoes, deleteQuestao } = useSimulados();
+    const [questoes, setQuestoes] = useState<QuestaoSimuladoCompleta[]>([]);
+    const [stats, setStats] = useState({ totalQuestoes: 0, questoesGMAT: 0, questoesBC: 0, totalSessoes: 0 });
+    const [sessoes, setSessoes] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
     // Filtros e Paginação
     const [searchTerm, setSearchTerm] = useState("");
@@ -38,8 +84,32 @@ export default function SimuladosDashboardPage() {
 
     const closeAlert = () => setAlertConfig(prev => ({ ...prev, isOpen: false }));
 
+    const loadData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [q, s, sess] = await Promise.all([
+                getAllQuestoesSimulado(searchTerm || undefined, filterTipo !== "Todos" ? filterTipo : undefined),
+                getSimuladosStats(),
+                getUltimasSessoes(5)
+            ]);
+            setQuestoes(q);
+            setStats(s);
+            setSessoes(sess);
+        } catch (err) {
+            console.error("Erro ao carregar dados:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, [searchTerm, filterTipo]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
     const handleCopyLink = () => {
-        navigator.clipboard.writeText("https://simulados.ufrjconsulting.club");
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        navigator.clipboard.writeText(`${protocol}//${hostname}/simulado`);
         setAlertConfig({
             isOpen: true,
             type: "success",
@@ -59,58 +129,32 @@ export default function SimuladosDashboardPage() {
                 message: "Tem certeza que deseja excluir esta questão? Essa ação não poderá ser desfeita.",
                 confirmText: "Sim, Excluir",
                 cancelText: "Cancelar",
-                onConfirm: () => {
-                    deleteQuestao(id);
-                    // Ajustar paginação caso delete o último item da página atual
-                    const totalPagesAfterDelete = Math.ceil((filteredQuestions.length - 1) / itemsPerPage);
-                    if (currentPage > totalPagesAfterDelete && totalPagesAfterDelete > 0) {
-                        setCurrentPage(totalPagesAfterDelete);
+                onConfirm: async () => {
+                    try {
+                        await deleteQuestaoSimulado(id);
+                        await loadData();
+                    } catch (err) {
+                        console.error("Erro ao excluir:", err);
                     }
                     closeAlert();
                 },
                 onCancel: closeAlert
             });
         } else if (action === "editar") {
-            router.push(`/programa-preparacao/simulados/criar?id=${id}`);
-        } else {
-            setAlertConfig({
-                isOpen: true,
-                type: "info",
-                title: "Em Desenvolvimento",
-                message: `Função de ${action} ainda em desenvolvimento para a questão ${id}!`,
-                confirmText: "Voltar",
-                onConfirm: closeAlert
-            });
+            router.push(`/coord/programa-preparacao/simulados/criar?id=${id}`);
         }
     };
 
-    // Filter and Sort Logic
-    const filteredQuestions = useMemo(() => {
-        let result = [...questoes];
-
-        if (searchTerm.trim() !== "") {
-            result = result.filter(q =>
-                q.enunciado.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
-
-        if (filterTipo !== "Todos") {
-            const isGMAT = filterTipo === "GMAT";
-            result = result.filter(q => isGMAT ? q.banco === "GMAT" : q.banco === "Business Case");
-        }
-
-        if (filterOrdem === "Mais Recentes") {
-            result.sort((a, b) => b.id - a.id); // Considerando ID maior como mais recente para mock
-        } else {
-            result.sort((a, b) => a.id - b.id);
-        }
-
-        return result;
-    }, [questoes, searchTerm, filterTipo, filterOrdem]);
+    // Sort Logic (client side since filtering is server side)
+    const sortedQuestions = [...questoes];
+    if (filterOrdem === "Mais Antigos") {
+        sortedQuestions.sort((a, b) => a.id - b.id);
+    }
+    // Default is already newest first from server
 
     // Pagination
-    const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
-    const displayedQuestions = filteredQuestions.slice(
+    const totalPages = Math.ceil(sortedQuestions.length / itemsPerPage);
+    const displayedQuestions = sortedQuestions.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
@@ -121,6 +165,9 @@ export default function SimuladosDashboardPage() {
         }
     };
 
+    const gmtPercent = stats.totalQuestoes > 0 ? ((stats.questoesGMAT / stats.totalQuestoes) * 100).toFixed(1) : "0";
+    const bcPercent = stats.totalQuestoes > 0 ? ((stats.questoesBC / stats.totalQuestoes) * 100).toFixed(1) : "0";
+
     return (
         <div className="flex-1 overflow-y-auto bg-bg-main min-h-screen">
             <CustomAlert {...alertConfig} />
@@ -130,10 +177,15 @@ export default function SimuladosDashboardPage() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex flex-col gap-2">
                             <nav className="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-widest">
-                                <span>Dashboard</span>
-                                <span className="material-symbols-outlined text-sm">chevron_right</span>
+                                <button
+                                    onClick={() => router.push("/coord/home")}
+                                    className="text-text-muted hover:text-primary transition-colors cursor-pointer"
+                                >
+                                    Dashboard
+                                </button>
+                                <ChevronRight size={14} className="text-text-muted" />
                                 <span>Programa de Preparação</span>
-                                <span className="material-symbols-outlined text-sm">chevron_right</span>
+                                <ChevronRight size={14} className="text-text-muted" />
                                 <span className="text-primary font-bold">Simulados</span>
                             </nav>
                             <h1 className="text-text-main text-3xl font-black leading-tight tracking-tight">
@@ -145,7 +197,7 @@ export default function SimuladosDashboardPage() {
                         </div>
                         <div className="flex items-center gap-4">
                             <Link
-                                href="/programa-preparacao/simulados/criar"
+                                href="/coord/programa-preparacao/simulados/criar"
                                 className="bg-[#FAD419] hover:bg-[#FAD419]/90 text-text-main text-sm font-bold px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-sm"
                             >
                                 <span className="material-symbols-outlined text-lg">post_add</span>
@@ -167,37 +219,32 @@ export default function SimuladosDashboardPage() {
                                 <span className="text-gray-500 font-semibold text-sm">Total de Questões</span>
                                 <span className="material-symbols-outlined text-[#FAD419] bg-[#FAD419]/10 p-2 rounded-lg">database</span>
                             </div>
-                            <p className="text-3xl font-black text-text-main">1,240</p>
-                            <div className="mt-2 flex items-center text-xs font-bold text-green-500">
-                                <span className="material-symbols-outlined text-sm">trending_up</span>
-                                <span>+12% este mês</span>
-                            </div>
+                            <p className="text-3xl font-black text-text-main">{stats.totalQuestoes.toLocaleString("pt-BR")}</p>
+                            <p className="text-gray-400 text-xs mt-2 font-medium">Questões cadastradas no banco</p>
                         </div>
                         <div className="bg-white p-6 rounded-xl shadow-sm border-b-4 border-[#FAD419] relative overflow-hidden">
                             <div className="flex justify-between items-start mb-4">
                                 <span className="text-gray-500 font-semibold text-sm">Questões GMAT</span>
                                 <span className="material-symbols-outlined text-[#FAD419] bg-[#FAD419]/10 p-2 rounded-lg">calculate</span>
                             </div>
-                            <p className="text-3xl font-black text-text-main">850</p>
-                            <p className="text-gray-400 text-xs mt-2 font-medium">68.5% do total do banco</p>
+                            <p className="text-3xl font-black text-text-main">{stats.questoesGMAT.toLocaleString("pt-BR")}</p>
+                            <p className="text-gray-400 text-xs mt-2 font-medium">{gmtPercent}% do total do banco</p>
                         </div>
                         <div className="bg-white p-6 rounded-xl shadow-sm border-b-4 border-[#FAD419] relative overflow-hidden">
                             <div className="flex justify-between items-start mb-4">
                                 <span className="text-gray-500 font-semibold text-sm">Questões Business Case</span>
                                 <span className="material-symbols-outlined text-[#FAD419] bg-[#FAD419]/10 p-2 rounded-lg">business_center</span>
                             </div>
-                            <p className="text-3xl font-black text-text-main">390</p>
-                            <p className="text-gray-400 text-xs mt-2 font-medium">31.5% do total do banco</p>
+                            <p className="text-3xl font-black text-text-main">{stats.questoesBC.toLocaleString("pt-BR")}</p>
+                            <p className="text-gray-400 text-xs mt-2 font-medium">{bcPercent}% do total do banco</p>
                         </div>
                         <div className="bg-white p-6 rounded-xl shadow-sm border-b-4 border-[#FAD419] relative overflow-hidden">
                             <div className="flex justify-between items-start mb-4">
                                 <span className="text-gray-500 font-semibold text-sm">Simulados Realizados</span>
                                 <span className="material-symbols-outlined text-[#FAD419] bg-[#FAD419]/10 p-2 rounded-lg">assignment_turned_in</span>
                             </div>
-                            <p className="text-3xl font-black text-text-main">156</p>
-                            <div className="mt-2 flex items-center text-xs font-bold text-[#FAD419]">
-                                <span>Média 14.2 por membro</span>
-                            </div>
+                            <p className="text-3xl font-black text-text-main">{stats.totalSessoes.toLocaleString("pt-BR")}</p>
+                            <p className="text-gray-400 text-xs mt-2 font-medium">Sessões de simulado criadas</p>
                         </div>
                     </section>
 
@@ -255,55 +302,55 @@ export default function SimuladosDashboardPage() {
                             </div>
                         </div>
                         <div className="overflow-x-auto min-h-[300px]">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-widest border-b border-gray-200">
-                                    <tr>
-                                        <th className="px-6 py-4">Enunciado</th>
-                                        <th className="px-6 py-4 whitespace-nowrap">Tipo</th>
-                                        <th className="px-6 py-4 whitespace-nowrap">Banco</th>
-                                        <th className="px-6 py-4 whitespace-nowrap">Data de Criação</th>
-                                        <th className="px-6 py-4 text-right">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 text-sm">
-                                    {displayedQuestions.map((q) => (
-                                        <tr key={q.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <p className="font-bold text-text-main line-clamp-2 md:max-w-md w-full leading-relaxed">
-                                                    {q.enunciado}
-                                                </p>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold uppercase whitespace-nowrap">
-                                                    {q.tipo}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${q.colorBanco === "blue" ? "bg-blue-50 border border-blue-100 text-blue-700" : "bg-purple-50 border border-purple-100 text-purple-700"
-                                                    }`}>
-                                                    {q.banco}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{q.data}</td>
-                                            <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                                                <button onClick={() => handleAction("editar", q.id)} className="p-2 hover:bg-[#FAD419]/20 rounded-lg text-gray-400 hover:text-[#FAD419] cursor-pointer transition-all">
-                                                    <span className="material-symbols-outlined text-lg">edit</span>
-                                                </button>
-                                                <button onClick={() => handleAction("excluir", q.id)} className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 cursor-pointer transition-all">
-                                                    <span className="material-symbols-outlined text-lg">delete</span>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {displayedQuestions.length === 0 && (
+                            {loading ? (
+                                <div className="flex items-center justify-center py-20">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FAD419]"></div>
+                                </div>
+                            ) : (
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-bold tracking-widest border-b border-gray-200">
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-12 text-center text-gray-500 font-medium">
-                                                Nenhuma questão encontrada com esses filtros.
-                                            </td>
+                                            <th className="px-6 py-4">Enunciado</th>
+                                            <th className="px-6 py-4 whitespace-nowrap">Banco</th>
+                                            <th className="px-6 py-4 whitespace-nowrap">Data de Criação</th>
+                                            <th className="px-6 py-4 text-right">Ações</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 text-sm">
+                                        {displayedQuestions.map((q) => (
+                                            <tr key={q.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <p className="font-bold text-text-main line-clamp-2 md:max-w-md w-full leading-relaxed">
+                                                        {q.enunciado}
+                                                    </p>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${bancoColor(q.banco) === "blue" ? "bg-blue-50 border border-blue-100 text-blue-700" : "bg-purple-50 border border-purple-100 text-purple-700"
+                                                        }`}>
+                                                        {bancoLabel(q.banco)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{formatDate(q.createdAt)}</td>
+                                                <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                                                    <button onClick={() => handleAction("editar", q.id)} className="p-2 hover:bg-[#FAD419]/20 rounded-lg text-gray-400 hover:text-[#FAD419] cursor-pointer transition-all">
+                                                        <span className="material-symbols-outlined text-lg">edit</span>
+                                                    </button>
+                                                    <button onClick={() => handleAction("excluir", q.id)} className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 cursor-pointer transition-all">
+                                                        <span className="material-symbols-outlined text-lg">delete</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {displayedQuestions.length === 0 && (
+                                            <tr>
+                                                <td colSpan={4} className="px-6 py-12 text-center text-gray-500 font-medium">
+                                                    Nenhuma questão encontrada com esses filtros.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
 
                         {/* Pagination Area */}
@@ -363,82 +410,41 @@ export default function SimuladosDashboardPage() {
                                         <th className="px-6 py-4">Participante</th>
                                         <th className="px-6 py-4 whitespace-nowrap">Tipo Simulado</th>
                                         <th className="px-6 py-4 whitespace-nowrap">Qtd. Questões</th>
-                                        <th className="px-6 py-4 whitespace-nowrap">Acertos</th>
                                         <th className="px-6 py-4 whitespace-nowrap">Tempo Rest.</th>
                                         <th className="px-6 py-4 whitespace-nowrap">Status</th>
                                         <th className="px-6 py-4 whitespace-nowrap">Data</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 text-sm">
-                                    <tr className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-text-main whitespace-nowrap">Lucas Almeida</span>
-                                                <span className="text-xs text-gray-500">lucas.almeida@ufrj.br</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-gray-700 whitespace-nowrap">GMAT Full Test</td>
-                                        <td className="px-6 py-4 text-center">31</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-green-600">28</span>
-                                                <span className="text-xs text-gray-400">(90.3%)</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-500">12m 45s</td>
-                                        <td className="px-6 py-4">
-                                            <span className="bg-[#FCE98C] text-text-main px-3 py-1 rounded-full text-[10px] font-black uppercase whitespace-nowrap">
-                                                Membro
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-500 whitespace-nowrap">Hoje, 14:20</td>
-                                    </tr>
-                                    <tr className="hover:bg-gray-50 transition-colors bg-[#FCE98C]/10">
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-text-main whitespace-nowrap">Fernanda Costa</span>
-                                                <span className="text-xs text-gray-500">f.costa@poli.ufrj.br</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-gray-700 whitespace-nowrap">Business Logic I</td>
-                                        <td className="px-6 py-4 text-center">15</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-text-main">12</span>
-                                                <span className="text-xs text-gray-400">(80%)</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-500">02m 10s</td>
-                                        <td className="px-6 py-4">
-                                            <span className="bg-gray-800 text-white shadow-sm px-3 py-1 rounded-full text-[10px] font-black uppercase whitespace-nowrap">
-                                                Externo
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-500 whitespace-nowrap">Ontem, 18:45</td>
-                                    </tr>
-                                    <tr className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-text-main whitespace-nowrap">Rodrigo Mendes</span>
-                                                <span className="text-xs text-gray-500">rodrigo.m@ufrj.br</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-gray-700 whitespace-nowrap">GMAT Quant Diagnostic</td>
-                                        <td className="px-6 py-4 text-center">10</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-red-600">4</span>
-                                                <span className="text-xs text-gray-400">(40%)</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-500">00m 00s</td>
-                                        <td className="px-6 py-4">
-                                            <span className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-[10px] font-black uppercase whitespace-nowrap">
-                                                Ex-membro
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-500 whitespace-nowrap">12 Out 2023</td>
-                                    </tr>
+                                    {sessoes.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="px-6 py-12 text-center text-gray-500 font-medium">
+                                                Nenhuma sessão de simulado registrada ainda.
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {sessoes.map((s) => (
+                                        <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-text-main whitespace-nowrap">{s.nomeUsuario}</span>
+                                                    <span className="text-xs text-gray-500">{s.emailUsuario}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 font-medium text-gray-700 whitespace-nowrap">{s.tipoSimulado}</td>
+                                            <td className="px-6 py-4 text-center">{s.qtdQuestoes}</td>
+                                            <td className="px-6 py-4 text-gray-500">{formatTimeRemaining(s.tempoRestanteSegundos)}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase whitespace-nowrap ${s.status === "FINALIZADO"
+                                                    ? "bg-green-100 text-green-700"
+                                                    : "bg-[#FCE98C] text-text-main"
+                                                    }`}>
+                                                    {s.status === "FINALIZADO" ? "Finalizado" : "Em andamento"}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{formatTimeAgo(s.createdAt)}</td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>

@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSimulados } from "@/src/app/(pages)/(membros)/programa-preparacao/simulados/context";
 import { useSimuladoSession } from "@/src/app/(externo)/context";
 
 export default function SimuladoConfigPage() {
-    const { questoes } = useSimulados(); // Gets the global question bank
-    const { iniciarSessao } = useSimuladoSession(); // Local session manager
+    const { iniciarSessao } = useSimuladoSession();
     const router = useRouter();
 
     const [nome, setNome] = useState("");
@@ -17,8 +15,9 @@ export default function SimuladoConfigPage() {
     const [qtdQuestoes, setQtdQuestoes] = useState<number | "">("");
 
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const handleGerarSimulado = (e: React.FormEvent) => {
+    const handleGerarSimulado = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
 
@@ -33,19 +32,26 @@ export default function SimuladoConfigPage() {
             return;
         }
 
-        const sessionId = iniciarSessao(
-            nome,
-            email,
-            tipo,
-            dificuldade || undefined, // Allow any difficulty if empty
-            qtd,
-            questoes
-        );
+        setLoading(true);
+        try {
+            const sessionId = await iniciarSessao(
+                nome,
+                email,
+                tipo,
+                dificuldade || undefined,
+                qtd
+            );
 
-        if (sessionId) {
-            router.push(`/simulado/${sessionId}`);
-        } else {
-            setError("Não há questões suficientes no banco para este filtro. Diminua a quantidade ou mude o filtro.");
+            if (sessionId) {
+                router.push(`/simulado/${sessionId}`);
+            } else {
+                setError("Não há questões suficientes no banco para este filtro. Diminua a quantidade ou mude o filtro.");
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Erro ao criar sessão de simulado. Tente novamente.");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -165,10 +171,11 @@ export default function SimuladoConfigPage() {
                         <div className="pt-4">
                             <button
                                 type="submit"
-                                className="w-full py-4 rounded-xl bg-[#FAD419] hover:bg-[#FAD419]/90 text-text-main font-black text-base shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                disabled={loading}
+                                className="w-full py-4 rounded-xl bg-[#FAD419] hover:bg-[#FAD419]/90 text-text-main font-black text-base shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                             >
-                                Gerar Simulado
-                                <span className="material-symbols-outlined text-xl">rocket_launch</span>
+                                {loading ? "Gerando..." : "Gerar Simulado"}
+                                {!loading && <span className="material-symbols-outlined text-xl">rocket_launch</span>}
                             </button>
                         </div>
                     </form>

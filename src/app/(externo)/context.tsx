@@ -1,27 +1,43 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { QuestaoSimulado } from "@/src/app/(pages)/(membros)/programa-preparacao/simulados/context";
+import {
+    criarSessaoSimulado,
+    getSessaoSimulado,
+    responderQuestaoSimulado,
+    atualizarTempoSessao,
+    finalizarSessaoSimulado,
+    type SessaoSimuladoCompleta,
+} from "@/src/actions/simuladosActions";
 
-// Definition of an answered question during the simulation
+// Interface for user responses in-memory (the actual data is in DB)
 export interface RespostaUsuario {
     questaoId: number;
-    alternativaId?: string; // id da alternativa escolhida (A, B, etc.)
     respostaDiscursiva?: string;
 }
 
+// Flat question for rendering (extracted from DB join)
+export interface QuestaoFlat {
+    id: number;
+    enunciado: string;
+    banco: string;
+    dificuldade: string | null;
+    respostaModelo: string | null;
+    imagem: string | null;
+}
+
 export interface SimuladoSession {
-    id: string; // ID único da sessão (geralmente gerado no frontend)
+    id: number;
     nomeUsuario: string;
     emailUsuario: string;
     tipoSimulado: string;
     dificuldade?: string;
-    questoes: QuestaoSimulado[];
+    questoes: QuestaoFlat[];
     respostas: RespostaUsuario[];
-    tempoTotalSegundos: number; // Ex: 1200 (20 min)
-    tempoRestanteSegundos: number; // Salvar progresso
+    tempoTotalSegundos: number;
+    tempoRestanteSegundos: number;
     dataCriacao: string;
-    status: "CONFIGURANDO" | "EM_ANDAMENTO" | "FINALIZADO" | "PROCESSANDO";
+    status: "EM_ANDAMENTO" | "FINALIZADO";
 }
 
 interface SimuladoSessionContextType {
@@ -31,9 +47,8 @@ interface SimuladoSessionContextType {
         email: string,
         tipo: string,
         dificuldade: string | undefined,
-        qtdQuestoes: number,
-        bancoDisponivel: QuestaoSimulado[]
-    ) => string | null;
+        qtdQuestoes: number
+    ) => Promise<number | null>;
     responderQuestao: (questaoId: number, resposta: Partial<RespostaUsuario>) => void;
     atualizarTempo: (segundosRestantes: number) => void;
     finalizarSimulado: () => void;
@@ -42,79 +57,78 @@ interface SimuladoSessionContextType {
 
 const SimuladoSessionContext = createContext<SimuladoSessionContextType | null>(null);
 
-const STORAGE_KEY = "@AVContinua:simulado_session";
+const STORAGE_KEY = "@AVContinua:simulado_session_id";
+
+function mapSessaoToLocal(sessao: SessaoSimuladoCompleta): SimuladoSession {
+    return {
+        id: sessao.id,
+        nomeUsuario: sessao.nomeUsuario,
+        emailUsuario: sessao.emailUsuario,
+        tipoSimulado: sessao.tipoSimulado,
+        dificuldade: sessao.dificuldade || undefined,
+        questoes: sessao.questoes.map(sq => ({
+            id: sq.questao.id,
+            enunciado: sq.questao.enunciado,
+            banco: sq.questao.banco,
+            dificuldade: sq.questao.dificuldade,
+            respostaModelo: sq.questao.respostaModelo,
+            imagem: sq.questao.imagemUrl,
+        })),
+        respostas: sessao.respostas.map(r => ({
+            questaoId: r.questaoId,
+            respostaDiscursiva: r.respostaDiscursiva || undefined,
+        })),
+        tempoTotalSegundos: sessao.tempoTotalSegundos,
+        tempoRestanteSegundos: sessao.tempoRestanteSegundos,
+        dataCriacao: sessao.createdAt.toISOString ? sessao.createdAt.toISOString() : String(sessao.createdAt),
+        status: sessao.status as "EM_ANDAMENTO" | "FINALIZADO",
+    };
+}
 
 export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<SimuladoSession | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
 
+    // Load existing session from DB on mount
     useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            try {
-                setSession(JSON.parse(stored));
-            } catch (e) {
-                console.error("Erro ao carregar sessão do simulado:", e);
-                localStorage.removeItem(STORAGE_KEY);
+        (async () => {
+            const storedId = localStorage.getItem(STORAGE_KEY);
+            if (storedId) {
+                try {
+                    const sessao = await getSessaoSimulado(Number(storedId));
+                    if (sessao && sessao.status === "EM_ANDAMENTO") {
+                        setSession(mapSessaoToLocal(sessao as SessaoSimuladoCompleta));
+                    } else {
+                        localStorage.removeItem(STORAGE_KEY);
+                    }
+                } catch (e) {
+                    console.error("Erro ao carregar sessão:", e);
+                    localStorage.removeItem(STORAGE_KEY);
+                }
             }
-        }
-        setIsLoaded(true);
+            setIsLoaded(true);
+        })();
     }, []);
 
-    // Salva automaticamente no localstorage ao mudar
-    useEffect(() => {
-        if (!isLoaded) return;
-
-        if (session) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-        } else {
-            localStorage.removeItem(STORAGE_KEY);
-        }
-    }, [session, isLoaded]);
-
-    const iniciarSessao = (
+    const iniciarSessao = async (
         nome: string,
         email: string,
         tipo: string,
         dificuldade: string | undefined,
-        qtdQuestoes: number,
-        bancoDisponivel: QuestaoSimulado[]
-    ) => {
-        // Filtrar o banco de acordo com as preferências
-        let questoesFiltradas = [...bancoDisponivel];
+        qtdQuestoes: number
+    ): Promise<number | null> => {
+        try {
+            const sessao = await criarSessaoSimulado(nome, email, tipo, dificuldade, qtdQuestoes);
+            if (!sessao) return null;
 
-        if (tipo !== "Geral") {
-            questoesFiltradas = questoesFiltradas.filter(q => q.banco === tipo);
+            const localSession = mapSessaoToLocal(sessao as SessaoSimuladoCompleta);
+            setSession(localSession);
+            localStorage.setItem(STORAGE_KEY, String(sessao.id));
+            return sessao.id;
+        } catch (err) {
+            console.error("Erro ao criar sessão:", err);
+            return null;
         }
-
-        if (dificuldade) {
-            questoesFiltradas = questoesFiltradas.filter(q => q.dificuldade === dificuldade);
-        }
-
-        // Shuffle e pegar X aleatórias
-        const shuffled = questoesFiltradas.sort(() => 0.5 - Math.random());
-        const questoesSelecionadas = shuffled.slice(0, qtdQuestoes);
-
-        if (questoesSelecionadas.length === 0) {
-            return null; // Não há questões suficientes para criar a prova
-        }
-
-        const novaSessao: SimuladoSession = {
-            id: crypto.randomUUID(),
-            nomeUsuario: nome,
-            emailUsuario: email,
-            tipoSimulado: tipo,
-            dificuldade,
-            questoes: questoesSelecionadas,
-            respostas: [],
-            tempoTotalSegundos: questoesSelecionadas.length * 120, // 2 min (120s) por questão
-            tempoRestanteSegundos: questoesSelecionadas.length * 120,
-            dataCriacao: new Date().toISOString(),
-            status: "EM_ANDAMENTO"
-        };
-
-        setSession(novaSessao);
-        return novaSessao.id;
     };
 
     const responderQuestao = (questaoId: number, respostaData: Partial<RespostaUsuario>) => {
@@ -125,11 +139,14 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
             const respostaIndex = novasRespostas.findIndex(r => r.questaoId === questaoId);
 
             if (respostaIndex >= 0) {
-                // Atualiza resposta existente
                 novasRespostas[respostaIndex] = { ...novasRespostas[respostaIndex], ...respostaData };
             } else {
-                // Adiciona nova resposta
                 novasRespostas.push({ questaoId, ...respostaData } as RespostaUsuario);
+            }
+
+            // Persist to DB asynchronously
+            if (respostaData.respostaDiscursiva !== undefined) {
+                responderQuestaoSimulado(prev.id, questaoId, respostaData.respostaDiscursiva || "").catch(console.error);
             }
 
             return { ...prev, respostas: novasRespostas };
@@ -139,6 +156,12 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
     const atualizarTempo = (segundosRestantes: number) => {
         setSession(prev => {
             if (!prev) return prev;
+
+            // Persist to DB every 10 seconds to avoid too many writes
+            if (segundosRestantes % 10 === 0) {
+                atualizarTempoSessao(prev.id, segundosRestantes).catch(console.error);
+            }
+
             return { ...prev, tempoRestanteSegundos: segundosRestantes };
         });
     };
@@ -146,11 +169,16 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
     const finalizarSimulado = () => {
         setSession(prev => {
             if (!prev) return prev;
-            return { ...prev, status: "PROCESSANDO" }; // Passa pro status de finalizado (mockup 2)
+
+            // Persist to DB
+            finalizarSessaoSimulado(prev.id).catch(console.error);
+
+            return { ...prev, status: "FINALIZADO" as const };
         });
     };
 
     const limparSessao = () => {
+        localStorage.removeItem(STORAGE_KEY);
         setSession(null);
     };
 

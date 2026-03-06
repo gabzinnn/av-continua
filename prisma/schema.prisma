@@ -510,3 +510,78 @@ model RespostaPCO {
   @@unique([perguntaId, membroId])
   @@index([pcoId])
 }
+
+// ==========================================
+// SIMULADOS — PROGRAMA DE PREPARAÇÃO
+// ==========================================
+
+enum BancoSimulado {
+  GMAT
+  BUSINESS_CASE
+}
+
+enum DificuldadeSimulado {
+  FACIL
+  MEDIO
+  DIFICIL
+}
+
+enum StatusSessaoSimulado {
+  EM_ANDAMENTO
+  FINALIZADO
+}
+
+model QuestaoSimulado {
+  id             Int                  @id @default(autoincrement())
+  enunciado      String
+  banco          BancoSimulado
+  dificuldade    DificuldadeSimulado?
+  respostaModelo String?
+  imagemUrl      String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  sessaoQuestoes SessaoSimuladoQuestao[]
+}
+
+model SessaoSimulado {
+  id                    Int                  @id @default(autoincrement())
+  nomeUsuario           String
+  emailUsuario          String
+  tipoSimulado          String
+  dificuldade           String?
+  tempoTotalSegundos    Int
+  tempoRestanteSegundos Int
+  status                StatusSessaoSimulado @default(EM_ANDAMENTO)
+  createdAt             DateTime             @default(now())
+  finalizadoEm          DateTime?
+
+  questoes  SessaoSimuladoQuestao[]
+  respostas RespostaSimulado[]
+}
+
+model SessaoSimuladoQuestao {
+  id        Int @id @default(autoincrement())
+  sessaoId  Int
+  questaoId Int
+  ordem     Int
+
+  sessao  SessaoSimulado  @relation(fields: [sessaoId], references: [id], onDelete: Cascade)
+  questao QuestaoSimulado @relation(fields: [questaoId], references: [id])
+
+  @@unique([sessaoId, questaoId])
+  @@index([sessaoId])
+}
+
+model RespostaSimulado {
+  id                 Int      @id @default(autoincrement())
+  sessaoId           Int
+  questaoId          Int
+  respostaDiscursiva String?
+  createdAt          DateTime @default(now())
+
+  sessao SessaoSimulado @relation(fields: [sessaoId], references: [id], onDelete: Cascade)
+
+  @@unique([sessaoId, questaoId])
+  @@index([sessaoId])
+}
