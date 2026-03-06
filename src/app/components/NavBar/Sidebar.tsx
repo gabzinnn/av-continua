@@ -24,13 +24,13 @@ const baseRoutes: NavRoute[] = [
   { href: "/historico-termometro", icon: Activity, label: "Histórico Termômetro" },
   { href: "/historico", icon: History, label: "Histórico" },
   { href: "/avaliacoes", icon: Archive, label: "Avaliações recebidas" },
-  {
-    icon: BookOpen,
-    label: "Programa de Preparação",
-    subItems: [
-      { href: "/programa-preparacao/simulados", label: "Simulados" }
-    ]
-  },
+  // {
+  //   icon: BookOpen,
+  //   label: "Programa de Preparação",
+  //   subItems: [
+  //     { href: "/programa-preparacao/simulados", label: "Simulados" }
+  //   ]
+  // },
 ]
 
 const pcoRoute: NavRoute = { href: "/pco", icon: ClipboardList, label: "Pesquisa de Clima" }

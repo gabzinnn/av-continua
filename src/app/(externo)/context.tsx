@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { Questao } from "@/src/app/(pages)/(membros)/programa-preparacao/simulados/context";
+import { QuestaoSimulado } from "@/src/app/(pages)/(membros)/programa-preparacao/simulados/context";
 
 // Definition of an answered question during the simulation
 export interface RespostaUsuario {
@@ -16,7 +16,7 @@ export interface SimuladoSession {
     emailUsuario: string;
     tipoSimulado: string;
     dificuldade?: string;
-    questoes: Questao[];
+    questoes: QuestaoSimulado[];
     respostas: RespostaUsuario[];
     tempoTotalSegundos: number; // Ex: 1200 (20 min)
     tempoRestanteSegundos: number; // Salvar progresso
@@ -32,7 +32,7 @@ interface SimuladoSessionContextType {
         tipo: string,
         dificuldade: string | undefined,
         qtdQuestoes: number,
-        bancoDisponivel: Questao[]
+        bancoDisponivel: QuestaoSimulado[]
     ) => string | null;
     responderQuestao: (questaoId: number, resposta: Partial<RespostaUsuario>) => void;
     atualizarTempo: (segundosRestantes: number) => void;
@@ -78,7 +78,7 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
         tipo: string,
         dificuldade: string | undefined,
         qtdQuestoes: number,
-        bancoDisponivel: Questao[]
+        bancoDisponivel: QuestaoSimulado[]
     ) => {
         // Filtrar o banco de acordo com as preferências
         let questoesFiltradas = [...bancoDisponivel];
