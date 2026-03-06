@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-    const { isAuthenticated, isLoading, isEquipePS } = useAuth()
+    const { isAuthenticated, isLoading, isEquipePS, isProgramaPreparacao } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
 
@@ -31,6 +31,18 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         }
     }, [isLoading, isAuthenticated, isEquipePS, pathname, router])
 
+    // Proteção para programa de preparação - só pode acessar rotas do programa
+    useEffect(() => {
+        if (!isLoading && isAuthenticated && isProgramaPreparacao) {
+            const allowedPaths = ["/coord/programa-preparacao"]
+            const isAllowed = allowedPaths.some(path => pathname.startsWith(path))
+
+            if (!isAllowed) {
+                router.push("/coord/programa-preparacao/simulados")
+            }
+        }
+    }, [isLoading, isAuthenticated, isProgramaPreparacao, pathname, router])
+
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-bg-main">
@@ -45,6 +57,11 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
     // Bloqueia renderização para equipeps em rotas não permitidas
     if (isEquipePS && !pathname.startsWith("/coord/processo-seletivo")) {
+        return null
+    }
+
+    // Bloqueia renderização para programa de preparação em rotas não permitidas
+    if (isProgramaPreparacao && !pathname.startsWith("/coord/programa-preparacao")) {
         return null
     }
 

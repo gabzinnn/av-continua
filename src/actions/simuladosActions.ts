@@ -284,3 +284,157 @@ export async function finalizarSessaoSimulado(sessaoId: number) {
         }
     });
 }
+
+// ==========================================
+// RESULTADOS DO SIMULADO (para externo)
+// ==========================================
+
+// Stopwords em português para filtragem de termos irrelevantes
+const STOPWORDS = new Set([
+    "a", "o", "e", "de", "da", "do", "em", "um", "uma", "que", "para", "com",
+    "no", "na", "os", "as", "dos", "das", "por", "se", "ao", "ou", "mais",
+    "como", "mas", "foi", "ser", "tem", "seu", "sua", "são", "está", "pelo",
+    "pela", "nos", "nas", "esse", "essa", "este", "esta", "isso", "isto",
+    "ele", "ela", "entre", "quando", "muito", "já", "também", "só", "sobre",
+    "pode", "qual", "seus", "suas", "ter", "era", "ainda", "até", "sem",
+    "mesmo", "cada", "vez", "bem", "deve", "aqui", "onde", "hay", "the",
+    "is", "and", "of", "to", "in", "it", "for", "on", "are", "be", "was",
+    "not", "with", "this", "that", "from", "but", "they", "have", "has",
+]);
+
+function normalizarTexto(texto: string): string[] {
+    return texto
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // strip acentos
+        .replace(/[^a-z0-9\s]/g, " ") // remove pontuação
+        .split(/\s+/)
+        .filter(t => t.length > 1 && !STOPWORDS.has(t));
+}
+
+function gerarBigrams(tokens: string[]): Set<string> {
+    const bigrams = new Set<string>();
+    for (let i = 0; i < tokens.length - 1; i++) {
+        bigrams.add(`${tokens[i]}_${tokens[i + 1]}`);
+    }
+    return bigrams;
+}
+
+export type ClassificacaoResposta = "PROVAVEL_ACERTO" | "PARCIAL" | "PROVAVEL_ERRO" | "NAO_RESPONDIDA" | "SEM_GABARITO";
+
+function calcularSimilaridade(respostaUsuario: string | null, respostaModelo: string | null): {
+    similaridade: number;
+    classificacao: ClassificacaoResposta;
+} {
+    if (!respostaUsuario?.trim()) {
+        return { similaridade: 0, classificacao: "NAO_RESPONDIDA" };
+    }
+    if (!respostaModelo?.trim()) {
+        return { similaridade: -1, classificacao: "SEM_GABARITO" };
+    }
+
+    const tokensUsuario = normalizarTexto(respostaUsuario);
+    const tokensModelo = normalizarTexto(respostaModelo);
+
+    if (tokensModelo.length === 0) {
+        return { similaridade: -1, classificacao: "SEM_GABARITO" };
+    }
+    if (tokensUsuario.length === 0) {
+        return { similaridade: 0, classificacao: "PROVAVEL_ERRO" };
+    }
+
+    // Unigram similarity (Jaccard orientado ao modelo)
+    const setUsuario = new Set(tokensUsuario);
+    const setModelo = new Set(tokensModelo);
+    const intersecaoUni = [...setModelo].filter(t => setUsuario.has(t)).length;
+    const unigramSim = intersecaoUni / setModelo.size;
+
+    // Bigram similarity
+    const bigramsUsuario = gerarBigrams(tokensUsuario);
+    const bigramsModelo = gerarBigrams(tokensModelo);
+    let bigramSim = 0;
+    if (bigramsModelo.size > 0) {
+        const intersecaoBi = [...bigramsModelo].filter(b => bigramsUsuario.has(b)).length;
+        bigramSim = intersecaoBi / bigramsModelo.size;
+    }
+
+    // Weighted score: if bigrams exist, 60% unigrams + 40% bigrams; otherwise 100% unigrams
+    const similaridade = bigramsModelo.size > 0
+        ? Math.round((unigramSim * 0.6 + bigramSim * 0.4) * 100)
+        : Math.round(unigramSim * 100);
+
+    let classificacao: ClassificacaoResposta;
+    if (similaridade >= 60) {
+        classificacao = "PROVAVEL_ACERTO";
+    } else if (similaridade >= 35) {
+        classificacao = "PARCIAL";
+    } else {
+        classificacao = "PROVAVEL_ERRO";
+    }
+
+    return { similaridade, classificacao };
+}
+
+export async function getResultadosSimulado(sessaoId: number) {
+    const sessao = await prisma.sessaoSimulado.findUnique({
+        where: { id: sessaoId },
+        include: {
+            questoes: {
+                include: { questao: true },
+                orderBy: { ordem: "asc" }
+            },
+            respostas: true,
+        }
+    });
+
+    if (!sessao || sessao.status !== "FINALIZADO") {
+        return null;
+    }
+
+    const questoesComRespostas = sessao.questoes.map((sq) => {
+        const resposta = sessao.respostas.find(r => r.questaoId === sq.questaoId);
+        const respondida = !!resposta?.respostaDiscursiva?.trim();
+        const { similaridade, classificacao } = calcularSimilaridade(
+            resposta?.respostaDiscursiva || null,
+            sq.questao.respostaModelo
+        );
+
+        return {
+            ordem: sq.ordem,
+            enunciado: sq.questao.enunciado,
+            banco: sq.questao.banco,
+            dificuldade: sq.questao.dificuldade,
+            imagemUrl: sq.questao.imagemUrl,
+            respostaModelo: sq.questao.respostaModelo,
+            respostaUsuario: resposta?.respostaDiscursiva || null,
+            respondida,
+            similaridade,
+            classificacao,
+        };
+    });
+
+    const totalQuestoes = questoesComRespostas.length;
+    const respondidas = questoesComRespostas.filter(q => q.respondida).length;
+    const provaveisAcertos = questoesComRespostas.filter(q => q.classificacao === "PROVAVEL_ACERTO").length;
+    const parciais = questoesComRespostas.filter(q => q.classificacao === "PARCIAL").length;
+    const provaveisErros = questoesComRespostas.filter(q => q.classificacao === "PROVAVEL_ERRO").length;
+
+    return {
+        id: sessao.id,
+        nomeUsuario: sessao.nomeUsuario,
+        emailUsuario: sessao.emailUsuario,
+        tipoSimulado: sessao.tipoSimulado,
+        dificuldade: sessao.dificuldade,
+        tempoTotalSegundos: sessao.tempoTotalSegundos,
+        tempoRestanteSegundos: sessao.tempoRestanteSegundos,
+        finalizadoEm: sessao.finalizadoEm,
+        totalQuestoes,
+        respondidas,
+        naoRespondidas: totalQuestoes - respondidas,
+        percentualRespondidas: totalQuestoes > 0 ? Math.round((respondidas / totalQuestoes) * 100) : 0,
+        provaveisAcertos,
+        parciais,
+        provaveisErros,
+        questoes: questoesComRespostas,
+    };
+}
+

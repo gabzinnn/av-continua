@@ -3,7 +3,7 @@
 import prisma from "@/src/lib/prisma"
 import bcrypt from "bcrypt"
 
-export type UserRole = "coordenador" | "equipeps"
+export type UserRole = "coordenador" | "equipeps" | "programapreparacao"
 
 export interface LoginResult {
     success: boolean
@@ -20,6 +20,12 @@ export interface LoginResult {
 const EQUIPEPS_CREDENTIALS = {
     usuario: "equipeps",
     senha: "equipeps"
+}
+
+// Credenciais do programa de preparação (hardcoded)
+const PROGRAMA_PREPARACAO_CREDENTIALS = {
+    usuario: "programadepreparacao",
+    senha: "equipepp"
 }
 
 export async function loginCoordenador(
@@ -40,6 +46,19 @@ export async function loginCoordenador(
                     nome: "Equipe Processo Seletivo",
                     usuario: "equipeps",
                     role: "equipeps"
+                }
+            }
+        }
+
+        // Verifica se é o login do programa de preparação
+        if (usuario === PROGRAMA_PREPARACAO_CREDENTIALS.usuario && senha === PROGRAMA_PREPARACAO_CREDENTIALS.senha) {
+            return {
+                success: true,
+                coordenador: {
+                    id: -2, // ID especial para programa de preparação
+                    nome: "Programa de Preparação",
+                    usuario: "programadepreparacao",
+                    role: "programapreparacao"
                 }
             }
         }

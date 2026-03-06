@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useSimuladoSession } from "@/src/app/(externo)/context";
 import { CustomAlert, AlertType } from "@/src/app/components/CustomAlert";
+import { Button } from "@/src/app/components/Button";
 
 export default function RealizacaoSimuladoPage() {
-    const { session, responderQuestao, atualizarTempo, finalizarSimulado } = useSimuladoSession();
+    const { session, tempoRestante, responderQuestao, finalizarSimulado } = useSimuladoSession();
     const router = useRouter();
     const params = useParams();
 
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [isMounted, setIsMounted] = useState(false);
+
+    // Local textarea state for fluid typing (decoupled from context)
+    const [localText, setLocalText] = useState("");
+    const debounceRef = useRef<NodeJS.Timeout | null>(null);
+    const currentQuestionIdRef = useRef<number | null>(null);
 
     // Alert Config
     const [alertConfig, setAlertConfig] = useState<{
@@ -25,27 +31,32 @@ export default function RealizacaoSimuladoPage() {
         setIsMounted(true);
     }, []);
 
-    // Timer Logic
+    // Sync local text when switching questions
+    useEffect(() => {
+        if (!session) return;
+        const question = session.questoes[currentQuestionIndex];
+        if (!question) return;
+
+        currentQuestionIdRef.current = question.id;
+        const existing = session.respostas.find(r => r.questaoId === question.id);
+        setLocalText(existing?.respostaDiscursiva || "");
+    }, [currentQuestionIndex, session?.questoes, session?.id]);
+
+    // Handle time up
     useEffect(() => {
         if (!isMounted || !session || session.status !== "EM_ANDAMENTO") return;
-
-        const interval = setInterval(() => {
-            if (session.tempoRestanteSegundos <= 0) {
-                clearInterval(interval);
-                handleTimeUp();
-            } else {
-                atualizarTempo(session.tempoRestanteSegundos - 1);
-            }
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [isMounted, session, atualizarTempo]);
+        if (tempoRestante <= 0) {
+            finalizarSimulado();
+            setTimeout(() => {
+                router.replace(`/simulado/${session.id}/finalizado?reason=timeout`);
+            }, 0);
+        }
+    }, [tempoRestante, isMounted, session?.status, session?.id]);
 
     // Validation & Routing
     useEffect(() => {
         if (!isMounted) return;
 
-        // If no session or status is finished/processing, redirect
         if (!session) {
             router.replace('/simulado');
             return;
@@ -60,15 +71,36 @@ export default function RealizacaoSimuladoPage() {
             router.replace(`/simulado/${session.id}/finalizado`);
             return;
         }
-    }, [isMounted, session, params.id, router]);
+    }, [isMounted, session?.id, session?.status, params.id, router]);
 
-    const handleTimeUp = () => {
-        finalizarSimulado();
-        router.replace(`/simulado/${session?.id}/finalizado?reason=timeout`);
-    };
+    // Debounced text handler — types locally, syncs to context after 400ms idle
+    const handleTextChange = useCallback((text: string) => {
+        setLocalText(text);
 
-    const handleManuallyFinish = () => {
-        const notAnswered = session?.questoes.length! - session?.respostas.length!;
+        if (debounceRef.current) {
+            clearTimeout(debounceRef.current);
+        }
+
+        const questionId = currentQuestionIdRef.current;
+        if (!questionId) return;
+
+        debounceRef.current = setTimeout(() => {
+            responderQuestao(questionId, { respostaDiscursiva: text });
+        }, 400);
+    }, [responderQuestao]);
+
+    // Flush debounce on question change or unmount
+    useEffect(() => {
+        return () => {
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+            }
+        };
+    }, [currentQuestionIndex]);
+
+    const handleManuallyFinish = useCallback(() => {
+        if (!session) return;
+        const notAnswered = session.questoes.length - session.respostas.length;
         let message = "Deseja realmente finalizar o simulado agora?";
         if (notAnswered > 0) {
             message = `Você possui ${notAnswered} questão(ões) sem resposta. Questões não respondidas serão consideradas erradas. Deseja finalizar mesmo assim?`;
@@ -82,13 +114,33 @@ export default function RealizacaoSimuladoPage() {
             confirmText: "Sim, finalizar",
             cancelText: "Continuar respondendo",
             onConfirm: () => {
+                // Flush any pending debounced answer
+                if (debounceRef.current) {
+                    clearTimeout(debounceRef.current);
+                    if (currentQuestionIdRef.current && localText) {
+                        responderQuestao(currentQuestionIdRef.current, { respostaDiscursiva: localText });
+                    }
+                }
                 finalizarSimulado();
                 closeAlert();
-                router.replace(`/simulado/${session?.id}/finalizado`);
+                setTimeout(() => {
+                    router.replace(`/simulado/${session.id}/finalizado`);
+                }, 0);
             },
             onCancel: closeAlert
         });
-    };
+    }, [session, finalizarSimulado, responderQuestao, localText, router]);
+
+    // Flush pending answer before navigating questions
+    const navigateToQuestion = useCallback((idx: number) => {
+        if (debounceRef.current) {
+            clearTimeout(debounceRef.current);
+            if (currentQuestionIdRef.current && localText) {
+                responderQuestao(currentQuestionIdRef.current, { respostaDiscursiva: localText });
+            }
+        }
+        setCurrentQuestionIndex(idx);
+    }, [responderQuestao, localText]);
 
     if (!isMounted || !session || session.status !== "EM_ANDAMENTO") {
         return (
@@ -99,17 +151,10 @@ export default function RealizacaoSimuladoPage() {
     }
 
     const currentQuestion = session.questoes[currentQuestionIndex];
-    const currentResposta = session.respostas.find(r => r.questaoId === currentQuestion.id);
-
-
-
-    const handleTextAnswer = (text: string) => {
-        responderQuestao(currentQuestion.id, { respostaDiscursiva: text });
-    };
 
     // Formatting time MM:SS
-    const minutes = Math.floor(session.tempoRestanteSegundos / 60);
-    const seconds = session.tempoRestanteSegundos % 60;
+    const minutes = Math.floor(tempoRestante / 60);
+    const seconds = tempoRestante % 60;
     const timeFormatted = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     const progressPerc = Math.round((session.respostas.length / session.questoes.length) * 100);
 
@@ -127,7 +172,7 @@ export default function RealizacaoSimuladoPage() {
 
                     <div className="flex flex-col items-center bg-[#FCE98C]/20 px-8 py-2 rounded-xl border border-[#FAD419]/30">
                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Tempo Restante</span>
-                        <span className={`text-2xl font-black tabular-nums tracking-tight leading-none ${session.tempoRestanteSegundos < 300 ? 'text-red-500' : 'text-text-main'}`}>
+                        <span className={`text-2xl font-black tabular-nums tracking-tight leading-none ${tempoRestante < 300 ? 'text-red-500' : 'text-text-main'}`}>
                             {timeFormatted}
                         </span>
                     </div>
@@ -184,8 +229,8 @@ export default function RealizacaoSimuladoPage() {
                         <div className="space-y-3">
                             <label className="text-sm font-bold text-gray-700 uppercase tracking-widest block">Sua Resposta</label>
                             <textarea
-                                value={currentResposta?.respostaDiscursiva || ""}
-                                onChange={(e) => handleTextAnswer(e.target.value)}
+                                value={localText}
+                                onChange={(e) => handleTextChange(e.target.value)}
                                 className="w-full min-h-[200px] p-5 rounded-2xl border-2 border-gray-200 bg-gray-50 text-text-main focus:ring-4 focus:ring-[#FAD419]/20 focus:border-[#FAD419] outline-none transition-all placeholder:text-gray-400 resize-y text-base leading-relaxed"
                                 placeholder="Estruture sua resposta lógica aqui..."
                             />
@@ -194,30 +239,30 @@ export default function RealizacaoSimuladoPage() {
 
                     {/* Navigation Buttons */}
                     <div className="flex items-center justify-between gap-4">
-                        <button
-                            onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+                        <Button
+                            variant="outline"
+                            size="md"
+                            onClick={() => navigateToQuestion(Math.max(0, currentQuestionIndex - 1))}
                             disabled={currentQuestionIndex === 0}
-                            className="px-6 py-3 rounded-xl border border-gray-200 bg-white text-gray-600 font-bold text-sm hover:bg-gray-50 hover:text-text-main transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2"
+                            icon={<span className="material-symbols-outlined text-[20px]">chevron_left</span>}
+                            iconPosition="left"
                         >
-                            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
                             Anterior
-                        </button>
+                        </Button>
 
                         <span className="text-sm font-bold text-gray-400 hidden sm:block hover:text-gray-600 cursor-pointer transition-colors">
                             Revisar Depois
                         </span>
 
-                        <button
-                            onClick={() => setCurrentQuestionIndex(prev => Math.min(session.questoes.length - 1, prev + 1))}
+                        <Button
+                            variant="primary"
+                            size="md"
+                            onClick={() => navigateToQuestion(Math.min(session.questoes.length - 1, currentQuestionIndex + 1))}
                             disabled={currentQuestionIndex === session.questoes.length - 1}
-                            className={`px-8 py-3 rounded-xl font-black text-sm shadow-sm transition-all flex items-center gap-2
-                                ${currentQuestionIndex === session.questoes.length - 1
-                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                    : "bg-[#FAD419] text-text-main hover:bg-[#FAD419]/90 active:scale-[0.98] cursor-pointer"}`}
+                            icon={<span className="material-symbols-outlined text-[20px]">chevron_right</span>}
                         >
                             Próxima
-                            <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
@@ -238,7 +283,7 @@ export default function RealizacaoSimuladoPage() {
                                 return (
                                     <button
                                         key={q.id}
-                                        onClick={() => setCurrentQuestionIndex(idx)}
+                                        onClick={() => navigateToQuestion(idx)}
                                         className={`
                                             h-12 w-full rounded-xl flex items-center justify-center text-sm font-black transition-all cursor-pointer
                                             ${isCurrent ? 'ring-2 ring-offset-2 ring-text-main ' : ''}
@@ -286,19 +331,26 @@ export default function RealizacaoSimuladoPage() {
 
                         {/* Actions */}
                         <div className="space-y-3">
-                            <button
+                            <Button
+                                variant="secondary"
+                                size="md"
+                                fullWidth
                                 onClick={handleManuallyFinish}
-                                className="w-full py-3.5 rounded-xl bg-text-main hover:bg-text-main/90 text-white font-black text-sm shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                icon={<span className="material-symbols-outlined text-[20px]">task_alt</span>}
+                                iconPosition="left"
+                                className="bg-text-main! text-white! hover:bg-text-main/90!"
                             >
-                                <span className="material-symbols-outlined text-[20px]">task_alt</span>
                                 Finalizar Simulado
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="md"
+                                fullWidth
                                 onClick={() => router.push('/simulado')}
-                                className="w-full py-3.5 rounded-xl bg-white border border-red-100 hover:bg-red-50 text-red-500 font-bold text-sm active:scale-[0.98] transition-all cursor-pointer"
+                                className="text-red-500! border border-red-100 hover:bg-red-50!"
                             >
                                 Interromper Teste
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSimuladoSession } from "@/src/app/(externo)/context";
+import { Button } from "@/src/app/components/Button";
 
 export default function SimuladoConfigPage() {
     const { iniciarSessao } = useSimuladoSession();
@@ -43,7 +44,9 @@ export default function SimuladoConfigPage() {
             );
 
             if (sessionId) {
-                router.push(`/simulado/${sessionId}`);
+                setTimeout(() => {
+                    router.push(`/simulado/${sessionId}`);
+                }, 0);
             } else {
                 setError("Não há questões suficientes no banco para este filtro. Diminua a quantidade ou mude o filtro.");
             }
@@ -60,7 +63,7 @@ export default function SimuladoConfigPage() {
             <div className="bg-white rounded-[24px] shadow-sm border border-gray-100 w-full max-w-md overflow-hidden relative">
 
                 {/* Decoration Header */}
-                <div className="bg-gradient-to-r from-yellow-50 to-[#FCE98C]/30 p-8 flex flex-col items-center justify-center border-b border-gray-100">
+                <div className="bg-linear-to-r from-yellow-50 to-[#FCE98C]/30 p-8 flex flex-col items-center justify-center border-b border-gray-100">
                     <div className="bg-white p-4 rounded-2xl shadow-sm mb-4">
                         <span className="material-symbols-outlined text-[#FAD419] text-3xl">assignment_ind</span>
                     </div>
@@ -169,14 +172,16 @@ export default function SimuladoConfigPage() {
                         </div>
 
                         <div className="pt-4">
-                            <button
+                            <Button
                                 type="submit"
+                                fullWidth
+                                size="lg"
                                 disabled={loading}
-                                className="w-full py-4 rounded-xl bg-[#FAD419] hover:bg-[#FAD419]/90 text-text-main font-black text-base shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                isLoading={loading}
+                                icon={!loading ? <span className="material-symbols-outlined text-xl">rocket_launch</span> : undefined}
                             >
                                 {loading ? "Gerando..." : "Gerar Simulado"}
-                                {!loading && <span className="material-symbols-outlined text-xl">rocket_launch</span>}
-                            </button>
+                            </Button>
                         </div>
                     </form>
                 </div>

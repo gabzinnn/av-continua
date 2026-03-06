@@ -17,6 +17,7 @@ interface AuthContextType {
     isAuthenticated: boolean
     isEquipePS: boolean
     isCoordenador: boolean
+    isProgramaPreparacao: boolean
     login: (coordenador: Coordenador) => void
     logout: () => void
 }
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const isEquipePS = coordenador?.role === "equipeps"
     const isCoordenador = coordenador?.role === "coordenador"
+    const isProgramaPreparacao = coordenador?.role === "programapreparacao"
 
     return (
         <AuthContext.Provider
@@ -69,6 +71,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 isAuthenticated: !!coordenador,
                 isEquipePS,
                 isCoordenador,
+                isProgramaPreparacao,
                 login,
                 logout,
             }}

@@ -68,7 +68,7 @@ const navGroups: NavGroup[] = [
 export function CoordsSidebar() {
     const [isOpen, setIsOpen] = useState(false)
     const [expandedGroups, setExpandedGroups] = useState<string[]>([])
-    const { logout, isEquipePS } = useAuth()
+    const { logout, isEquipePS, isProgramaPreparacao } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
 
@@ -187,8 +187,8 @@ export function CoordsSidebar() {
 
                     {/* Scrollable Navigation */}
                     <nav className="flex-1 overflow-y-auto px-6 flex flex-col gap-2 min-h-0 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                        {/* Regular nav routes - hidden for equipeps */}
-                        {!isEquipePS && navRoutes.map((route) => {
+                        {/* Regular nav routes - hidden for equipeps and programa de preparação */}
+                        {!isEquipePS && !isProgramaPreparacao && navRoutes.map((route) => {
                             const Icon = route.icon
                             const active = isActive(route.href)
 
@@ -221,7 +221,16 @@ export function CoordsSidebar() {
                         })}
 
                         {/* Collapsible Groups */}
-                        {navGroups.map((group) => {
+                        {navGroups
+                            .filter(group => {
+                                // equipeps só vê Processo Seletivo
+                                if (isEquipePS) return group.label === "Processo Seletivo"
+                                // programa de preparação só vê Programa de Preparação
+                                if (isProgramaPreparacao) return group.label === "Programa de Preparação"
+                                // coordenador vê tudo
+                                return true
+                            })
+                            .map((group) => {
                             const GroupIcon = group.icon
                             const isExpanded = expandedGroups.includes(group.label)
                             const hasActiveChild = group.children.some(child => isActive(child.href))

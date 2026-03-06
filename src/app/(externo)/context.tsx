@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react";
 import {
     criarSessaoSimulado,
     getSessaoSimulado,
@@ -42,6 +42,7 @@ export interface SimuladoSession {
 
 interface SimuladoSessionContextType {
     session: SimuladoSession | null;
+    tempoRestante: number;
     iniciarSessao: (
         nome: string,
         email: string,
@@ -50,7 +51,6 @@ interface SimuladoSessionContextType {
         qtdQuestoes: number
     ) => Promise<number | null>;
     responderQuestao: (questaoId: number, resposta: Partial<RespostaUsuario>) => void;
-    atualizarTempo: (segundosRestantes: number) => void;
     finalizarSimulado: () => void;
     limparSessao: () => void;
 }
@@ -89,6 +89,11 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<SimuladoSession | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
 
+    // Timer lives in its own state to avoid re-rendering the entire tree on every tick
+    const [tempoRestante, setTempoRestante] = useState(0);
+    const tempoRef = useRef(0);
+    const sessionIdRef = useRef<number | null>(null);
+
     // Load existing session from DB on mount
     useEffect(() => {
         (async () => {
@@ -97,7 +102,11 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
                 try {
                     const sessao = await getSessaoSimulado(Number(storedId));
                     if (sessao && sessao.status === "EM_ANDAMENTO") {
-                        setSession(mapSessaoToLocal(sessao as SessaoSimuladoCompleta));
+                        const mapped = mapSessaoToLocal(sessao as SessaoSimuladoCompleta);
+                        setSession(mapped);
+                        setTempoRestante(mapped.tempoRestanteSegundos);
+                        tempoRef.current = mapped.tempoRestanteSegundos;
+                        sessionIdRef.current = mapped.id;
                     } else {
                         localStorage.removeItem(STORAGE_KEY);
                     }
@@ -110,7 +119,26 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
         })();
     }, []);
 
-    const iniciarSessao = async (
+    // Autonomous timer — ticks via setInterval, only updates React state for display
+    useEffect(() => {
+        if (!session || session.status !== "EM_ANDAMENTO") return;
+
+        const interval = setInterval(() => {
+            tempoRef.current -= 1;
+
+            // Update display state
+            setTempoRestante(tempoRef.current);
+
+            // Persist to DB every 10 seconds
+            if (tempoRef.current % 10 === 0 && sessionIdRef.current) {
+                atualizarTempoSessao(sessionIdRef.current, tempoRef.current).catch(console.error);
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [session?.id, session?.status]);
+
+    const iniciarSessao = useCallback(async (
         nome: string,
         email: string,
         tipo: string,
@@ -123,15 +151,18 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
 
             const localSession = mapSessaoToLocal(sessao as SessaoSimuladoCompleta);
             setSession(localSession);
+            setTempoRestante(localSession.tempoRestanteSegundos);
+            tempoRef.current = localSession.tempoRestanteSegundos;
+            sessionIdRef.current = localSession.id;
             localStorage.setItem(STORAGE_KEY, String(sessao.id));
             return sessao.id;
         } catch (err) {
             console.error("Erro ao criar sessão:", err);
             return null;
         }
-    };
+    }, []);
 
-    const responderQuestao = (questaoId: number, respostaData: Partial<RespostaUsuario>) => {
+    const responderQuestao = useCallback((questaoId: number, respostaData: Partial<RespostaUsuario>) => {
         setSession(prev => {
             if (!prev) return prev;
 
@@ -144,51 +175,43 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
                 novasRespostas.push({ questaoId, ...respostaData } as RespostaUsuario);
             }
 
-            // Persist to DB asynchronously
-            if (respostaData.respostaDiscursiva !== undefined) {
-                responderQuestaoSimulado(prev.id, questaoId, respostaData.respostaDiscursiva || "").catch(console.error);
-            }
-
             return { ...prev, respostas: novasRespostas };
         });
-    };
 
-    const atualizarTempo = (segundosRestantes: number) => {
+        // Side effect OUTSIDE the state updater — this fixes the Router error
+        if (respostaData.respostaDiscursiva !== undefined && sessionIdRef.current) {
+            responderQuestaoSimulado(sessionIdRef.current, questaoId, respostaData.respostaDiscursiva || "").catch(console.error);
+        }
+    }, []);
+
+    const finalizarSimulado = useCallback(() => {
+        const sessaoId = sessionIdRef.current;
+
+        // Update state (pure, no side effects)
         setSession(prev => {
             if (!prev) return prev;
-
-            // Persist to DB every 10 seconds to avoid too many writes
-            if (segundosRestantes % 10 === 0) {
-                atualizarTempoSessao(prev.id, segundosRestantes).catch(console.error);
-            }
-
-            return { ...prev, tempoRestanteSegundos: segundosRestantes };
-        });
-    };
-
-    const finalizarSimulado = () => {
-        setSession(prev => {
-            if (!prev) return prev;
-
-            // Persist to DB
-            finalizarSessaoSimulado(prev.id).catch(console.error);
-
             return { ...prev, status: "FINALIZADO" as const };
         });
-    };
 
-    const limparSessao = () => {
+        // Side effect OUTSIDE the state updater — this fixes the Router error
+        if (sessaoId) {
+            finalizarSessaoSimulado(sessaoId).catch(console.error);
+        }
+    }, []);
+
+    const limparSessao = useCallback(() => {
         localStorage.removeItem(STORAGE_KEY);
+        sessionIdRef.current = null;
         setSession(null);
-    };
+    }, []);
 
     return (
         <SimuladoSessionContext.Provider
             value={{
                 session,
+                tempoRestante,
                 iniciarSessao,
                 responderQuestao,
-                atualizarTempo,
                 finalizarSimulado,
                 limparSessao
             }}

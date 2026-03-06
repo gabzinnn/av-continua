@@ -39,7 +39,7 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const [showPCO, setShowPCO] = useState(false)
   const { selectedMember, clearMember } = useMember()
-  const { isAuthenticated, isCoordenador, isEquipePS } = useAuth()
+  const { isAuthenticated, isCoordenador, isEquipePS, isProgramaPreparacao } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -87,7 +87,7 @@ export function Sidebar() {
   }
 
   if (!selectedMember) {
-    if (isAuthenticated && (isCoordenador || isEquipePS)) {
+    if (isAuthenticated && (isCoordenador || isEquipePS || isProgramaPreparacao)) {
       return <CoordsSidebar />
     }
     return null
