@@ -541,7 +541,20 @@ model QuestaoSimulado {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
+  alternativas   AlternativaSimulado[]
   sessaoQuestoes SessaoSimuladoQuestao[]
+}
+
+model AlternativaSimulado {
+  id        Int     @id @default(autoincrement())
+  questaoId Int
+  texto     String
+  correta   Boolean @default(false)
+  ordem     Int
+
+  questao QuestaoSimulado @relation(fields: [questaoId], references: [id], onDelete: Cascade)
+
+  @@index([questaoId])
 }
 
 model SessaoSimulado {
@@ -574,11 +587,12 @@ model SessaoSimuladoQuestao {
 }
 
 model RespostaSimulado {
-  id                 Int      @id @default(autoincrement())
-  sessaoId           Int
-  questaoId          Int
-  respostaDiscursiva String?
-  createdAt          DateTime @default(now())
+  id                       Int      @id @default(autoincrement())
+  sessaoId                 Int
+  questaoId                Int
+  respostaDiscursiva       String?
+  alternativaSelecionadaId Int?
+  createdAt                DateTime @default(now())
 
   sessao SessaoSimulado @relation(fields: [sessaoId], references: [id], onDelete: Cascade)
 

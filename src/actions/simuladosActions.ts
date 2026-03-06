@@ -7,12 +7,26 @@ import { BancoSimulado, DificuldadeSimulado, StatusSessaoSimulado } from "../gen
 // TYPES
 // ==========================================
 
+export interface AlternativaData {
+    texto: string;
+    correta: boolean;
+    ordem: number;
+}
+
 export interface QuestaoSimuladoData {
     enunciado: string;
     banco: BancoSimulado;
     dificuldade?: DificuldadeSimulado | null;
-    respostaModelo?: string | null;
     imagemUrl?: string | null;
+    alternativas: AlternativaData[];
+}
+
+export interface AlternativaCompleta {
+    id: number;
+    questaoId: number;
+    texto: string;
+    correta: boolean;
+    ordem: number;
 }
 
 export interface QuestaoSimuladoCompleta {
@@ -20,10 +34,10 @@ export interface QuestaoSimuladoCompleta {
     enunciado: string;
     banco: BancoSimulado;
     dificuldade: DificuldadeSimulado | null;
-    respostaModelo: string | null;
     imagemUrl: string | null;
     createdAt: Date;
     updatedAt: Date;
+    alternativas: AlternativaCompleta[];
 }
 
 export interface SessaoSimuladoCompleta {
@@ -46,7 +60,7 @@ export interface SessaoSimuladoCompleta {
     respostas: {
         id: number;
         questaoId: number;
-        respostaDiscursiva: string | null;
+        alternativaSelecionadaId: number | null;
     }[];
 }
 
@@ -66,6 +80,9 @@ export async function getAllQuestoesSimulado(busca?: string, banco?: string) {
                 } : {},
             ]
         },
+        include: {
+            alternativas: { orderBy: { ordem: "asc" } }
+        },
         orderBy: { createdAt: "desc" }
     });
 
@@ -74,7 +91,10 @@ export async function getAllQuestoesSimulado(busca?: string, banco?: string) {
 
 export async function getQuestaoSimuladoById(id: number) {
     return prisma.questaoSimulado.findUnique({
-        where: { id }
+        where: { id },
+        include: {
+            alternativas: { orderBy: { ordem: "asc" } }
+        }
     });
 }
 
@@ -84,22 +104,52 @@ export async function createQuestaoSimulado(data: QuestaoSimuladoData) {
             enunciado: data.enunciado,
             banco: data.banco,
             dificuldade: data.dificuldade ?? undefined,
-            respostaModelo: data.respostaModelo,
             imagemUrl: data.imagemUrl,
+            alternativas: {
+                create: data.alternativas.map(a => ({
+                    texto: a.texto,
+                    correta: a.correta,
+                    ordem: a.ordem,
+                }))
+            }
+        },
+        include: {
+            alternativas: { orderBy: { ordem: "asc" } }
         }
     });
 }
 
 export async function updateQuestaoSimulado(id: number, data: Partial<QuestaoSimuladoData>) {
-    return prisma.questaoSimulado.update({
-        where: { id },
-        data: {
-            ...(data.enunciado !== undefined && { enunciado: data.enunciado }),
-            ...(data.banco !== undefined && { banco: data.banco }),
-            ...(data.dificuldade !== undefined && { dificuldade: data.dificuldade }),
-            ...(data.respostaModelo !== undefined && { respostaModelo: data.respostaModelo }),
-            ...(data.imagemUrl !== undefined && { imagemUrl: data.imagemUrl }),
+    // Update question fields + replace all alternativas
+    return prisma.$transaction(async (tx) => {
+        // Update main question fields
+        await tx.questaoSimulado.update({
+            where: { id },
+            data: {
+                ...(data.enunciado !== undefined && { enunciado: data.enunciado }),
+                ...(data.banco !== undefined && { banco: data.banco }),
+                ...(data.dificuldade !== undefined && { dificuldade: data.dificuldade }),
+                ...(data.imagemUrl !== undefined && { imagemUrl: data.imagemUrl }),
+            }
+        });
+
+        // If alternativas provided, replace all
+        if (data.alternativas) {
+            await tx.alternativaSimulado.deleteMany({ where: { questaoId: id } });
+            await tx.alternativaSimulado.createMany({
+                data: data.alternativas.map(a => ({
+                    questaoId: id,
+                    texto: a.texto,
+                    correta: a.correta,
+                    ordem: a.ordem,
+                }))
+            });
         }
+
+        return tx.questaoSimulado.findUnique({
+            where: { id },
+            include: { alternativas: { orderBy: { ordem: "asc" } } }
+        });
     });
 }
 
@@ -185,9 +235,12 @@ export async function criarSessaoSimulado(
         }
     }
 
-    // Buscar questões disponíveis
+    // Buscar questões disponíveis (only those with alternativas)
     const questoesDisponiveis = await prisma.questaoSimulado.findMany({
-        where: whereClause,
+        where: {
+            ...whereClause,
+            alternativas: { some: {} }
+        },
     });
 
     if (questoesDisponiveis.length === 0) {
@@ -223,7 +276,11 @@ export async function criarSessaoSimulado(
         },
         include: {
             questoes: {
-                include: { questao: true },
+                include: {
+                    questao: {
+                        include: { alternativas: { orderBy: { ordem: "asc" } } }
+                    }
+                },
                 orderBy: { ordem: "asc" }
             },
             respostas: true,
@@ -238,7 +295,11 @@ export async function getSessaoSimulado(id: number) {
         where: { id },
         include: {
             questoes: {
-                include: { questao: true },
+                include: {
+                    questao: {
+                        include: { alternativas: { orderBy: { ordem: "asc" } } }
+                    }
+                },
                 orderBy: { ordem: "asc" }
             },
             respostas: true,
@@ -251,7 +312,7 @@ export async function getSessaoSimulado(id: number) {
 export async function responderQuestaoSimulado(
     sessaoId: number,
     questaoId: number,
-    respostaDiscursiva: string
+    alternativaSelecionadaId: number
 ) {
     return prisma.respostaSimulado.upsert({
         where: {
@@ -260,10 +321,10 @@ export async function responderQuestaoSimulado(
         create: {
             sessaoId,
             questaoId,
-            respostaDiscursiva
+            alternativaSelecionadaId
         },
         update: {
-            respostaDiscursiva
+            alternativaSelecionadaId
         }
     });
 }
@@ -289,97 +350,18 @@ export async function finalizarSessaoSimulado(sessaoId: number) {
 // RESULTADOS DO SIMULADO (para externo)
 // ==========================================
 
-// Stopwords em português para filtragem de termos irrelevantes
-const STOPWORDS = new Set([
-    "a", "o", "e", "de", "da", "do", "em", "um", "uma", "que", "para", "com",
-    "no", "na", "os", "as", "dos", "das", "por", "se", "ao", "ou", "mais",
-    "como", "mas", "foi", "ser", "tem", "seu", "sua", "são", "está", "pelo",
-    "pela", "nos", "nas", "esse", "essa", "este", "esta", "isso", "isto",
-    "ele", "ela", "entre", "quando", "muito", "já", "também", "só", "sobre",
-    "pode", "qual", "seus", "suas", "ter", "era", "ainda", "até", "sem",
-    "mesmo", "cada", "vez", "bem", "deve", "aqui", "onde", "hay", "the",
-    "is", "and", "of", "to", "in", "it", "for", "on", "are", "be", "was",
-    "not", "with", "this", "that", "from", "but", "they", "have", "has",
-]);
-
-function normalizarTexto(texto: string): string[] {
-    return texto
-        .toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // strip acentos
-        .replace(/[^a-z0-9\s]/g, " ") // remove pontuação
-        .split(/\s+/)
-        .filter(t => t.length > 1 && !STOPWORDS.has(t));
-}
-
-function gerarBigrams(tokens: string[]): Set<string> {
-    const bigrams = new Set<string>();
-    for (let i = 0; i < tokens.length - 1; i++) {
-        bigrams.add(`${tokens[i]}_${tokens[i + 1]}`);
-    }
-    return bigrams;
-}
-
-export type ClassificacaoResposta = "PROVAVEL_ACERTO" | "PARCIAL" | "PROVAVEL_ERRO" | "NAO_RESPONDIDA" | "SEM_GABARITO";
-
-function calcularSimilaridade(respostaUsuario: string | null, respostaModelo: string | null): {
-    similaridade: number;
-    classificacao: ClassificacaoResposta;
-} {
-    if (!respostaUsuario?.trim()) {
-        return { similaridade: 0, classificacao: "NAO_RESPONDIDA" };
-    }
-    if (!respostaModelo?.trim()) {
-        return { similaridade: -1, classificacao: "SEM_GABARITO" };
-    }
-
-    const tokensUsuario = normalizarTexto(respostaUsuario);
-    const tokensModelo = normalizarTexto(respostaModelo);
-
-    if (tokensModelo.length === 0) {
-        return { similaridade: -1, classificacao: "SEM_GABARITO" };
-    }
-    if (tokensUsuario.length === 0) {
-        return { similaridade: 0, classificacao: "PROVAVEL_ERRO" };
-    }
-
-    // Unigram similarity (Jaccard orientado ao modelo)
-    const setUsuario = new Set(tokensUsuario);
-    const setModelo = new Set(tokensModelo);
-    const intersecaoUni = [...setModelo].filter(t => setUsuario.has(t)).length;
-    const unigramSim = intersecaoUni / setModelo.size;
-
-    // Bigram similarity
-    const bigramsUsuario = gerarBigrams(tokensUsuario);
-    const bigramsModelo = gerarBigrams(tokensModelo);
-    let bigramSim = 0;
-    if (bigramsModelo.size > 0) {
-        const intersecaoBi = [...bigramsModelo].filter(b => bigramsUsuario.has(b)).length;
-        bigramSim = intersecaoBi / bigramsModelo.size;
-    }
-
-    // Weighted score: if bigrams exist, 60% unigrams + 40% bigrams; otherwise 100% unigrams
-    const similaridade = bigramsModelo.size > 0
-        ? Math.round((unigramSim * 0.6 + bigramSim * 0.4) * 100)
-        : Math.round(unigramSim * 100);
-
-    let classificacao: ClassificacaoResposta;
-    if (similaridade >= 60) {
-        classificacao = "PROVAVEL_ACERTO";
-    } else if (similaridade >= 35) {
-        classificacao = "PARCIAL";
-    } else {
-        classificacao = "PROVAVEL_ERRO";
-    }
-
-    return { similaridade, classificacao };
-}
+export type ClassificacaoResposta = "CORRETA" | "INCORRETA" | "NAO_RESPONDIDA";
 
 export async function getResultadosSimulado(sessaoId: number) {
     const sessao = await prisma.sessaoSimulado.findUnique({
         where: { id: sessaoId },
         include: {
             questoes: {
-                include: { questao: true },
+                include: {
+                    questao: {
+                        include: { alternativas: { orderBy: { ordem: "asc" } } }
+                    }
+                },
                 orderBy: { ordem: "asc" }
             },
             respostas: true,
@@ -392,11 +374,18 @@ export async function getResultadosSimulado(sessaoId: number) {
 
     const questoesComRespostas = sessao.questoes.map((sq) => {
         const resposta = sessao.respostas.find(r => r.questaoId === sq.questaoId);
-        const respondida = !!resposta?.respostaDiscursiva?.trim();
-        const { similaridade, classificacao } = calcularSimilaridade(
-            resposta?.respostaDiscursiva || null,
-            sq.questao.respostaModelo
-        );
+        const alternativaCorreta = sq.questao.alternativas.find(a => a.correta);
+        const alternativaSelecionadaId = resposta?.alternativaSelecionadaId ?? null;
+        const respondida = alternativaSelecionadaId !== null;
+
+        let classificacao: ClassificacaoResposta;
+        if (!respondida) {
+            classificacao = "NAO_RESPONDIDA";
+        } else if (alternativaCorreta && alternativaSelecionadaId === alternativaCorreta.id) {
+            classificacao = "CORRETA";
+        } else {
+            classificacao = "INCORRETA";
+        }
 
         return {
             ordem: sq.ordem,
@@ -404,19 +393,23 @@ export async function getResultadosSimulado(sessaoId: number) {
             banco: sq.questao.banco,
             dificuldade: sq.questao.dificuldade,
             imagemUrl: sq.questao.imagemUrl,
-            respostaModelo: sq.questao.respostaModelo,
-            respostaUsuario: resposta?.respostaDiscursiva || null,
+            alternativas: sq.questao.alternativas.map(a => ({
+                id: a.id,
+                texto: a.texto,
+                correta: a.correta,
+                ordem: a.ordem,
+            })),
+            alternativaSelecionadaId,
             respondida,
-            similaridade,
             classificacao,
         };
     });
 
     const totalQuestoes = questoesComRespostas.length;
     const respondidas = questoesComRespostas.filter(q => q.respondida).length;
-    const provaveisAcertos = questoesComRespostas.filter(q => q.classificacao === "PROVAVEL_ACERTO").length;
-    const parciais = questoesComRespostas.filter(q => q.classificacao === "PARCIAL").length;
-    const provaveisErros = questoesComRespostas.filter(q => q.classificacao === "PROVAVEL_ERRO").length;
+    const acertos = questoesComRespostas.filter(q => q.classificacao === "CORRETA").length;
+    const erros = questoesComRespostas.filter(q => q.classificacao === "INCORRETA").length;
+    const naoRespondidas = questoesComRespostas.filter(q => q.classificacao === "NAO_RESPONDIDA").length;
 
     return {
         id: sessao.id,
@@ -429,12 +422,10 @@ export async function getResultadosSimulado(sessaoId: number) {
         finalizadoEm: sessao.finalizadoEm,
         totalQuestoes,
         respondidas,
-        naoRespondidas: totalQuestoes - respondidas,
-        percentualRespondidas: totalQuestoes > 0 ? Math.round((respondidas / totalQuestoes) * 100) : 0,
-        provaveisAcertos,
-        parciais,
-        provaveisErros,
+        acertos,
+        erros,
+        naoRespondidas,
+        percentualAcerto: respondidas > 0 ? Math.round((acertos / respondidas) * 100) : 0,
         questoes: questoesComRespostas,
     };
 }
-

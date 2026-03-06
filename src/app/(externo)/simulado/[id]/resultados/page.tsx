@@ -18,8 +18,8 @@ const classificacaoConfig: Record<ClassificacaoResposta, {
     userBoxLabel: string;
     userBoxText: string;
 }> = {
-    PROVAVEL_ACERTO: {
-        label: "PROVÁVEL ACERTO",
+    CORRETA: {
+        label: "ACERTO",
         icon: "check_circle",
         badgeBg: "bg-green-100",
         badgeText: "text-green-700",
@@ -29,19 +29,8 @@ const classificacaoConfig: Record<ClassificacaoResposta, {
         userBoxLabel: "text-green-600",
         userBoxText: "text-green-800",
     },
-    PARCIAL: {
-        label: "PARCIALMENTE CORRETA",
-        icon: "help",
-        badgeBg: "bg-amber-100",
-        badgeText: "text-amber-700",
-        borderColor: "border-l-amber-400",
-        userBoxBg: "bg-amber-50/50",
-        userBoxBorder: "border-amber-100",
-        userBoxLabel: "text-amber-600",
-        userBoxText: "text-amber-800",
-    },
-    PROVAVEL_ERRO: {
-        label: "PROVÁVEL ERRO",
+    INCORRETA: {
+        label: "ERRO",
         icon: "cancel",
         badgeBg: "bg-red-100",
         badgeText: "text-red-700",
@@ -61,17 +50,6 @@ const classificacaoConfig: Record<ClassificacaoResposta, {
         userBoxBorder: "border-gray-100",
         userBoxLabel: "text-gray-400",
         userBoxText: "text-gray-400",
-    },
-    SEM_GABARITO: {
-        label: "SEM GABARITO",
-        icon: "info",
-        badgeBg: "bg-blue-100",
-        badgeText: "text-blue-700",
-        borderColor: "border-l-blue-400",
-        userBoxBg: "bg-blue-50/50",
-        userBoxBorder: "border-blue-100",
-        userBoxLabel: "text-blue-600",
-        userBoxText: "text-blue-800",
     },
 };
 
@@ -112,34 +90,29 @@ export default async function SimuladoResultadosPage({ params }: ResultadosPageP
                     </div>
                     <div className="flex items-center gap-6 bg-gray-50 p-6 rounded-2xl border border-gray-100 shrink-0">
                         <div className="text-center">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Questões Respondidas</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Precisão Estimada</p>
                             <p className="text-4xl font-black text-text-main">
-                                {resultados.respondidas}
-                                <span className="text-gray-400 text-2xl font-normal">/{resultados.totalQuestoes}</span>
+                                {resultados.percentualAcerto}
+                                <span className="text-gray-400 text-2xl font-normal">%</span>
                             </p>
                         </div>
-                        <div className="w-16 h-16 rounded-full border-4 border-[#FAD419] flex items-center justify-center">
-                            <span className="text-xl font-black text-[#FAD419]">{resultados.percentualRespondidas}%</span>
+                        <div className="w-16 h-16 bg-white rounded-full border-4 border-[#FAD419] flex items-center justify-center shadow-inner">
+                            <span className="material-symbols-outlined text-[#FAD419] text-3xl">military_tech</span>
                         </div>
                     </div>
                 </section>
 
                 {/* Stats Row */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
                         <span className="material-symbols-outlined text-green-500 text-2xl mb-1">check_circle</span>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Prováveis Acertos</p>
-                        <p className="text-xl font-black text-green-600">{resultados.provaveisAcertos}</p>
-                    </div>
-                    <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
-                        <span className="material-symbols-outlined text-amber-500 text-2xl mb-1">help</span>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Parciais</p>
-                        <p className="text-xl font-black text-amber-600">{resultados.parciais}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Acertos</p>
+                        <p className="text-xl font-black text-green-600">{resultados.acertos}</p>
                     </div>
                     <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
                         <span className="material-symbols-outlined text-red-500 text-2xl mb-1">cancel</span>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Prováveis Erros</p>
-                        <p className="text-xl font-black text-red-500">{resultados.provaveisErros}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Erros</p>
+                        <p className="text-xl font-black text-red-500">{resultados.erros}</p>
                     </div>
                     <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center">
                         <span className="material-symbols-outlined text-gray-400 text-2xl mb-1">do_not_disturb_on</span>
@@ -153,15 +126,6 @@ export default async function SimuladoResultadosPage({ params }: ResultadosPageP
                     </div>
                 </div>
 
-                {/* Disclaimer */}
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-                    <span className="material-symbols-outlined text-amber-500 mt-0.5">info</span>
-                    <p className="text-sm text-amber-800">
-                        <strong>Nota:</strong> A classificação (provável acerto/parcial/erro) é estimada por um algoritmo de similaridade textual.
-                        Por ser um simulado discursivo, a avaliação final depende de análise qualitativa.
-                    </p>
-                </div>
-
                 {/* Questions Review */}
                 <div className="space-y-6">
                     <h3 className="text-xl font-black flex items-center gap-2 px-2 text-text-main">
@@ -171,7 +135,6 @@ export default async function SimuladoResultadosPage({ params }: ResultadosPageP
 
                     {resultados.questoes.map((questao) => {
                         const config = classificacaoConfig[questao.classificacao];
-                        const temRespostaModelo = !!questao.respostaModelo?.trim();
 
                         return (
                             <div
@@ -186,11 +149,6 @@ export default async function SimuladoResultadosPage({ params }: ResultadosPageP
                                                 <span className="material-symbols-outlined text-sm">{config.icon}</span>
                                                 {config.label}
                                             </span>
-                                            {questao.similaridade >= 0 && (
-                                                <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
-                                                    {questao.similaridade}% similar
-                                                </span>
-                                            )}
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded-full">
@@ -203,32 +161,50 @@ export default async function SimuladoResultadosPage({ params }: ResultadosPageP
                                     {/* Enunciado */}
                                     <p className="text-text-main font-medium mb-6 whitespace-pre-wrap leading-relaxed">{questao.enunciado}</p>
 
-                                    {/* Responses Grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* User Response */}
-                                        <div className={`p-4 rounded-xl border ${config.userBoxBg} ${config.userBoxBorder}`}>
-                                            <p className={`text-[10px] font-bold uppercase mb-2 tracking-widest ${config.userBoxLabel}`}>
-                                                Sua Resposta
-                                            </p>
-                                            <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                                                questao.respondida ? config.userBoxText : 'text-gray-400 italic'
-                                            }`}>
-                                                {questao.respostaUsuario || "Nenhuma resposta fornecida."}
-                                            </p>
-                                        </div>
+                                    {/* Alternatives Summary */}
+                                    <div className="space-y-3">
+                                        {questao.alternativas?.map((alt, idx) => {
+                                            const isSelected = questao.alternativaSelecionadaId === alt.id;
+                                            const isCorrect = alt.correta;
 
-                                        {/* Model Response */}
-                                        {temRespostaModelo && (
-                                            <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                                                <p className="text-[10px] font-bold uppercase text-gray-500 mb-2 tracking-widest">
-                                                    Resposta Modelo
-                                                </p>
-                                                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                    {questao.respostaModelo}
-                                                </p>
-                                            </div>
+                                            let altStyle = "border-gray-200 bg-gray-50 text-gray-500";
+                                            if (isCorrect) {
+                                                altStyle = "border-green-300 bg-green-50 text-green-800 font-medium ring-1 ring-green-300";
+                                            } else if (isSelected && !isCorrect) {
+                                                altStyle = "border-red-300 bg-red-50 text-red-800 font-medium line-through decoration-red-300/50";
+                                            }
+
+                                            return (
+                                                <div 
+                                                    key={alt.id} 
+                                                    className={`flex items-start gap-4 p-4 rounded-xl border ${altStyle}`}
+                                                >
+                                                    <div className="pt-0.5 flex shrink-0 items-center justify-center">
+                                                        {isCorrect ? (
+                                                            <span className="material-symbols-outlined text-green-600 text-[20px]">check_circle</span>
+                                                        ) : isSelected && !isCorrect ? (
+                                                            <span className="material-symbols-outlined text-red-500 text-[20px]">cancel</span>
+                                                        ) : (
+                                                            <span className="w-5 h-5 rounded-full border border-gray-300 bg-white flex items-center justify-center text-[10px] font-bold text-gray-400">
+                                                                {String.fromCharCode(65 + idx)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <span className="text-sm leading-relaxed">
+                                                        {alt.texto}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                        
+                                        {!questao.respondida && (
+                                            <p className="text-xs text-gray-500 italic mt-2 ml-1">
+                                                Você não selecionou nenhuma alternativa para esta questão.
+                                            </p>
                                         )}
                                     </div>
+                                    
                                 </div>
                             </div>
                         );
@@ -243,13 +219,6 @@ export default async function SimuladoResultadosPage({ params }: ResultadosPageP
                     >
                         <span className="material-symbols-outlined group-hover:-translate-x-1 transition-transform">home</span>
                         Voltar ao Início
-                    </Link>
-                    <Link
-                        href="/simulado"
-                        className="w-full md:w-auto px-10 py-4 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                    >
-                        <span className="material-symbols-outlined">add</span>
-                        Novo Simulado
                     </Link>
                 </div>
             </div>

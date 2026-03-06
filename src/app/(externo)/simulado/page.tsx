@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSimuladoSession } from "@/src/app/(externo)/context";
 import { Button } from "@/src/app/components/Button";
+import Image from "next/image";
 
 export default function SimuladoConfigPage() {
     const { iniciarSessao } = useSimuladoSession();
@@ -64,12 +65,7 @@ export default function SimuladoConfigPage() {
 
                 {/* Decoration Header */}
                 <div className="bg-linear-to-r from-yellow-50 to-[#FCE98C]/30 p-8 flex flex-col items-center justify-center border-b border-gray-100">
-                    <div className="bg-white p-4 rounded-2xl shadow-sm mb-4">
-                        <span className="material-symbols-outlined text-[#FAD419] text-3xl">assignment_ind</span>
-                    </div>
-                    <span className="text-[10px] uppercase font-black tracking-widest text-[#FAD419] bg-white px-3 py-1 rounded-full shadow-sm">
-                        Plataforma Externa
-                    </span>
+                    <Image src="/assets/images/logoPP.png" alt="Logo" width={200} height={60} />
                 </div>
 
                 <div className="p-8">
@@ -192,7 +188,6 @@ export default function SimuladoConfigPage() {
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Servidor Online</span>
                     </div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">v2.2.0 - Internal</span>
                 </div>
             </div>
         </div>

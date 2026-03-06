@@ -13,7 +13,14 @@ import {
 // Interface for user responses in-memory (the actual data is in DB)
 export interface RespostaUsuario {
     questaoId: number;
-    respostaDiscursiva?: string;
+    alternativaSelecionadaId?: number;
+}
+
+// Interface for alternatives
+export interface AlternativaFlat {
+    id: number;
+    texto: string;
+    ordem: number;
 }
 
 // Flat question for rendering (extracted from DB join)
@@ -22,8 +29,8 @@ export interface QuestaoFlat {
     enunciado: string;
     banco: string;
     dificuldade: string | null;
-    respostaModelo: string | null;
     imagem: string | null;
+    alternativas: AlternativaFlat[];
 }
 
 export interface SimuladoSession {
@@ -59,24 +66,28 @@ const SimuladoSessionContext = createContext<SimuladoSessionContextType | null>(
 
 const STORAGE_KEY = "@AVContinua:simulado_session_id";
 
-function mapSessaoToLocal(sessao: SessaoSimuladoCompleta): SimuladoSession {
+function mapSessaoToLocal(sessao: any): SimuladoSession {
     return {
         id: sessao.id,
         nomeUsuario: sessao.nomeUsuario,
         emailUsuario: sessao.emailUsuario,
         tipoSimulado: sessao.tipoSimulado,
         dificuldade: sessao.dificuldade || undefined,
-        questoes: sessao.questoes.map(sq => ({
+        questoes: sessao.questoes.map((sq: any) => ({
             id: sq.questao.id,
             enunciado: sq.questao.enunciado,
             banco: sq.questao.banco,
             dificuldade: sq.questao.dificuldade,
-            respostaModelo: sq.questao.respostaModelo,
             imagem: sq.questao.imagemUrl,
+            alternativas: sq.questao.alternativas.map((a: any) => ({
+                id: a.id,
+                texto: a.texto,
+                ordem: a.ordem,
+            })),
         })),
-        respostas: sessao.respostas.map(r => ({
+        respostas: sessao.respostas.map((r: any) => ({
             questaoId: r.questaoId,
-            respostaDiscursiva: r.respostaDiscursiva || undefined,
+            alternativaSelecionadaId: r.alternativaSelecionadaId ?? undefined,
         })),
         tempoTotalSegundos: sessao.tempoTotalSegundos,
         tempoRestanteSegundos: sessao.tempoRestanteSegundos,
@@ -102,7 +113,7 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
                 try {
                     const sessao = await getSessaoSimulado(Number(storedId));
                     if (sessao && sessao.status === "EM_ANDAMENTO") {
-                        const mapped = mapSessaoToLocal(sessao as SessaoSimuladoCompleta);
+                        const mapped = mapSessaoToLocal(sessao);
                         setSession(mapped);
                         setTempoRestante(mapped.tempoRestanteSegundos);
                         tempoRef.current = mapped.tempoRestanteSegundos;
@@ -149,7 +160,7 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
             const sessao = await criarSessaoSimulado(nome, email, tipo, dificuldade, qtdQuestoes);
             if (!sessao) return null;
 
-            const localSession = mapSessaoToLocal(sessao as SessaoSimuladoCompleta);
+            const localSession = mapSessaoToLocal(sessao);
             setSession(localSession);
             setTempoRestante(localSession.tempoRestanteSegundos);
             tempoRef.current = localSession.tempoRestanteSegundos;
@@ -179,8 +190,8 @@ export function SimuladoSessionProvider({ children }: { children: ReactNode }) {
         });
 
         // Side effect OUTSIDE the state updater — this fixes the Router error
-        if (respostaData.respostaDiscursiva !== undefined && sessionIdRef.current) {
-            responderQuestaoSimulado(sessionIdRef.current, questaoId, respostaData.respostaDiscursiva || "").catch(console.error);
+        if (respostaData.alternativaSelecionadaId !== undefined && sessionIdRef.current) {
+            responderQuestaoSimulado(sessionIdRef.current, questaoId, respostaData.alternativaSelecionadaId).catch(console.error);
         }
     }, []);
 
@@ -228,3 +239,4 @@ export function useSimuladoSession() {
     }
     return context;
 }
+
