@@ -10,6 +10,7 @@ import {
     deleteQuestaoSimulado,
     getSimuladosStats,
     getUltimasSessoes,
+    deleteSessaoSimulado,
     type QuestaoSimuladoCompleta
 } from "@/src/actions/simuladosActions";
 
@@ -142,6 +143,27 @@ export default function SimuladosDashboardPage() {
             });
         } else if (action === "editar") {
             router.push(`/coord/programa-preparacao/simulados/criar?id=${id}`);
+        } else if (action === "excluir_sessao") {
+            setAlertConfig({
+                isOpen: true,
+                type: "warning",
+                title: "Excluir Sessão de Simulado",
+                message: "Tem certeza que deseja excluir esta sessão e todas as suas respostas permanentemente?",
+                confirmText: "Sim, Excluir",
+                cancelText: "Cancelar",
+                onConfirm: async () => {
+                    try {
+                        await deleteSessaoSimulado(id);
+                        await loadData();
+                    } catch (err) {
+                        console.error("Erro ao excluir sessão:", err);
+                    }
+                    closeAlert();
+                },
+                onCancel: closeAlert
+            });
+        } else if (action === "detalhes_sessao") {
+            router.push(`/coord/programa-preparacao/simulados/sessao/${id}`);
         }
     };
 
@@ -413,6 +435,7 @@ export default function SimuladosDashboardPage() {
                                         <th className="px-6 py-4 whitespace-nowrap">Tempo Rest.</th>
                                         <th className="px-6 py-4 whitespace-nowrap">Status</th>
                                         <th className="px-6 py-4 whitespace-nowrap">Data</th>
+                                        <th className="px-6 py-4 text-right">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 text-sm">
@@ -443,6 +466,14 @@ export default function SimuladosDashboardPage() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{formatTimeAgo(s.createdAt)}</td>
+                                            <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                                                <button onClick={() => handleAction("detalhes_sessao", s.id)} className="p-2 hover:bg-blue-50 rounded-lg text-gray-400 hover:text-blue-500 cursor-pointer transition-all" title="Ver Detalhes">
+                                                    <span className="material-symbols-outlined text-lg">visibility</span>
+                                                </button>
+                                                <button onClick={() => handleAction("excluir_sessao", s.id)} className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 cursor-pointer transition-all" title="Excluir Sessão">
+                                                    <span className="material-symbols-outlined text-lg">delete</span>
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

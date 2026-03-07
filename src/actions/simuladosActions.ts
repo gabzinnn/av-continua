@@ -99,6 +99,10 @@ export async function getQuestaoSimuladoById(id: number) {
 }
 
 export async function createQuestaoSimulado(data: QuestaoSimuladoData) {
+    if (!data.alternativas || data.alternativas.length < 2) {
+        throw new Error("Uma questão deve ter pelo menos 2 alternativas.");
+    }
+
     return prisma.questaoSimulado.create({
         data: {
             enunciado: data.enunciado,
@@ -120,6 +124,10 @@ export async function createQuestaoSimulado(data: QuestaoSimuladoData) {
 }
 
 export async function updateQuestaoSimulado(id: number, data: Partial<QuestaoSimuladoData>) {
+    if (data.alternativas && data.alternativas.length < 2) {
+        throw new Error("Uma questão deve ter pelo menos 2 alternativas.");
+    }
+
     // Update question fields + replace all alternativas
     return prisma.$transaction(async (tx) => {
         // Update main question fields
@@ -154,8 +162,17 @@ export async function updateQuestaoSimulado(id: number, data: Partial<QuestaoSim
 }
 
 export async function deleteQuestaoSimulado(id: number) {
-    return prisma.questaoSimulado.delete({
-        where: { id }
+    return prisma.$transaction(async (tx) => {
+        // Manually delete related arrays first because missing cascade on Prisma schema
+        await tx.sessaoSimuladoQuestao.deleteMany({
+            where: { questaoId: id, }
+        });
+        await tx.respostaSimulado.deleteMany({
+            where: { questaoId: id }
+        });
+        return tx.questaoSimulado.delete({
+            where: { id }
+        });
     });
 }
 
@@ -428,4 +445,10 @@ export async function getResultadosSimulado(sessaoId: number) {
         percentualAcerto: respondidas > 0 ? Math.round((acertos / respondidas) * 100) : 0,
         questoes: questoesComRespostas,
     };
+}
+
+export async function deleteSessaoSimulado(id: number) {
+    return prisma.sessaoSimulado.delete({
+        where: { id }
+    });
 }

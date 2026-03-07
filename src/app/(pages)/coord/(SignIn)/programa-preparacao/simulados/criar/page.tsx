@@ -146,6 +146,10 @@ export default function CriarQuestaoPage() {
         if (!banco) return showError("Selecione qual banco a questão pertencerá.");
         if (!dificuldade) return showError("Selecione o nível de dificuldade.");
 
+        if (alternativas.length < 2) {
+            return showError("Uma questão de múltipla escolha deve ter pelo menos 2 alternativas.");
+        }
+
         const emptyAlternativa = alternativas.find(a => !a.texto.trim());
         if (emptyAlternativa) {
             return showError("Todas as alternativas devem ter um texto preenchido.");
