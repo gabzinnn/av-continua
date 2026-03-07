@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import DataTable from "react-data-table-component";
@@ -16,8 +16,9 @@ function formatTime(seconds: number) {
     return `${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
 }
 
-export default function SessaoSimuladoDetalhesPage({ params }: { params: { id: string } }) {
+export default function SessaoSimuladoDetalhesPage() {
     const router = useRouter();
+    const params = useParams();
     const [loading, setLoading] = useState(true);
     const [resultados, setResultados] = useState<any>(null);
     const [sessaoPendente, setSessaoPendente] = useState<any>(null);
@@ -151,7 +152,7 @@ export default function SessaoSimuladoDetalhesPage({ params }: { params: { id: s
     const tempoGasto = res.tempoTotalSegundos - res.tempoRestanteSegundos;
 
     return (
-        <div className="flex-1 bg-bg-main min-h-screen">
+        <div className="flex-1 overflow-y-auto bg-bg-main min-h-screen">
             <header className="w-full px-8 py-6 bg-white border-b border-gray-200 sticky top-0 z-10">
                 <div className="max-w-[1200px] mx-auto flex flex-col gap-4">
                     <nav className="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-widest">

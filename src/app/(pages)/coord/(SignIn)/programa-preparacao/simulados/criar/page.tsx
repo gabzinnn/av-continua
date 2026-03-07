@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CustomAlert, AlertType } from "@/src/app/components/CustomAlert";
 import { ChevronRight, Plus, Trash2 } from "lucide-react";
+import RichTextEditor from "@/src/app/components/RichTextEditor";
 import {
     getQuestaoSimuladoById,
     createQuestaoSimulado,
@@ -245,11 +246,11 @@ export default function CriarQuestaoPage() {
                             <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
                                 Enunciado da Questão
                             </label>
-                            <textarea
+                            <RichTextEditor
                                 value={enunciado}
-                                onChange={(e) => setEnunciado(e.target.value)}
-                                className="w-full min-h-[160px] p-4 rounded-lg border border-gray-200 bg-gray-50 text-text-main focus:ring-2 focus:ring-[#FAD419]/50 focus:border-[#FAD419] outline-none transition-all placeholder:text-gray-400"
+                                onChange={(html) => setEnunciado(html)}
                                 placeholder="Digite o enunciado completo da questão aqui..."
+                                minHeight={160}
                             />
                         </div>
 
@@ -362,13 +363,14 @@ export default function CriarQuestaoPage() {
                                                 </button>
                                             </div>
 
-                                            <textarea
-                                                value={alt.texto}
-                                                onChange={(e) => handleAlternativaChange(index, 'texto', e.target.value)}
-                                                placeholder="Digite o texto da alternativa..."
-                                                className={`w-full p-3 rounded-lg border focus:ring-2 focus:ring-[#FAD419]/50 outline-none transition-all text-sm min-h-[80px] text-text-main
-                                                ${alt.correta ? 'border-[#FAD419] bg-white ' : 'border-gray-200 bg-white focus:border-gray-400'}`}
-                                            />
+                                            <div className={`w-full p-1 rounded-lg border focus-within:ring-2 focus-within:ring-[#FAD419]/50 transition-all text-sm min-h-[80px] bg-white ${alt.correta ? 'border-[#FAD419]' : 'border-gray-200 focus-within:border-gray-400'}`}>
+                                                <RichTextEditor
+                                                    value={alt.texto}
+                                                    onChange={(html) => handleAlternativaChange(index, 'texto', html)}
+                                                    placeholder="Digite o texto da alternativa..."
+                                                    minHeight={80}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

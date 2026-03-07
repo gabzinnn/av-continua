@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useSimuladoSession } from "@/src/app/(externo)/context";
 import { CustomAlert, AlertType } from "@/src/app/components/CustomAlert";
 import { Button } from "@/src/app/components/Button";
+import { renderMathInHtml } from "@/src/utils/mathUtils";
 
 export default function RealizacaoSimuladoPage() {
     const { session, tempoRestante, responderQuestao, finalizarSimulado } = useSimuladoSession();
@@ -164,9 +165,10 @@ export default function RealizacaoSimuladoPage() {
                             <h3 className="text-xl sm:text-2xl font-black mb-4 tracking-tight leading-tight">
                                 {currentQuestion.banco === "GMAT" ? "Questão GMAT" : "Questão de Business Case"}
                             </h3>
-                            <p className="whitespace-pre-wrap leading-relaxed">
-                                {currentQuestion.enunciado}
-                            </p>
+                            <div
+                                className="whitespace-pre-wrap leading-relaxed"
+                                dangerouslySetInnerHTML={{ __html: renderMathInHtml(currentQuestion.enunciado) }}
+                            />
                         </div>
 
                         {/* Imagem caso exista */}
@@ -179,18 +181,18 @@ export default function RealizacaoSimuladoPage() {
                         {/* Alternativas */}
                         <div className="space-y-4">
                             <label className="text-sm font-bold text-gray-700 uppercase tracking-widest block mb-4">Selecione a Alternativa</label>
-                            
+
                             <div className="space-y-3">
                                 {currentQuestion.alternativas?.map((alt, idx) => {
                                     const isSelected = selectedAlternativeId === alt.id;
-                                    
+
                                     return (
                                         <label
                                             key={alt.id}
                                             className={`
                                                 flex items-start gap-4 p-4 lg:p-5 rounded-2xl border-2 cursor-pointer transition-all w-full
-                                                ${isSelected 
-                                                    ? 'border-[#FAD419] bg-[#FCE98C]/10 ring-4 ring-[#FAD419]/20 shadow-sm' 
+                                                ${isSelected
+                                                    ? 'border-[#FAD419] bg-[#FCE98C]/10 ring-4 ring-[#FAD419]/20 shadow-sm'
                                                     : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'}
                                             `}
                                         >
@@ -202,20 +204,21 @@ export default function RealizacaoSimuladoPage() {
                                                     {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-text-main"></div>}
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="flex gap-3">
                                                 <span className={`font-black uppercase mt-0.5 ${isSelected ? 'text-text-main' : 'text-gray-500'}`}>
                                                     {String.fromCharCode(65 + idx)}.
                                                 </span>
-                                                <span className={`text-sm md:text-base leading-relaxed ${isSelected ? 'text-text-main font-semibold' : 'text-gray-700'}`}>
-                                                    {alt.texto}
-                                                </span>
+                                                <div
+                                                    className={`text-sm md:text-base leading-relaxed break-words overflow-hidden ${isSelected ? 'text-text-main font-semibold' : 'text-gray-700'}`}
+                                                    dangerouslySetInnerHTML={{ __html: renderMathInHtml(alt.texto) }}
+                                                />
                                             </div>
-                                            
+
                                             {/* Hidden radio input for accessibility */}
-                                            <input 
-                                                type="radio" 
-                                                name={`question-${currentQuestion.id}`} 
+                                            <input
+                                                type="radio"
+                                                name={`question-${currentQuestion.id}`}
                                                 value={alt.id}
                                                 checked={isSelected}
                                                 onChange={() => handleSelectAlternative(currentQuestion.id, alt.id)}
