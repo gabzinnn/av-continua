@@ -171,10 +171,15 @@ export default function RealizacaoSimuladoPage() {
                             />
                         </div>
 
-                        {/* Imagem caso exista */}
-                        {currentQuestion.imagem && (
-                            <div className="mb-10 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center min-h-[200px]">
-                                <p className="text-gray-400 font-medium">Imagem Anexada: {currentQuestion.imagem}</p>
+                        {/* Imagens caso existam */}
+                        {currentQuestion.imagens && currentQuestion.imagens.length > 0 && (
+                            <div className="mb-10 space-y-4">
+                                {currentQuestion.imagens.map((img: { url: string; ordem: number }, index: number) => (
+                                    <div key={index} className="rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex flex-col items-center justify-center p-4">
+                                        <img src={img.url} alt={`Imagem ${index + 1} da questão`} className="max-w-full h-auto max-h-[400px] object-contain" />
+                                        <p className="text-gray-400 font-medium text-xs mt-2">Imagem {index + 1}</p>
+                                    </div>
+                                ))}
                             </div>
                         )}
 

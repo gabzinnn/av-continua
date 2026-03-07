@@ -29,7 +29,7 @@ export interface QuestaoFlat {
     enunciado: string;
     banco: string;
     dificuldade: string | null;
-    imagem: string | null;
+    imagens: { url: string; ordem: number }[];
     alternativas: AlternativaFlat[];
 }
 
@@ -78,7 +78,7 @@ function mapSessaoToLocal(sessao: any): SimuladoSession {
             enunciado: sq.questao.enunciado,
             banco: sq.questao.banco,
             dificuldade: sq.questao.dificuldade,
-            imagem: sq.questao.imagemUrl,
+            imagens: sq.questao.imagens || [],
             alternativas: sq.questao.alternativas.map((a: any) => ({
                 id: a.id,
                 texto: a.texto,

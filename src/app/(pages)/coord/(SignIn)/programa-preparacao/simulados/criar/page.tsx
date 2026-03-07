@@ -4,13 +4,15 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CustomAlert, AlertType } from "@/src/app/components/CustomAlert";
-import { ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Plus, Trash2, X, Upload, Loader2, Image as ImageIcon } from "lucide-react";
 import RichTextEditor from "@/src/app/components/RichTextEditor";
+import Image from "next/image";
 import {
     getQuestaoSimuladoById,
     createQuestaoSimulado,
     updateQuestaoSimulado,
 } from "@/src/actions/simuladosActions";
+import { uploadQuestaoImageToCloudinary } from "@/src/actions/uploadActions";
 import { BancoSimulado, DificuldadeSimulado } from "@/src/generated/prisma/client";
 
 interface AlternativaForm {
@@ -28,9 +30,8 @@ export default function CriarQuestaoPage() {
     const [enunciado, setEnunciado] = useState("");
     const [banco, setBanco] = useState<BancoSimulado | "">("");
     const [dificuldade, setDificuldade] = useState<DificuldadeSimulado | "">("");
-    const [imageName, setImageName] = useState<string | null>(null);
+    const [imageUrls, setImageUrls] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [alternativas, setAlternativas] = useState<AlternativaForm[]>([
         { texto: "", correta: true, tempId: "1" },
@@ -66,9 +67,9 @@ export default function CriarQuestaoPage() {
                         setEnunciado(question.enunciado);
                         setBanco(question.banco);
                         setDificuldade(question.dificuldade || "");
-                        setImageName(question.imagemUrl || null);
+                        setImageUrls(question.imagens?.map((img: any) => img.url) || []);
                         if (question.alternativas && question.alternativas.length > 0) {
-                            setAlternativas(question.alternativas.map(a => ({
+                            setAlternativas(question.alternativas.map((a: any) => ({
                                 id: a.id,
                                 texto: a.texto,
                                 correta: a.correta,
@@ -82,12 +83,6 @@ export default function CriarQuestaoPage() {
             })();
         }
     }, [questaoId]);
-
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            setImageName(e.target.files[0].name);
-        }
-    };
 
     const handleAddAlternativa = () => {
         setAlternativas([...alternativas, { texto: "", correta: false, tempId: Math.random().toString(36).substring(7) }]);
@@ -167,7 +162,7 @@ export default function CriarQuestaoPage() {
                 enunciado,
                 banco: banco as BancoSimulado,
                 dificuldade: dificuldade as DificuldadeSimulado,
-                imagemUrl: imageName,
+                imagens: imageUrls.map((url, i) => ({ url, ordem: i })),
                 alternativas: alternativas.map((a, index) => ({
                     texto: a.texto,
                     correta: a.correta,
@@ -256,34 +251,10 @@ export default function CriarQuestaoPage() {
 
                         {/* Upload de Imagem */}
                         <div className="space-y-3">
-                            <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
-                                Imagem Auxiliar (Opcional)
-                            </label>
-                            <input
-                                type="file"
-                                className="hidden"
-                                ref={fileInputRef}
-                                onChange={handleImageUpload}
-                                accept="image/png, image/jpeg"
+                            <ImageUploader 
+                                imageUrls={imageUrls}
+                                onImagesChange={setImageUrls}
                             />
-                            <div
-                                onClick={() => fileInputRef.current?.click()}
-                                className={`border-2 border-dashed ${imageName ? "border-[#FAD419] bg-[#FCE98C]/20" : "border-gray-200 bg-gray-50/50"} rounded-lg p-8 flex flex-col items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer group`}
-                            >
-                                {imageName ? (
-                                    <>
-                                        <span className="material-symbols-outlined text-[#FAD419] text-4xl mb-2">check_circle</span>
-                                        <p className="text-sm text-gray-700 font-bold text-center">Imagem anexada: {imageName}</p>
-                                        <p className="text-xs text-gray-500 mt-1 hover:text-gray-700 transition-colors">Clique para alterar</p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="material-symbols-outlined text-gray-400 group-hover:text-[#FAD419] text-4xl mb-2 transition-colors">add_photo_alternate</span>
-                                        <p className="text-sm text-gray-500 font-medium text-center">Clique para fazer upload ou arraste uma imagem (PNG, JPG)</p>
-                                        <p className="text-xs text-gray-400 mt-1">Tamanho máximo: 2MB</p>
-                                    </>
-                                )}
-                            </div>
                         </div>
 
                         {/* Banco e Dificuldade */}
@@ -400,4 +371,174 @@ export default function CriarQuestaoPage() {
             </div>
         </div>
     );
+}
+
+// ==========================================
+// ImageUploader Component
+// ==========================================
+
+interface ImageUploaderProps {
+    imageUrls: string[]
+    onImagesChange: (urls: string[]) => void
+}
+
+function ImageUploader({ imageUrls, onImagesChange }: ImageUploaderProps) {
+    const [isUploading, setIsUploading] = useState(false)
+    const [dragActive, setDragActive] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleDrag = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setDragActive(true)
+        } else if (e.type === "dragleave") {
+            setDragActive(false)
+        }
+    }
+
+    const handleDrop = async (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setDragActive(false)
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            await handleFiles(Array.from(e.dataTransfer.files))
+        }
+    }
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            await handleFiles(Array.from(e.target.files))
+        }
+    }
+
+    const handleFiles = async (files: File[]) => {
+        setIsUploading(true)
+        const validFiles = files.filter(f => ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type))
+
+        if (validFiles.length === 0) {
+            alert("Nenhum arquivo de imagem válido selecionado.")
+            setIsUploading(false)
+            return
+        }
+
+        try {
+            const newUrls: string[] = []
+
+            for (const file of validFiles) {
+                const formData = new FormData()
+                formData.append("file", file)
+
+                const result = await uploadQuestaoImageToCloudinary(formData)
+
+                if (result.success && result.url) {
+                    newUrls.push(result.url)
+                } else {
+                    console.error(`Erro ao fazer upload de ${file.name}:`, result.error)
+                }
+            }
+
+            if (newUrls.length > 0) {
+                onImagesChange([...imageUrls, ...newUrls])
+            }
+        } catch (error) {
+            console.error("Upload error:", error)
+            alert("Erro ao fazer upload das imagens")
+        } finally {
+            setIsUploading(false)
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ""
+            }
+        }
+    }
+
+    const handleRemoveImage = (index: number) => {
+        const newUrls = [...imageUrls]
+        newUrls.splice(index, 1)
+        onImagesChange(newUrls)
+    }
+
+    return (
+        <div>
+            <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">
+                Imagens (opcional)
+            </label>
+
+            <div className="space-y-4">
+                {imageUrls.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {imageUrls.map((url, index) => (
+                            <div key={index} className="relative aspect-video rounded-lg border border-gray-200 overflow-hidden bg-gray-50 group">
+                                <Image
+                                    src={url}
+                                    alt={`Imagem ${index + 1}`}
+                                    fill
+                                    className="object-cover"
+                                    sizes="(max-width: 768px) 50vw, 25vw"
+                                />
+                                <button
+                                    onClick={() => handleRemoveImage(index)}
+                                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-sm cursor-pointer"
+                                    title="Remover imagem"
+                                >
+                                    <X size={14} />
+                                </button>
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] p-1 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    Imagem {index + 1}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`
+                        border-2 border-dashed rounded-lg p-6 text-center cursor-pointer
+                        transition-all duration-200 flex flex-col items-center justify-center gap-2
+                        ${dragActive
+                            ? "border-[#FAD419] bg-[#FCE98C]/20 scale-[1.01]"
+                            : "border-gray-200 hover:border-[#FAD419] hover:bg-[#FCE98C]/10"
+                        }
+                        ${isUploading ? "pointer-events-none opacity-50" : ""}
+                    `}
+                >
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        multiple
+                        onChange={handleFileChange}
+                        className="hidden"
+                    />
+
+                    {isUploading ? (
+                        <>
+                            <Loader2 size={24} className="text-[#FAD419] animate-spin" />
+                            <span className="text-sm text-gray-500">Enviando imagens...</span>
+                        </>
+                    ) : (
+                        <>
+                            <div className="p-2 bg-gray-100 rounded-full">
+                                <Upload size={20} className="text-gray-400" />
+                            </div>
+                            <div>
+                                <span className="text-sm font-medium text-gray-700">
+                                    Adicionar imagens
+                                </span>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Arraste ou clique (JPG, PNG, GIF)
+                                </p>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    )
 }

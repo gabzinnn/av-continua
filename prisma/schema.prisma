@@ -537,10 +537,10 @@ model QuestaoSimulado {
   banco          BancoSimulado
   dificuldade    DificuldadeSimulado?
   respostaModelo String?
-  imagemUrl      String?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
+  imagens        ImagemQuestaoSimulado[]
   alternativas   AlternativaSimulado[]
   sessaoQuestoes SessaoSimuladoQuestao[]
 }
@@ -551,6 +551,18 @@ model AlternativaSimulado {
   texto     String
   correta   Boolean @default(false)
   ordem     Int
+
+  questao QuestaoSimulado @relation(fields: [questaoId], references: [id], onDelete: Cascade)
+
+  @@index([questaoId])
+}
+
+model ImagemQuestaoSimulado {
+  id        Int      @id @default(autoincrement())
+  questaoId Int
+  url       String
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
 
   questao QuestaoSimulado @relation(fields: [questaoId], references: [id], onDelete: Cascade)
 

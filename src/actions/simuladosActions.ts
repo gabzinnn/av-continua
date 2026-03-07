@@ -13,11 +13,16 @@ export interface AlternativaData {
     ordem: number;
 }
 
+export interface ImagemData {
+    url: string;
+    ordem: number;
+}
+
 export interface QuestaoSimuladoData {
     enunciado: string;
     banco: BancoSimulado;
     dificuldade?: DificuldadeSimulado | null;
-    imagemUrl?: string | null;
+    imagens?: ImagemData[];
     alternativas: AlternativaData[];
 }
 
@@ -29,14 +34,22 @@ export interface AlternativaCompleta {
     ordem: number;
 }
 
+export interface ImagemCompleta {
+    id: number;
+    questaoId: number;
+    url: string;
+    ordem: number;
+    createdAt: Date;
+}
+
 export interface QuestaoSimuladoCompleta {
     id: number;
     enunciado: string;
     banco: BancoSimulado;
     dificuldade: DificuldadeSimulado | null;
-    imagemUrl: string | null;
     createdAt: Date;
     updatedAt: Date;
+    imagens: ImagemCompleta[];
     alternativas: AlternativaCompleta[];
 }
 
@@ -81,18 +94,20 @@ export async function getAllQuestoesSimulado(busca?: string, banco?: string) {
             ]
         },
         include: {
+            imagens: { orderBy: { ordem: "asc" } },
             alternativas: { orderBy: { ordem: "asc" } }
         },
         orderBy: { createdAt: "desc" }
     });
 
-    return questoes as QuestaoSimuladoCompleta[];
+    return questoes as unknown as QuestaoSimuladoCompleta[];
 }
 
 export async function getQuestaoSimuladoById(id: number) {
     return prisma.questaoSimulado.findUnique({
         where: { id },
         include: {
+            imagens: { orderBy: { ordem: "asc" } },
             alternativas: { orderBy: { ordem: "asc" } }
         }
     });
@@ -108,7 +123,12 @@ export async function createQuestaoSimulado(data: QuestaoSimuladoData) {
             enunciado: data.enunciado,
             banco: data.banco,
             dificuldade: data.dificuldade ?? undefined,
-            imagemUrl: data.imagemUrl,
+            imagens: {
+                create: data.imagens?.map(img => ({
+                    url: img.url,
+                    ordem: img.ordem,
+                })) || []
+            },
             alternativas: {
                 create: data.alternativas.map(a => ({
                     texto: a.texto,
@@ -118,6 +138,7 @@ export async function createQuestaoSimulado(data: QuestaoSimuladoData) {
             }
         },
         include: {
+            imagens: { orderBy: { ordem: "asc" } },
             alternativas: { orderBy: { ordem: "asc" } }
         }
     });
@@ -128,7 +149,7 @@ export async function updateQuestaoSimulado(id: number, data: Partial<QuestaoSim
         throw new Error("Uma questão deve ter pelo menos 2 alternativas.");
     }
 
-    // Update question fields + replace all alternativas
+    // Update question fields + replace all alternativas and imagens
     return prisma.$transaction(async (tx) => {
         // Update main question fields
         await tx.questaoSimulado.update({
@@ -137,9 +158,20 @@ export async function updateQuestaoSimulado(id: number, data: Partial<QuestaoSim
                 ...(data.enunciado !== undefined && { enunciado: data.enunciado }),
                 ...(data.banco !== undefined && { banco: data.banco }),
                 ...(data.dificuldade !== undefined && { dificuldade: data.dificuldade }),
-                ...(data.imagemUrl !== undefined && { imagemUrl: data.imagemUrl }),
             }
         });
+
+        // If imagens provided, replace all
+        if (data.imagens) {
+            await tx.imagemQuestaoSimulado.deleteMany({ where: { questaoId: id } });
+            await tx.imagemQuestaoSimulado.createMany({
+                data: data.imagens.map(img => ({
+                    questaoId: id,
+                    url: img.url,
+                    ordem: img.ordem,
+                }))
+            });
+        }
 
         // If alternativas provided, replace all
         if (data.alternativas) {
@@ -156,7 +188,10 @@ export async function updateQuestaoSimulado(id: number, data: Partial<QuestaoSim
 
         return tx.questaoSimulado.findUnique({
             where: { id },
-            include: { alternativas: { orderBy: { ordem: "asc" } } }
+            include: {
+                imagens: { orderBy: { ordem: "asc" } },
+                alternativas: { orderBy: { ordem: "asc" } }
+            }
         });
     });
 }
@@ -295,7 +330,10 @@ export async function criarSessaoSimulado(
             questoes: {
                 include: {
                     questao: {
-                        include: { alternativas: { orderBy: { ordem: "asc" } } }
+                        include: {
+                            imagens: { orderBy: { ordem: "asc" } },
+                            alternativas: { orderBy: { ordem: "asc" } }
+                        }
                     }
                 },
                 orderBy: { ordem: "asc" }
@@ -314,7 +352,10 @@ export async function getSessaoSimulado(id: number) {
             questoes: {
                 include: {
                     questao: {
-                        include: { alternativas: { orderBy: { ordem: "asc" } } }
+                        include: {
+                            imagens: { orderBy: { ordem: "asc" } },
+                            alternativas: { orderBy: { ordem: "asc" } }
+                        }
                     }
                 },
                 orderBy: { ordem: "asc" }
@@ -376,7 +417,10 @@ export async function getResultadosSimulado(sessaoId: number) {
             questoes: {
                 include: {
                     questao: {
-                        include: { alternativas: { orderBy: { ordem: "asc" } } }
+                        include: {
+                            imagens: { orderBy: { ordem: "asc" } },
+                            alternativas: { orderBy: { ordem: "asc" } }
+                        }
                     }
                 },
                 orderBy: { ordem: "asc" }
@@ -409,7 +453,7 @@ export async function getResultadosSimulado(sessaoId: number) {
             enunciado: sq.questao.enunciado,
             banco: sq.questao.banco,
             dificuldade: sq.questao.dificuldade,
-            imagemUrl: sq.questao.imagemUrl,
+            imagens: sq.questao.imagens.map(img => img.url),
             alternativas: sq.questao.alternativas.map(a => ({
                 id: a.id,
                 texto: a.texto,

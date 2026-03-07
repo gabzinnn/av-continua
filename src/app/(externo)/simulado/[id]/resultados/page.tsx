@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getResultadosSimulado, type ClassificacaoResposta } from "@/src/actions/simuladosActions";
 import { redirect } from "next/navigation";
+import { renderMathInHtml } from "@/src/utils/mathUtils";
 
 interface ResultadosPageProps {
     params: Promise<{ id: string }>;
@@ -159,7 +160,21 @@ export default async function SimuladoResultadosPage({ params }: ResultadosPageP
                                     </div>
 
                                     {/* Enunciado */}
-                                    <p className="text-text-main font-medium mb-6 whitespace-pre-wrap leading-relaxed">{questao.enunciado}</p>
+                                    <div 
+                                        className="text-text-main font-medium mb-6 whitespace-pre-wrap leading-relaxed"
+                                        dangerouslySetInnerHTML={{ __html: renderMathInHtml(questao.enunciado) }}
+                                    />
+
+                                    {/* Imagens caso existam */}
+                                    {questao.imagens && questao.imagens.length > 0 && (
+                                        <div className="mb-8 space-y-4">
+                                            {questao.imagens.map((url: string, index: number) => (
+                                                <div key={index} className="rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex flex-col items-center justify-center p-4">
+                                                    <img src={url} alt={`Imagem ${index + 1} da questão`} className="max-w-full h-auto max-h-[300px] object-contain" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
 
                                     {/* Alternatives Summary */}
                                     <div className="space-y-3">
@@ -191,9 +206,10 @@ export default async function SimuladoResultadosPage({ params }: ResultadosPageP
                                                         )}
                                                     </div>
                                                     
-                                                    <span className="text-sm leading-relaxed">
-                                                        {alt.texto}
-                                                    </span>
+                                                    <div 
+                                                        className="text-sm leading-relaxed"
+                                                        dangerouslySetInnerHTML={{ __html: renderMathInHtml(alt.texto) }}
+                                                    />
                                                 </div>
                                             );
                                         })}
