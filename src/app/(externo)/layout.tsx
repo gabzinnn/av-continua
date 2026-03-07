@@ -1,6 +1,12 @@
 import Image from "next/image"
 import Link from "next/link"
 import { SimuladoSessionProvider } from "./context"
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Simulados - UFRJ Consulting Club",
+    description: "Site responsável por gerenciar a gestão de simulados",
+};
 
 export default function ExternoLayout({
     children,
