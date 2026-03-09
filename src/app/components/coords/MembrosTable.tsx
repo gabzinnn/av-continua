@@ -27,7 +27,7 @@ const columns: TableColumn<MembroResumo>[] = [
         cell: (row) => (
             <div className="flex items-center gap-3 py-3 whitespace-nowrap">
                 {row.fotoUrl ? (
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
                         <Image
                             src={row.fotoUrl}
                             alt={row.nome}
@@ -37,7 +37,7 @@ const columns: TableColumn<MembroResumo>[] = [
                         />
                     </div>
                 ) : (
-                    <div className="w-8 h-8 rounded-full bg-secondary/40 flex items-center justify-center text-xs font-bold text-text-main flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-secondary/40 flex items-center justify-center text-xs font-bold text-text-main shrink-0">
                         {getInitials(row.nome)}
                     </div>
                 )}
@@ -46,7 +46,7 @@ const columns: TableColumn<MembroResumo>[] = [
         ),
         sortable: true,
         selector: (row) => row.nome,
-        width: "180px",
+        minWidth: "180px",
     },
     {
         name: "Área",
@@ -55,7 +55,7 @@ const columns: TableColumn<MembroResumo>[] = [
         cell: (row) => (
             <span className="text-gray-600 text-sm whitespace-nowrap">{row.area}</span>
         ),
-        width: "200px",
+        minWidth: "200px",
     },
     {
         name: "DRE",
@@ -64,7 +64,7 @@ const columns: TableColumn<MembroResumo>[] = [
         cell: (row) => (
             <span className="text-gray-600 text-sm whitespace-nowrap">{row.dre}</span>
         ),
-        width: "100px",
+        minWidth: "100px",
     },
     {
         name: "Status",
@@ -76,7 +76,7 @@ const columns: TableColumn<MembroResumo>[] = [
         ),
         sortable: true,
         selector: (row) => row.isAtivo ? "Ativo" : "Inativo",
-        width: "100px",
+        minWidth: "100px",
     },
 ]
 
