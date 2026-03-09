@@ -58,8 +58,8 @@ export function TermometroHistoricoChart({ data }: TermometroHistoricoChartProps
             axisTicks: { show: false },
         },
         yaxis: {
-            min: 0,
-            max: 10,
+            min: (min: number) => Math.max(0, min - 0.5),
+            max: (max: number) => Math.min(10, max + 0.5),
             tickAmount: 5,
             labels: {
                 formatter: (val: number) => val.toFixed(0),

@@ -49,8 +49,8 @@ export function TermometroMediaPerguntaChart({ mediaPorPergunta, perguntas }: Te
             axisTicks: { show: false },
         },
         yaxis: {
-            min: 0,
-            max: 5,
+            min: (min: number) => Math.max(0, min - 0.5),
+            max: (max: number) => Math.min(5, max + 0.5),
             tickAmount: 5,
             labels: {
                 formatter: (val: number) => val.toFixed(0),

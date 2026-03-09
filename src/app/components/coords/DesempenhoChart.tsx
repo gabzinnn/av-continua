@@ -94,7 +94,8 @@ export function DesempenhoChart({ data }: DesempenhoChartProps) {
             axisTicks: { show: false },
         },
         yaxis: {
-            // Removemos min/max fixos para que a escala seja "maleável" e destaque as diferenças (5-8)
+            min: (min: number) => Math.max(0, min - 0.5),
+            max: (max: number) => Math.min(10, max + 0.5),
             tickAmount: 5,
             labels: {
                 formatter: (val: number) => val.toFixed(0),
