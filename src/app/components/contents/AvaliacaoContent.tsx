@@ -233,14 +233,6 @@ export function AvaliacaoContent() {
   const handleConfirmSubmit = async () => {
     await handleSave(true) // Finaliza a avaliação
     setShowConfirmModal(false)
-
-    // Seleciona próximo membro pendente ou rascunho
-    const proximoPendente = membros.find(m =>
-      (m.status === 'pendente' || m.status === 'rascunho') && m.id !== selectedMembroId
-    )
-    if (proximoPendente) {
-      setSelectedMembroId(proximoPendente.id)
-    }
   }
 
   if (isMemberLoading || isLoading) {

@@ -235,7 +235,7 @@ export async function getSimuladosStats() {
 // SESSÃO SIMULADO — ÚLTIMAS ATIVIDADES
 // ==========================================
 
-export async function getUltimasSessoes(limit: number = 10) {
+export async function getUltimasSessoes(limit?: number) {
     const sessoes = await prisma.sessaoSimulado.findMany({
         take: limit,
         orderBy: { createdAt: "desc" },

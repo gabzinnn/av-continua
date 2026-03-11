@@ -62,6 +62,9 @@ export default function SimuladosDashboardPage() {
     const [filterOrdem, setFilterOrdem] = useState("Mais Recentes");
     const [itemsPerPage, setItemsPerPage] = useState<number>(10);
     const [currentPage, setCurrentPage] = useState(1);
+    
+    const [itemsPerPageSessoes, setItemsPerPageSessoes] = useState<number>(10);
+    const [currentPageSessoes, setCurrentPageSessoes] = useState(1);
 
     const router = useRouter();
 
@@ -91,7 +94,7 @@ export default function SimuladosDashboardPage() {
             const [q, s, sess] = await Promise.all([
                 getAllQuestoesSimulado(searchTerm || undefined, filterTipo !== "Todos" ? filterTipo : undefined),
                 getSimuladosStats(),
-                getUltimasSessoes(5)
+                getUltimasSessoes()
             ]);
             setQuestoes(q);
             setStats(s);
@@ -184,6 +187,18 @@ export default function SimuladosDashboardPage() {
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {
             setCurrentPage(newPage);
+        }
+    };
+
+    const totalPagesSessoes = Math.ceil(sessoes.length / itemsPerPageSessoes);
+    const displayedSessoes = sessoes.slice(
+        (currentPageSessoes - 1) * itemsPerPageSessoes,
+        currentPageSessoes * itemsPerPageSessoes
+    );
+
+    const handlePageChangeSessoes = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPagesSessoes) {
+            setCurrentPageSessoes(newPage);
         }
     };
 
@@ -439,14 +454,14 @@ export default function SimuladosDashboardPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 text-sm">
-                                    {sessoes.length === 0 && (
+                                    {displayedSessoes.length === 0 && (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-12 text-center text-gray-500 font-medium">
+                                            <td colSpan={7} className="px-6 py-12 text-center text-gray-500 font-medium">
                                                 Nenhuma sessão de simulado registrada ainda.
                                             </td>
                                         </tr>
                                     )}
-                                    {sessoes.map((s) => (
+                                    {displayedSessoes.map((s) => (
                                         <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
@@ -478,6 +493,50 @@ export default function SimuladosDashboardPage() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                        
+                        {/* Pagination Area Sessoes */}
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <span>Mostrar:</span>
+                                <select
+                                    value={itemsPerPageSessoes}
+                                    onChange={(e) => {
+                                        setItemsPerPageSessoes(Number(e.target.value));
+                                        setCurrentPageSessoes(1);
+                                    }}
+                                    className="bg-white border-gray-200 text-sm rounded-lg py-1 px-2 focus:ring-[#FAD419] focus:border-[#FAD419] text-gray-700"
+                                >
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                </select>
+                                <span>sessões por página</span>
+                            </div>
+
+                            <div className="flex items-center justify-center gap-2">
+                                <button
+                                    onClick={() => handlePageChangeSessoes(currentPageSessoes - 1)}
+                                    disabled={currentPageSessoes === 1}
+                                    className="p-1 px-2 rounded hover:bg-white border border-transparent disabled:opacity-50 disabled:hover:bg-transparent transition-colors flex items-center gap-1 text-sm font-medium text-gray-600"
+                                >
+                                    <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                                    Anterior
+                                </button>
+
+                                <span className="text-sm font-bold text-gray-700 mx-2">
+                                    Página {currentPageSessoes} de {totalPagesSessoes || 1}
+                                </span>
+
+                                <button
+                                    onClick={() => handlePageChangeSessoes(currentPageSessoes + 1)}
+                                    disabled={currentPageSessoes === totalPagesSessoes || totalPagesSessoes === 0}
+                                    className="p-1 px-2 rounded hover:bg-white border border-transparent disabled:opacity-50 disabled:hover:bg-transparent transition-colors flex items-center gap-1 text-sm font-medium text-gray-600"
+                                >
+                                    Próxima
+                                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                                </button>
+                            </div>
                         </div>
                     </section>
 
