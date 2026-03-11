@@ -187,12 +187,44 @@ export function AvaliacaoContent() {
     setIsDirty(true)
   }
 
+  // Salva rascunho apenas no banco, sem recarregar dados ou navegar
+  const saveDraftOnly = async () => {
+    if (!avaliacaoId || !selectedMember?.id || !selectedMembroId) return
+
+    setIsSaving(true)
+    try {
+      await salvarResposta({
+        avaliacaoId,
+        avaliadorId: Number(selectedMember.id),
+        avaliadoId: selectedMembroId,
+        notaEntrega: Number(formData.notaEntrega),
+        notaCultura: Number(formData.notaCultura),
+        feedbackTexto: formData.feedbackTexto,
+        planosAcao: formData.planosAcao.split("\n").filter(p => p.trim()),
+        finalizada: false,
+        ...(podeMarcar1on1Checkbox && { oneOnOneFeito: formData.oneOnOneFeito })
+      })
+
+      // Apenas atualiza o status do membro na lista local (sem recarregar tudo)
+      setMembros(prev => prev.map(m =>
+        m.id === selectedMembroId && m.status === 'pendente'
+          ? { ...m, status: 'rascunho' as const }
+          : m
+      ))
+      setIsDirty(false)
+    } catch (error) {
+      console.error("Erro ao salvar rascunho:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   // Debounce para salvar rascunho automaticamente
   useEffect(() => {
     if (!isDirty || isSaving || isReadonly || respostaFinalizada || !avaliacaoId || !selectedMembroId) return
 
     const timeoutId = setTimeout(() => {
-      handleSave(false)
+      saveDraftOnly()
     }, 2000)
 
     return () => clearTimeout(timeoutId)
