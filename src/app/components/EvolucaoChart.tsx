@@ -20,6 +20,15 @@ interface EvolucaoChartProps {
 export function EvolucaoChart({ data }: EvolucaoChartProps) {
   const categories = data.map((d) => d.mes)
 
+  // Calcular min/max a partir dos dados reais, arredondando para inteiros limpos
+  const allValues = data.flatMap((d) => [d.entrega, d.cultura, d.feedback])
+  const dataMin = allValues.length > 0 ? Math.min(...allValues) : 0
+  const dataMax = allValues.length > 0 ? Math.max(...allValues) : 10
+  const yMin = Math.max(0, Math.floor(dataMin) - 1)
+  const yMax = Math.min(10, Math.ceil(dataMax) + 1)
+  const yRange = yMax - yMin
+  const yTickAmount = yRange <= 5 ? yRange : Math.min(yRange, 5)
+
   const options: ApexOptions = {
     chart: {
       type: "line",
@@ -72,9 +81,9 @@ export function EvolucaoChart({ data }: EvolucaoChartProps) {
       axisTicks: { show: false },
     },
     yaxis: {
-      min: (min: number) => Math.max(0, min - 0.5),
-      max: (max: number) => Math.min(10, max + 0.5),
-      tickAmount: 5,
+      min: yMin,
+      max: yMax,
+      tickAmount: yTickAmount,
       labels: {
         formatter: (val: number) => val.toFixed(1),
         style: {

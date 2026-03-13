@@ -53,6 +53,17 @@ export function DesempenhoChart({ data }: DesempenhoChartProps) {
 
     const hasFeedbacks = selectedSeries.has("feedbacks")
 
+    // Calcular min/max a partir dos dados reais, arredondando para inteiros limpos
+    const activeValues = data.flatMap((d) =>
+        activeSeries.map((s) => d[s.key])
+    )
+    const dataMin = activeValues.length > 0 ? Math.min(...activeValues) : 0
+    const dataMax = activeValues.length > 0 ? Math.max(...activeValues) : 10
+    const yMin = Math.max(0, Math.floor(dataMin) - 1)
+    const yMax = Math.min(10, Math.ceil(dataMax) + 1)
+    const yRange = yMax - yMin
+    const yTickAmount = yRange <= 5 ? yRange : Math.min(yRange, 5)
+
     const options: ApexOptions = {
         chart: {
             type: "line",
@@ -94,9 +105,9 @@ export function DesempenhoChart({ data }: DesempenhoChartProps) {
             axisTicks: { show: false },
         },
         yaxis: {
-            min: (min: number) => Math.max(0, min - 0.5),
-            max: (max: number) => Math.min(10, max + 0.5),
-            tickAmount: 5,
+            min: yMin,
+            max: yMax,
+            tickAmount: yTickAmount,
             labels: {
                 formatter: (val: number) => val.toFixed(0),
                 style: {
