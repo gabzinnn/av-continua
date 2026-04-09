@@ -3,13 +3,15 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Search, ArrowLeft, ChevronUp, ChevronDown } from "lucide-react"
+import { Search, ArrowLeft, ChevronUp, ChevronDown, Plus } from "lucide-react"
 import { CandidatoRow } from "./CandidatoRow"
 import { CandidatoDrawer } from "./CandidatoDrawer"
 import { 
     getCandidatosDetalhados, 
-    getProcessoSeletivoInfo
+    getProcessoSeletivoInfo,
+    adicionarCandidatoManual
 } from "@/src/actions/gestaoCandidatosActions"
+import { AdicionarCandidatoModal } from "./AdicionarCandidatoModal"
 import { CandidatoDetalhado, StatusCandidato } from "@/src/types/candidatos"
 
 interface CandidatosProcessoContentProps {
@@ -27,6 +29,8 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
     const [processoInfo, setProcessoInfo] = useState<{ nome: string; ativo: boolean } | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [drawerCandidato, setDrawerCandidato] = useState<CandidatoDetalhado | null>(null)
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+    const [isAddingCandidato, setIsAddingCandidato] = useState(false)
     
     // Filtros
     const [busca, setBusca] = useState("")
@@ -35,6 +39,15 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
     const [filtroCurso, setFiltroCurso] = useState("")
     const [ordemColuna, setOrdemColuna] = useState<OrdemColuna>("nome")
     const [ordemDirecao, setOrdemDirecao] = useState<OrdemDirecao>("asc")
+    
+    // Paginação
+    const [paginaAtual, setPaginaAtual] = useState(1)
+    const itensPorPagina = 40
+
+    // Resetar página quando os filtros mudarem
+    useEffect(() => {
+        setPaginaAtual(1)
+    }, [busca, filtroStatus, filtroEtapa, filtroCurso])
     
     const toggleOrdem = (coluna: OrdemColuna) => {
         if (ordemColuna === coluna) {
@@ -66,6 +79,20 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
     useEffect(() => {
         loadData()
     }, [loadData])
+
+    const handleAddCandidato = async (dados: { nome: string; email: string; curso: string; periodo: string; dre: string }) => {
+        setIsAddingCandidato(true)
+        try {
+            const res = await adicionarCandidatoManual(processoId, dados)
+            if (res.success) {
+                await loadData()
+            } else {
+                alert(res.error || "Erro ao adicionar candidato.")
+            }
+        } finally {
+            setIsAddingCandidato(false)
+        }
+    }
     
     // Filtrar candidatos
     const candidatosFiltrados = candidatos.filter(c => {
@@ -120,6 +147,12 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
         }
         return ordemDirecao === "asc" ? comparacao : -comparacao
     })
+    
+    // Aplicar paginação aos candidatos filtrados e ordenados
+    const indexUltimoItem = paginaAtual * itensPorPagina
+    const indexPrimeiroItem = indexUltimoItem - itensPorPagina
+    const candidatosPaginados = candidatosOrdenados.slice(indexPrimeiroItem, indexUltimoItem)
+    const totalPaginas = Math.ceil(candidatosOrdenados.length / itensPorPagina)
     
     // Lista de cursos únicos para filtro
     const cursosUnicos = [...new Set(candidatos.map(c => c.curso).filter(Boolean))]
@@ -213,9 +246,9 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
                             />
                         </div>
                         
-                        {/* Search */}
-                        <div className="w-full xl:w-auto min-w-[280px]">
-                            <div className="relative">
+                        {/* Search & Add */}
+                        <div className="w-full xl:w-auto min-w-[280px] flex items-center gap-3">
+                            <div className="relative flex-1">
                                 <input
                                     type="text"
                                     value={busca}
@@ -225,6 +258,13 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
                                 />
                                 <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                             </div>
+                            <button
+                                onClick={() => setIsAddModalOpen(true)}
+                                className="flex shrink-0 items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-text-main font-bold py-2.5 px-4 rounded-lg shadow-sm transition-all"
+                            >
+                                <Plus size={18} />
+                                <span className="hidden sm:inline">Adicionar</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -267,7 +307,7 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
                         </div>
                     ) : (
                         <>
-                            {candidatosOrdenados.map(candidato => (
+                            {candidatosPaginados.map(candidato => (
                                 <CandidatoRow 
                                     key={candidato.id}
                                     candidato={candidato}
@@ -275,11 +315,36 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
                                 />
                             ))}
                             
-                            {/* Stats Footer */}
-                            <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-                                <p className="text-sm text-text-muted">
-                                    Mostrando <span className="font-bold text-text-main">{candidatosOrdenados.length}</span> de <span className="font-bold text-text-main">{candidatos.length}</span> candidatos
-                                </p>
+                            {/* Pagination Controls & Stats Footer */}
+                            <div className="mt-6 border-t border-border pt-4 px-2">
+                                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                                    <p className="text-sm text-text-muted">
+                                        Mostrando <span className="font-bold text-text-main">{indexPrimeiroItem + 1} a {Math.min(indexUltimoItem, candidatosOrdenados.length)}</span> de <span className="font-bold text-text-main">{candidatosOrdenados.length}</span> candidatos
+                                        {candidatosOrdenados.length !== candidatos.length && ` (filtrados de ${candidatos.length})`}
+                                    </p>
+                                    
+                                    {totalPaginas > 1 && (
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={() => setPaginaAtual(p => Math.max(1, p - 1))}
+                                                disabled={paginaAtual === 1}
+                                                className="px-3 py-1.5 rounded text-sm font-medium border border-border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-text-main"
+                                            >
+                                                Anterior
+                                            </button>
+                                            <span className="text-sm font-medium text-text-main px-2">
+                                                Página {paginaAtual} de {totalPaginas}
+                                            </span>
+                                            <button 
+                                                onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))}
+                                                disabled={paginaAtual === totalPaginas}
+                                                className="px-3 py-1.5 rounded text-sm font-medium border border-border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-text-main"
+                                            >
+                                                Próximo
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </>
                     )}
@@ -292,6 +357,14 @@ export function CandidatosProcessoContent({ processoId }: CandidatosProcessoCont
                 isOpen={!!drawerCandidato}
                 onClose={() => setDrawerCandidato(null)}
                 onCandidatoAtualizado={loadData}
+            />
+
+            {/* Modal de Adicionar */}
+            <AdicionarCandidatoModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                onConfirm={handleAddCandidato}
+                isLoading={isAddingCandidato}
             />
         </div>
     )

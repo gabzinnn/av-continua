@@ -685,3 +685,97 @@ export async function excluirCandidato(
         return { success: false, error: "Erro ao excluir candidato. Verifique se não há dados dependentes." }
     }
 }
+
+/**
+ * Adiciona um candidato manualmente (ou vincula se já existe pelo Email/DRE)
+ * e o sinaliza como Aprovado na Prova para que apareça na lista.
+ */
+export async function adicionarCandidatoManual(
+    processoId: number,
+    dados: {
+        nome: string;
+        email: string;
+        curso: string;
+        periodo: string;
+        dre: string;
+    }
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const processo = await prisma.processoSeletivo.findUnique({
+            where: { id: processoId },
+            include: { provas: true }
+        });
+
+        if (!processo) {
+            return { success: false, error: "Processo seletivo não encontrado." };
+        }
+
+        if (processo.provas.length === 0) {
+            return { success: false, error: "O processo seletivo deve ter pelo menos uma prova associada." };
+        }
+
+        const provaId = processo.provas[0].id;
+
+        // Procura se já existe pelo Email ou DRE
+        let candidato = await prisma.candidato.findFirst({
+            where: {
+                OR: [
+                    { email: dados.email },
+                    { dre: dados.dre }
+                ]
+            }
+        });
+
+        if (candidato) {
+            // Atualiza o existente
+            candidato = await prisma.candidato.update({
+                where: { id: candidato.id },
+                data: {
+                    nome: dados.nome,
+                    email: dados.email,
+                    curso: dados.curso,
+                    periodo: dados.periodo,
+                    dre: dados.dre
+                }
+            });
+        } else {
+            // Cria um novo
+            candidato = await prisma.candidato.create({
+                data: {
+                    nome: dados.nome,
+                    email: dados.email,
+                    curso: dados.curso,
+                    periodo: dados.periodo,
+                    dre: dados.dre
+                }
+            });
+        }
+
+        // Associa o candidato a esta Prova com status CORRIGIDA e aprovadoProva = true
+        await prisma.resultadoProva.upsert({
+            where: {
+                provaId_candidatoId: {
+                    provaId,
+                    candidatoId: candidato.id
+                }
+            },
+            update: {
+                status: "CORRIGIDA",
+                aprovadoProva: true
+            },
+            create: {
+                provaId,
+                candidatoId: candidato.id,
+                status: "CORRIGIDA",
+                aprovadoProva: true,
+                notaFinal: null
+            }
+        });
+
+        return { success: true };
+    } catch (e: any) {
+        console.error("Erro em adicionarCandidatoManual:", e);
+        return { success: false, error: "Erro ao adicionar candidato manualmente." };
+    }
+}
+

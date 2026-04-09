@@ -11,11 +11,15 @@ interface CandidatoRowProps {
 }
 
 function getInitials(nome: string): string {
-    const parts = nome.split(" ")
+    if (!nome) return "CA"
+    const cleaned = nome.trim()
+    if (!cleaned) return "CA"
+    
+    const parts = cleaned.split(/\s+/)
     if (parts.length >= 2) {
-        return parts[0][0] + parts[parts.length - 1][0]
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     }
-    return nome.substring(0, 2).toUpperCase()
+    return cleaned.substring(0, 2).toUpperCase()
 }
 
 function getStatusBarColor(status: string): string {
