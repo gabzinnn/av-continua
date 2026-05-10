@@ -360,17 +360,20 @@ export async function getPreviewAvaliacoes(): Promise<PreviewMembro[]> {
     const subareasOndeEhLider = new Map<number, number[]>()
 
     for (const aloc of todasAlocacoes) {
-        // Demandas por membro
-        if (!demandasPorMembro.has(aloc.membroId)) {
-            demandasPorMembro.set(aloc.membroId, [])
-        }
-        demandasPorMembro.get(aloc.membroId)!.push(aloc.demandaId)
+        // Apenas demandas ativas geram relação "compartilha demanda"
+        if (!aloc.demanda.finalizada) {
+            // Demandas por membro
+            if (!demandasPorMembro.has(aloc.membroId)) {
+                demandasPorMembro.set(aloc.membroId, [])
+            }
+            demandasPorMembro.get(aloc.membroId)!.push(aloc.demandaId)
 
-        // Membros por demanda
-        if (!membrosPorDemanda.has(aloc.demandaId)) {
-            membrosPorDemanda.set(aloc.demandaId, [])
+            // Membros por demanda
+            if (!membrosPorDemanda.has(aloc.demandaId)) {
+                membrosPorDemanda.set(aloc.demandaId, [])
+            }
+            membrosPorDemanda.get(aloc.demandaId)!.push(aloc.membroId)
         }
-        membrosPorDemanda.get(aloc.demandaId)!.push(aloc.membroId)
 
         // Líderes por área/subárea (demandas não finalizadas)
         if (aloc.isLider && !aloc.demanda.finalizada) {

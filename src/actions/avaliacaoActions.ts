@@ -71,7 +71,10 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
 
     // Buscar demandas em que o avaliador está alocado
     const demandasDoAvaliador = await prisma.alocacaoDemanda.findMany({
-        where: { membroId },
+        where: {
+            membroId,
+            demanda: { finalizada: false }
+        },
         include: {
             demanda: {
                 select: { idSubarea: true }
@@ -84,7 +87,8 @@ export async function getAvaliacaoAtual(membroId: number): Promise<AvaliacaoAtua
     // Buscar membros que compartilham pelo menos uma demanda com o avaliador
     const membrosComDemandaCompartilhada = await prisma.alocacaoDemanda.findMany({
         where: {
-            demandaId: { in: demandaIds }
+            demandaId: { in: demandaIds },
+            demanda: { finalizada: false }
         },
         select: { membroId: true },
         distinct: ['membroId']
@@ -403,7 +407,10 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
 
     // Buscar demandas em que o avaliador está alocado
     const demandasDoAvaliador = await prisma.alocacaoDemanda.findMany({
-        where: { membroId },
+        where: {
+            membroId,
+            demanda: { finalizada: false }
+        },
         include: {
             demanda: {
                 select: { idSubarea: true }
@@ -417,7 +424,8 @@ async function verificarEAtualizarParticipacao(avaliacaoId: number, membroId: nu
     const membrosComDemandaCompartilhada = await prisma.alocacaoDemanda.findMany({
         where: {
             demandaId: { in: demandaIds },
-            membro: { isAtivo: true }
+            membro: { isAtivo: true },
+            demanda: { finalizada: false }
         },
         select: { membroId: true },
         distinct: ['membroId']
