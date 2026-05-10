@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { Download, ChevronRight, Users, BarChart2, MessageSquare, CheckCircle, XCircle } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import { getPCODetalhes, exportarRespostasPCO, PCODetalhes, PerguntaDetalhes, DistribuicaoGrupo } from "@/src/actions/pcoActions"
+import html2canvas from "html2canvas"
+import jsPDF from "jspdf"
 
 interface PCODetalhesContentProps {
     pcoId: number
@@ -13,6 +15,8 @@ interface PCODetalhesContentProps {
 export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
     const [data, setData] = useState<PCODetalhes | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [isGenerating, setIsGenerating] = useState(false)
+    const reportRef = useRef<HTMLDivElement>(null)
 
     const fetchData = async () => {
         try {
@@ -41,6 +45,55 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
         link.download = `pco_${pcoId}_respostas.csv`
         link.click()
         URL.revokeObjectURL(url)
+    }
+
+    const handleDownloadPDF = async () => {
+        if (!reportRef.current || isGenerating) return
+        setIsGenerating(true)
+        
+        try {
+            const canvas = await html2canvas(reportRef.current, {
+                // @ts-ignore
+                scale: 2,
+                useCORS: true, 
+                logging: false,
+                backgroundColor: "#ffffff"
+            });
+            const imgData = canvas.toDataURL("image/jpeg", 0.8);
+            const pdf = new jsPDF({ 
+                orientation: "portrait", 
+                unit: "mm", 
+                format: "a4",
+                compress: true 
+            });
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = pdfWidth / imgWidth; 
+            const imgHeightInPdfUnits = imgHeight * ratio;
+            let totalPages = Math.ceil(imgHeightInPdfUnits / pdfHeight);
+            
+            if (totalPages > 1) {
+                const lastPageContentHeight = imgHeightInPdfUnits % pdfHeight;
+                if (lastPageContentHeight > 0 && lastPageContentHeight < 5) {
+                    totalPages--;
+                }
+            }
+
+            for (let i = 0; i < totalPages; i++) {
+                if (i > 0) pdf.addPage();
+                const destY = -(i * pdfHeight);
+                pdf.addImage(imgData, "JPEG", 0, destY, pdfWidth, imgHeight * ratio);
+            }
+            
+            pdf.save(`pco_${pcoId}_relatorio.pdf`);
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao gerar PDF");
+        } finally {
+            setIsGenerating(false);
+        }
     }
 
     if (isLoading) {
@@ -83,10 +136,10 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
 
     return (
         <div className="flex-1 overflow-y-auto p-8">
-            <div className="max-w-[1200px] mx-auto flex flex-col gap-12 pb-12">
+            <div className="max-w-[1200px] mx-auto flex flex-col gap-12 pb-12" ref={reportRef}>
                 {/* Breadcrumb & Header */}
                 <div className="flex flex-col gap-6">
-                    <nav className="flex items-center gap-2 text-sm text-gray-500">
+                    <nav className="flex items-center gap-2 text-sm text-gray-500" data-html2canvas-ignore>
                         <Link href="/coord/pco" className="hover:text-primary transition-colors">
                             Pesquisas de Clima
                         </Link>
@@ -111,7 +164,17 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                                 <span>Criada em {formatDate(data.createdAt)}</span>
                             </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" data-html2canvas-ignore>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={<Download size={18} />}
+                                iconPosition="left"
+                                onClick={handleDownloadPDF}
+                                isLoading={isGenerating}
+                            >
+                                Exportar PDF
+                            </Button>
                             <Button
                                 variant="secondary"
                                 size="sm"
@@ -312,7 +375,7 @@ function getMediaColor(value: number): string {
 
 function EscalaPerguntaCard({ pergunta, grupos }: { pergunta: PerguntaDetalhes; grupos: string[] }) {
     return (
-        <div className="bg-bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="bg-bg-card rounded-xl border border-border shadow-sm overflow-hidden break-inside-avoid">
             {/* Header */}
             <div className="flex items-start justify-between p-6 border-b border-border">
                 <div className="flex-1">
@@ -412,7 +475,7 @@ function OutraPerguntaCard({ pergunta }: { pergunta: PerguntaDetalhes }) {
     const tipoLabel = pergunta.tipo === "MULTIPLA_ESCOLHA" ? "Múltipla Escolha" : "Texto Livre"
 
     return (
-        <div className="bg-bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="bg-bg-card rounded-xl border border-border shadow-sm overflow-hidden break-inside-avoid">
             <div className="p-6 border-b border-border">
                 <div className="flex items-center gap-3 mb-1">
                     <span className="text-xs font-bold text-primary uppercase tracking-wider">Q{pergunta.ordem}</span>

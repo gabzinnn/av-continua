@@ -43,13 +43,11 @@
 
 @layer base {
   body {
-    @apply bg-background text-foreground antialiased;
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     font-family: var(--font-sans);
-  }
-
-  /* Estilização padrão para os Cards mencionados no fluxograma */
-  .card-membro {
-    @apply bg-card border border-border rounded-lg shadow-sm p-4;
   }
 }
 

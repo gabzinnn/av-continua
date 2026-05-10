@@ -215,7 +215,7 @@ export default function RealizacaoSimuladoPage() {
                                                     {String.fromCharCode(65 + idx)}.
                                                 </span>
                                                 <div
-                                                    className={`text-sm md:text-base leading-relaxed break-words overflow-hidden ${isSelected ? 'text-text-main font-semibold' : 'text-gray-700'}`}
+                                                    className={`text-sm md:text-base leading-relaxed wrap-break-word overflow-hidden ${isSelected ? 'text-text-main font-semibold' : 'text-gray-700'}`}
                                                     dangerouslySetInnerHTML={{ __html: renderMathInHtml(alt.texto) }}
                                                 />
                                             </div>

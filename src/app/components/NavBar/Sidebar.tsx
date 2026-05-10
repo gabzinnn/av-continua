@@ -6,8 +6,9 @@ import { useMember } from "@/src/context/memberContext"
 import { useAuth } from "@/src/context/authContext"
 import { NavItem } from "./NavItem"
 import { UserCard } from "./UserCard"
-import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon, Thermometer, ClipboardList, Activity, BookOpen } from "lucide-react"
+import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon, Thermometer, ClipboardList, Activity, BookOpen, ClipboardCheck } from "lucide-react"
 import { temPCOAtiva } from "@/src/actions/pcoActions"
+import { temAvaliacao360Pendente } from "@/src/actions/avaliacao360Actions"
 import { CoordsSidebar } from "../coords/CoordsSidebar"
 
 interface NavRoute {
@@ -34,21 +35,27 @@ const baseRoutes: NavRoute[] = [
 ]
 
 const pcoRoute: NavRoute = { href: "/pco", icon: ClipboardList, label: "Pesquisa de Clima" }
+const av360Route: NavRoute = { href: "/avaliacoes-360", icon: ClipboardCheck, label: "Avaliação 360" }
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const [showPCO, setShowPCO] = useState(false)
+  const [show360, setShow360] = useState(false)
   const { selectedMember, clearMember } = useMember()
   const { isAuthenticated, isCoordenador, isEquipePS, isProgramaPreparacao } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
-  // Check if there's an active PCO for this member
+  // Check if there's an active PCO and/or 360 for this member
   useEffect(() => {
     if (!selectedMember) return
     temPCOAtiva(Number(selectedMember.id))
       .then(setShowPCO)
       .catch(() => setShowPCO(false))
+
+    temAvaliacao360Pendente(Number(selectedMember.id))
+      .then(setShow360)
+      .catch(() => setShow360(false))
   }, [selectedMember, pathname])
 
   // Fecha o menu ao mudar de rota
@@ -94,9 +101,16 @@ export function Sidebar() {
   }
 
   // Build nav routes dynamically
-  const navRoutes = showPCO
-    ? [...baseRoutes.slice(0, 3), pcoRoute, ...baseRoutes.slice(3)]
-    : baseRoutes
+  let navRoutes = [...baseRoutes]
+
+  if (showPCO) {
+    navRoutes.splice(3, 0, pcoRoute)
+  }
+
+  if (show360) {
+    // Adiciona depois de "Avaliação atual" e "Termômetro"
+    navRoutes.splice(2, 0, av360Route)
+  }
 
   return (
     <>
