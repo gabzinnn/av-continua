@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Eye, TimerOff, Play, Trash2, Search } from "lucide-react"
+import { Plus, Eye, TimerOff, Play, Trash2, Search, Pencil } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import { getPCOPageData, PCOPageData, PCOResumo, iniciarPCO, encerrarPCO, deletarPCO } from "@/src/actions/pcoActions"
 import dynamic from "next/dynamic"
@@ -289,6 +289,13 @@ export function PCOContent() {
                                     className="text-gray-500 hover:text-primary font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
                                     <Play size={16} /> Iniciar
+                                </button>
+                                <button
+                                    onClick={() => router.push(`/coord/pco/${row.id}/editar`)}
+                                    disabled={isDisabled}
+                                    className="text-gray-500 hover:text-blue-500 font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                                >
+                                    <Pencil size={16} /> Editar
                                 </button>
                                 <button
                                     onClick={() => handleDeletar(row.id)}

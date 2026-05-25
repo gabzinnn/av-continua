@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useMember } from "@/src/context/memberContext"
 import { getFeedback360MatrixParaResponder, salvarRespostas360, finalizarFeedback360 } from "@/src/actions/avaliacao360Actions"
-import { TipoPergunta360 } from "@/src/generated/prisma/client"
+const TipoPergunta360 = { ESCALA: "ESCALA", TEXTO_ABERTO: "TEXTO_ABERTO" } as const
+type TipoPergunta360 = typeof TipoPergunta360[keyof typeof TipoPergunta360]
 import { CustomAlert } from "../CustomAlert"
 
 export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoId: number }) {
@@ -155,7 +156,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
     const dimensoes = avaliacao.dimensoes
 
     return (
-        <div className="flex-1 flex flex-col items-center py-10 px-6 max-w-[1400px] mx-auto w-full">
+        <div className="flex-1 flex flex-col items-center py-10 px-6 max-w-350 mx-auto w-full">
             <CustomAlert 
                 isOpen={alert.isOpen}
                 type={alert.type}
@@ -195,7 +196,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200">
-                                <th className="sticky left-0 bg-gray-50 text-left p-6 min-w-[350px] font-bold text-sm z-10 border-r border-gray-200">
+                                <th className="sticky left-0 bg-gray-50 text-left p-6 min-w-87.5 font-bold text-sm z-10 border-r border-gray-200">
                                     Competência / Comportamento
                                 </th>
                                 {feedbacks.map(f => {
@@ -214,7 +215,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                     const perc = req > 0 ? Math.round((done/req)*100) : 100
                                     
                                     return (
-                                        <th key={f.id} className="p-6 min-w-[180px] text-center align-bottom border-l border-gray-200 bg-gray-50">
+                                        <th key={f.id} className="p-6 min-w-45 text-center align-bottom border-l border-gray-200 bg-gray-50">
                                             <div className="flex flex-col items-center gap-3">
                                                 <div className="w-1.5 h-16 bg-gray-200 rounded-full relative overflow-hidden">
                                                     <div className="absolute bottom-0 left-0 w-full bg-[#fad519] transition-all duration-300" style={{ height: `${perc}%` }}></div>
@@ -270,7 +271,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                                             />
                                                         ) : (
                                                             <textarea 
-                                                                className={`w-full min-w-[200px] h-20 p-3 rounded-lg bg-gray-50 border text-sm resize-none focus:ring-0 focus:outline-none focus:border-[#fad519] transition-all
+                                                                className={`w-full min-w-50 h-20 p-3 rounded-lg bg-gray-50 border text-sm resize-none focus:ring-0 focus:outline-none focus:border-[#fad519] transition-all
                                                                     ${isFilled ? 'border-[#fad519]' : 'border-gray-200'}
                                                                 `}
                                                                 placeholder="Escreva aqui..."
@@ -292,8 +293,8 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
 
             {/* Sticky Footer Progress Bar */}
             <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-4 px-10 flex items-center justify-between shadow-2xl z-50">
-                <div className="flex items-center gap-6 flex-1 max-w-[800px]">
-                    <div className="flex flex-col gap-1 min-w-[120px]">
+                <div className="flex items-center gap-6 flex-1 max-w-200">
+                    <div className="flex flex-col gap-1 min-w-30">
                         <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Progresso Geral</span>
                         <span className="text-xl font-black">{progresso}%</span>
                     </div>
@@ -312,7 +313,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                     <button 
                         onClick={finalizarAvaliacao}
                         disabled={saving || progresso < 100}
-                        className="bg-[#fad519] hover:bg-[#eac416] text-[#1c1a0d] px-8 py-3 rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        className="bg-primary hover:bg-[#eac416] text-text-main px-8 py-3 rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                         Enviar Avaliação
                         <span className="material-symbols-outlined text-base">send</span>

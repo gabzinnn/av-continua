@@ -7,8 +7,6 @@ import { useAuth } from "@/src/context/authContext"
 import { NavItem } from "./NavItem"
 import { UserCard } from "./UserCard"
 import { Home, FileEdit, History, Archive, LogOut, Menu, X, LucideIcon, Thermometer, ClipboardList, Activity, BookOpen, ClipboardCheck } from "lucide-react"
-import { temPCOAtiva } from "@/src/actions/pcoActions"
-import { temAvaliacao360Pendente } from "@/src/actions/avaliacao360Actions"
 import { CoordsSidebar } from "../coords/CoordsSidebar"
 
 interface NavRoute {
@@ -21,42 +19,20 @@ interface NavRoute {
 const baseRoutes: NavRoute[] = [
   { href: "/home", icon: Home, label: "Home" },
   { href: "/avatual", icon: FileEdit, label: "Avaliação atual" },
+  { href: "/avaliacoes-360", icon: ClipboardCheck, label: "Avaliação 360" },
+  { href: "/pco", icon: ClipboardList, label: "PCO" },
   { href: "/termometro", icon: Thermometer, label: "Termômetro" },
   { href: "/historico-termometro", icon: Activity, label: "Histórico Termômetro" },
   { href: "/historico", icon: History, label: "Histórico" },
   { href: "/avaliacoes", icon: Archive, label: "Avaliações recebidas" },
-  // {
-  //   icon: BookOpen,
-  //   label: "Programa de Preparação",
-  //   subItems: [
-  //     { href: "/programa-preparacao/simulados", label: "Simulados" }
-  //   ]
-  // },
 ]
-
-const pcoRoute: NavRoute = { href: "/pco", icon: ClipboardList, label: "Pesquisa de Clima" }
-const av360Route: NavRoute = { href: "/avaliacoes-360", icon: ClipboardCheck, label: "Avaliação 360" }
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
-  const [showPCO, setShowPCO] = useState(false)
-  const [show360, setShow360] = useState(false)
   const { selectedMember, clearMember } = useMember()
   const { isAuthenticated, isCoordenador, isEquipePS, isProgramaPreparacao } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
-
-  // Check if there's an active PCO and/or 360 for this member
-  useEffect(() => {
-    if (!selectedMember) return
-    temPCOAtiva(Number(selectedMember.id))
-      .then(setShowPCO)
-      .catch(() => setShowPCO(false))
-
-    temAvaliacao360Pendente(Number(selectedMember.id))
-      .then(setShow360)
-      .catch(() => setShow360(false))
-  }, [selectedMember, pathname])
 
   // Fecha o menu ao mudar de rota
   useEffect(() => {
@@ -98,18 +74,6 @@ export function Sidebar() {
       return <CoordsSidebar />
     }
     return null
-  }
-
-  // Build nav routes dynamically
-  let navRoutes = [...baseRoutes]
-
-  if (showPCO) {
-    navRoutes.splice(3, 0, pcoRoute)
-  }
-
-  if (show360) {
-    // Adiciona depois de "Avaliação atual" e "Termômetro"
-    navRoutes.splice(2, 0, av360Route)
   }
 
   return (
@@ -174,7 +138,7 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
-          {navRoutes.map((route) => (
+          {baseRoutes.map((route) => (
             <NavItem
               key={route.label}
               href={route.href}

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -l \"editarPCO\\\\|updatePCO\\\\|modifyPCO\")",
+      "Bash(Get-Content \"D:\\\\Gabriel\\\\av-continua\\\\src\\\\actions\\\\pcoActions.ts\" -Raw)",
+      "Bash(Select-String -Pattern \"\\\\.respostas|\\\\.perguntas|findMany|include:\" -Context 0,3)",
+      "Bash(Get-Content \"D:\\\\Gabriel\\\\av-continua\\\\src\\\\actions\\\\avaliacao360Actions.ts\" -Raw)",
+      "Bash(Select-String -Pattern \"RespostaPergunta360|\\\\.respostas|findMany\" -Context 0,2)"
+    ]
+  }
+}

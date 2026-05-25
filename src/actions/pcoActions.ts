@@ -83,6 +83,7 @@ export interface CriarPCOInput {
             texto: string
             tipo: "ESCALA" | "MULTIPLA_ESCOLHA" | "TEXTO_LIVRE"
             obrigatoria?: boolean
+            mostrarJustificativa?: boolean
             opcoes?: string[]
         }[]
     }[]
@@ -107,6 +108,7 @@ export async function criarPCO(input: CriarPCOInput): Promise<{ success: boolean
                                 texto: p.texto,
                                 tipo: p.tipo,
                                 obrigatoria: p.obrigatoria ?? true,
+                                mostrarJustificativa: p.mostrarJustificativa ?? false,
                                 ordem: index + 1,
                                 opcoes: p.opcoes
                                     ? {
@@ -241,6 +243,7 @@ export interface PCOParaResponder {
             texto: string
             tipo: "ESCALA" | "MULTIPLA_ESCOLHA" | "TEXTO_LIVRE"
             obrigatoria: boolean
+            mostrarJustificativa: boolean
             ordem: number
             opcoes: { id: number; texto: string; ordem: number }[]
         }[]
@@ -292,11 +295,12 @@ export async function getPCOsAtivasParaMembro(membroId: number): Promise<PCOPara
                 titulo: s.titulo,
                 descricao: s.descricao,
                 ordem: s.ordem,
-                perguntas: s.perguntas.map((p: { id: any; texto: any; tipo: any; obrigatoria: any; ordem: any; opcoes: any[] }) => ({
+                perguntas: s.perguntas.map((p: { id: any; texto: any; tipo: any; obrigatoria: any; mostrarJustificativa: any; ordem: any; opcoes: any[] }) => ({
                     id: p.id,
                     texto: p.texto,
                     tipo: p.tipo,
                     obrigatoria: p.obrigatoria,
+                    mostrarJustificativa: p.mostrarJustificativa,
                     ordem: p.ordem,
                     opcoes: p.opcoes.map((o: { id: any; texto: any; ordem: any }) => ({
                         id: o.id,
@@ -365,6 +369,237 @@ export async function enviarRespostasPCO(
     } catch (error) {
         console.error("Erro ao enviar respostas PCO:", error)
         return { success: false, error: "Erro ao enviar respostas." }
+    }
+}
+
+// ==========================================
+// MEMBER-SIDE: VER RESPOSTAS DE UMA PCO RESPONDIDA
+// ==========================================
+
+export interface PCORespostasView {
+    id: number
+    nome: string
+    descricao: string | null
+    dataFim: Date | null
+    secoes: {
+        id: number
+        titulo: string
+        descricao: string | null
+        ordem: number
+        perguntas: {
+            id: number
+            texto: string
+            tipo: "ESCALA" | "MULTIPLA_ESCOLHA" | "TEXTO_LIVRE"
+            ordem: number
+            mostrarJustificativa: boolean
+            resposta: {
+                nota: number | null
+                texto: string | null
+                justificativa: string | null
+                opcaoTexto: string | null
+            } | null
+        }[]
+    }[]
+}
+
+export async function getPCORespostasForMembro(
+    membroId: number,
+    pcoId: number
+): Promise<PCORespostasView | null> {
+    const pco = await prisma.pCO.findFirst({
+        where: { id: pcoId },
+        include: {
+            secoes: {
+                orderBy: { ordem: "asc" },
+                include: {
+                    perguntas: {
+                        orderBy: { ordem: "asc" },
+                        include: {
+                            opcoes: { orderBy: { ordem: "asc" } },
+                            respostas: { where: { membroId } },
+                        },
+                    },
+                },
+            },
+        },
+    })
+
+    if (!pco) return null
+
+    return {
+        id: pco.id,
+        nome: pco.nome,
+        descricao: pco.descricao,
+        dataFim: pco.dataFim,
+        secoes: pco.secoes.map((s: any) => ({
+            id: s.id,
+            titulo: s.titulo,
+            descricao: s.descricao,
+            ordem: s.ordem,
+            perguntas: s.perguntas.map((p: any) => {
+                const resposta = p.respostas[0] ?? null
+                const opcaoTexto = resposta?.opcaoId
+                    ? (p.opcoes.find((o: any) => o.id === resposta.opcaoId)?.texto ?? null)
+                    : null
+                return {
+                    id: p.id,
+                    texto: p.texto,
+                    tipo: p.tipo,
+                    ordem: p.ordem,
+                    mostrarJustificativa: p.mostrarJustificativa,
+                    resposta: resposta
+                        ? { nota: resposta.nota, texto: resposta.texto, justificativa: resposta.justificativa, opcaoTexto }
+                        : null,
+                }
+            }),
+        })),
+    }
+}
+
+// ==========================================
+// MEMBER-SIDE: HISTÓRICO DE PCOs RESPONDIDAS
+// ==========================================
+
+export interface PCOHistoricoItem {
+    id: number
+    nome: string
+    descricao: string | null
+    dataInicio: Date | null
+    dataFim: Date | null
+    status: "RASCUNHO" | "ATIVA" | "ENCERRADA"
+}
+
+export async function getPCOsHistoricoMembro(membroId: number): Promise<PCOHistoricoItem[]> {
+    const participacoes = await prisma.participacaoPCO.findMany({
+        where: { membroId, respondeu: true },
+        include: {
+            pco: { select: { id: true, nome: true, descricao: true, dataInicio: true, dataFim: true, status: true } },
+        },
+        orderBy: { pco: { dataInicio: "desc" } },
+    })
+
+    return participacoes.map((p: any) => ({
+        id: p.pco.id,
+        nome: p.pco.nome,
+        descricao: p.pco.descricao,
+        dataInicio: p.pco.dataInicio,
+        dataFim: p.pco.dataFim,
+        status: p.pco.status,
+    }))
+}
+
+// ==========================================
+// COORD-SIDE: BUSCAR PCO PARA EDITAR
+// ==========================================
+
+export interface PCOParaEditar {
+    id: number
+    nome: string
+    descricao: string | null
+    secoes: {
+        id: number
+        titulo: string
+        descricao: string | null
+        ordem: number
+        perguntas: {
+            id: number
+            texto: string
+            tipo: "ESCALA" | "MULTIPLA_ESCOLHA" | "TEXTO_LIVRE"
+            obrigatoria: boolean
+            mostrarJustificativa: boolean
+            ordem: number
+            opcoes: { id: number; texto: string; ordem: number }[]
+        }[]
+    }[]
+}
+
+export async function getPCOParaEditar(id: number): Promise<PCOParaEditar | null> {
+    const pco = await prisma.pCO.findFirst({
+        where: { id, status: "RASCUNHO" },
+        include: {
+            secoes: {
+                orderBy: { ordem: "asc" },
+                include: {
+                    perguntas: {
+                        orderBy: { ordem: "asc" },
+                        include: { opcoes: { orderBy: { ordem: "asc" } } },
+                    },
+                },
+            },
+        },
+    })
+
+    if (!pco) return null
+
+    return {
+        id: pco.id,
+        nome: pco.nome,
+        descricao: pco.descricao,
+        secoes: pco.secoes.map((s: any) => ({
+            id: s.id,
+            titulo: s.titulo,
+            descricao: s.descricao,
+            ordem: s.ordem,
+            perguntas: s.perguntas.map((p: any) => ({
+                id: p.id,
+                texto: p.texto,
+                tipo: p.tipo,
+                obrigatoria: p.obrigatoria,
+                mostrarJustificativa: p.mostrarJustificativa,
+                ordem: p.ordem,
+                opcoes: p.opcoes.map((o: any) => ({ id: o.id, texto: o.texto, ordem: o.ordem })),
+            })),
+        })),
+    }
+}
+
+// ==========================================
+// COORD-SIDE: EDITAR PCO (apenas RASCUNHO)
+// ==========================================
+
+export async function editarPCO(id: number, input: CriarPCOInput): Promise<{ success: boolean; error?: string }> {
+    try {
+        await prisma.$transaction(async (tx) => {
+            const pco = await tx.pCO.findUnique({ where: { id }, select: { status: true } })
+            if (!pco || pco.status !== "RASCUNHO") {
+                throw new Error("Apenas PCOs em rascunho podem ser editadas.")
+            }
+
+            await tx.pCO.update({
+                where: { id },
+                data: { nome: input.nome, descricao: input.descricao ?? null },
+            })
+
+            await tx.secaoPCO.deleteMany({ where: { pcoId: id } })
+
+            for (const [sIndex, s] of input.secoes.entries()) {
+                await tx.secaoPCO.create({
+                    data: {
+                        pcoId: id,
+                        titulo: s.titulo,
+                        descricao: s.descricao ?? null,
+                        ordem: sIndex + 1,
+                        perguntas: {
+                            create: s.perguntas.map((p, pIndex) => ({
+                                texto: p.texto,
+                                tipo: p.tipo,
+                                obrigatoria: p.obrigatoria ?? true,
+                                mostrarJustificativa: p.mostrarJustificativa ?? false,
+                                ordem: pIndex + 1,
+                                opcoes: p.opcoes
+                                    ? { create: p.opcoes.map((o, i) => ({ texto: o, ordem: i + 1 })) }
+                                    : undefined,
+                            })),
+                        },
+                    },
+                })
+            }
+        })
+
+        return { success: true }
+    } catch (error: any) {
+        console.error("Erro ao editar PCO:", error)
+        return { success: false, error: error.message || "Erro ao editar a pesquisa." }
     }
 }
 

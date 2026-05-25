@@ -143,8 +143,7 @@ export function Avaliacoes360Dashboard() {
     }
 
     const handleVerRelatorio = (id: number) => {
-        // Redireciona pro relatório no futuro
-        alert("Relatório em breve: " + id)
+        router.push(`/coord/avaliacoes-360/${id}`)
     }
 
     const formatDate = (date: Date | null) => {
@@ -322,39 +321,7 @@ export function Avaliacoes360Dashboard() {
         )
     }
 
-    // Configurando Radar Mockado seguindo o design visual
-    const radarOptions: ApexCharts.ApexOptions = {
-        chart: {
-            type: 'radar',
-            toolbar: { show: false },
-            parentHeightOffset: 0,
-        },
-        colors: ['#fad519'],
-        stroke: { width: 2, colors: ['#fad519'] },
-        fill: { opacity: 0.2, colors: ['#fad519'] },
-        markers: { size: 4, colors: ['#fff'], strokeColors: '#fad519', strokeWidth: 2 },
-        xaxis: {
-            categories: ['Comunicação', 'Entrega', 'Trabalho Equipe', 'Alinhamento', 'Liderança'],
-            labels: {
-                style: {
-                    colors: ['#9e9047', '#9e9047', '#9e9047', '#9e9047', '#9e9047'],
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    cssClass: 'apexcharts-xaxis-label text-xs uppercase tracking-wider',
-                }
-            }
-        },
-        yaxis: { show: false, min: 0, max: 5 },
-        plotOptions: {
-            radar: {
-                polygons: {
-                    strokeColors: '#e9e4ce',
-                    connectorColors: '#e9e4ce'
-                }
-            }
-        }
-    }
-    const radarSeries = [{ name: 'Média Global', data: [4.8, 4.2, 4.5, 3.9, 4.1] }]
+    const temEncerradas = (data?.avaliacoes ?? []).some(a => a.status === "ENCERRADA")
 
     return (
         <div className="flex-1 flex flex-col pt-4 overflow-y-auto">
@@ -408,69 +375,61 @@ export function Avaliacoes360Dashboard() {
                     <div className="bg-bg-card rounded-xl p-6 shadow-sm border border-border">
                         <h4 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4">Média Global</h4>
                         <div className="flex items-end gap-2 mb-2">
-                            <span className="text-4xl font-black">4.3</span>
-                            <span className="text-primary material-symbols-outlined text-3xl">star</span>
+                            <span className="text-4xl font-black text-gray-300">—</span>
                         </div>
-                        <p className="text-sm text-gray-500">Nota média corporativa nas competências.</p>
+                        <p className="text-sm text-gray-400 italic">Disponível após a conclusão de uma avaliação.</p>
                     </div>
                 </div>
 
                 {/* Dashboard Analytics Section */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div className="xl:col-span-2 bg-bg-card rounded-xl p-8 shadow-sm border border-border flex flex-col">
-                        <div className="flex items-center justify-between mb-2">
-                            <div>
-                                <h3 className="text-xl font-bold">Desempenho Geral por Dimensão</h3>
-                                <p className="text-sm text-text-muted">Média ponderada da última avaliação</p>
-                            </div>
+                {temEncerradas ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Radar Chart */}
+                        <div className="bg-bg-card rounded-xl p-6 shadow-sm border border-border">
+                            <h4 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4">Desempenho por Dimensão</h4>
+                            <Chart
+                                type="radar"
+                                height={280}
+                                options={{
+                                    chart: { toolbar: { show: false }, background: "transparent" },
+                                    xaxis: {
+                                        categories: ["Comunicação", "Trabalho em Equipe", "Liderança", "Alinhamento Cultural", "Entrega"],
+                                    },
+                                    yaxis: { min: 0, max: 5, tickAmount: 5 },
+                                    fill: { opacity: 0.25, colors: ["#fad519"] },
+                                    stroke: { width: 2, colors: ["#fad519"] },
+                                    markers: { size: 4, colors: ["#fad519"] },
+                                    dataLabels: { enabled: false },
+                                    plotOptions: { radar: { polygons: { strokeColors: "#e9e4ce", fill: { colors: ["#fcfbf8", "#ffffff"] } } } },
+                                    legend: { show: false },
+                                    tooltip: { y: { formatter: (v: number) => v.toFixed(1) } },
+                                }}
+                                series={[{ name: "Média", data: [0, 0, 0, 0, 0] }]}
+                            />
+                            <p className="text-xs text-gray-400 italic text-center mt-1">Dados por dimensão em breve.</p>
                         </div>
-                        <div className="flex-1 min-h-[300px] flex items-center justify-center -mt-6">
-                            {(typeof window !== 'undefined') && (
-                                <Chart 
-                                    options={radarOptions} 
-                                    series={radarSeries} 
-                                    type="radar" 
-                                    height={320}
-                                    width="100%"
-                                />
-                            )}
+
+                        {/* Destaques placeholder */}
+                        <div className="bg-bg-card rounded-xl p-6 shadow-sm border border-border flex flex-col gap-4">
+                            <h4 className="text-sm font-bold text-text-muted uppercase tracking-wider">Destaques</h4>
+                            <div className="flex flex-col gap-3 flex-1 justify-center">
+                                {["Comunicação", "Trabalho em Equipe", "Alinhamento Cultural"].map((dim) => (
+                                    <div key={dim} className="flex items-center justify-between gap-3">
+                                        <span className="text-sm text-text-main font-medium">{dim}</span>
+                                        <span className="text-sm font-bold text-gray-300">—</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-xs text-gray-400 italic">Médias disponíveis após análise dos ciclos encerrados.</p>
                         </div>
                     </div>
-                    <div className="flex flex-col gap-4">
-                        <div className="p-5 rounded-xl border border-border bg-[#fcfbf8] h-full flex flex-col justify-center gap-6">
-                            <h3 className="font-bold text-lg border-b border-border pb-2">Destaques</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="font-bold text-sm">Comunicação</span>
-                                        <span className="text-xs font-bold bg-primary/20 px-2 py-0.5 rounded text-text-main">4.8 / 5.0</span>
-                                    </div>
-                                    <div className="w-full h-2 bg-border flex rounded-full overflow-hidden">
-                                        <div className="h-full bg-primary" style={{width: '96%'}}></div>
-                                    </div>
-                                </div>
-                                <div className="pt-2">
-                                     <div className="flex justify-between items-center mb-1">
-                                        <span className="font-bold text-sm">Trabalho em Equipe</span>
-                                        <span className="text-xs font-bold bg-primary/20 px-2 py-0.5 rounded text-text-main">4.5 / 5.0</span>
-                                    </div>
-                                    <div className="w-full h-2 bg-border flex rounded-full overflow-hidden">
-                                        <div className="h-full bg-primary" style={{width: '90%'}}></div>
-                                    </div>
-                                </div>
-                                 <div className="pt-2">
-                                     <div className="flex justify-between items-center mb-1">
-                                        <span className="font-bold text-sm">Alinhamento Cultural</span>
-                                        <span className="text-xs font-bold bg-gray-200 px-2 py-0.5 rounded text-text-main">3.9 / 5.0</span>
-                                    </div>
-                                    <div className="w-full h-2 bg-border flex rounded-full overflow-hidden">
-                                        <div className="h-full bg-gray-400" style={{width: '78%'}}></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                ) : (
+                    <div className="bg-bg-card rounded-xl p-8 shadow-sm border border-border flex flex-col items-center justify-center text-center gap-3 min-h-[220px]">
+                        <BarChart3 size={36} className="text-gray-200" />
+                        <p className="text-sm font-semibold text-gray-400">Nenhuma análise disponível</p>
+                        <p className="text-xs text-gray-400 max-w-xs">Os gráficos de desempenho por dimensão serão exibidos após a conclusão de uma avaliação 360.</p>
                     </div>
-                </div>
+                )}
 
                 {/* Table Section */}
                 <section className="space-y-4 mt-6">

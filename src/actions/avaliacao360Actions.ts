@@ -692,6 +692,118 @@ export async function temAvaliacao360Pendente(membroId: number) {
     }
 }
 
+export interface Av360RespostasView {
+    avaliacaoId: number
+    avaliacaoNome: string
+    dataFim: Date | null
+    avaliados: {
+        feedbackId: number
+        avaliadoId: number
+        avaliadoNome: string
+        dimensoes: {
+            id: number
+            titulo: string
+            perguntas: {
+                id: number
+                texto: string
+                tipo: "ESCALA" | "TEXTO_ABERTO"
+                ordem: number
+                resposta: { nota: number | null; texto: string | null } | null
+            }[]
+        }[]
+    }[]
+}
+
+export async function getAv360RespostasForMembro(
+    membroId: number,
+    avaliacaoId: number
+): Promise<Av360RespostasView | null> {
+    const feedbacks = await prisma.feedback360.findMany({
+        where: { avaliadorId: membroId, avaliacaoId, finalizado: true },
+        include: {
+            avaliado: { select: { id: true, nome: true } },
+            respostas: true,
+            avaliacao: {
+                select: {
+                    id: true,
+                    nome: true,
+                    dataFim: true,
+                    dimensoes: {
+                        orderBy: { ordem: "asc" },
+                        include: {
+                            perguntas: { orderBy: { ordem: "asc" } },
+                        },
+                    },
+                },
+            },
+        },
+    })
+
+    if (feedbacks.length === 0) return null
+
+    const av = feedbacks[0].avaliacao
+
+    return {
+        avaliacaoId: av.id,
+        avaliacaoNome: av.nome,
+        dataFim: av.dataFim,
+        avaliados: feedbacks.map((f: any) => ({
+            feedbackId: f.id,
+            avaliadoId: f.avaliado.id,
+            avaliadoNome: f.avaliado.nome,
+            dimensoes: av.dimensoes.map((d: any) => ({
+                id: d.id,
+                titulo: d.titulo,
+                perguntas: d.perguntas.map((p: any) => {
+                    const resposta = f.respostas.find((r: any) => r.perguntaId === p.id) ?? null
+                    return {
+                        id: p.id,
+                        texto: p.texto,
+                        tipo: p.tipo,
+                        ordem: p.ordem,
+                        resposta: resposta ? { nota: resposta.nota, texto: resposta.texto } : null,
+                    }
+                }),
+            })),
+        })),
+    }
+}
+
+export interface Av360HistoricoItem {
+    avaliacaoId: number
+    avaliacaoNome: string
+    totalAvaliados: number
+    dataFim: Date | null
+}
+
+export async function getAv360HistoricoMembro(membroId: number): Promise<Av360HistoricoItem[]> {
+    const feedbacks = await prisma.feedback360.findMany({
+        where: { avaliadorId: membroId, finalizado: true },
+        include: {
+            avaliacao: { select: { id: true, nome: true, dataFim: true } },
+        },
+    })
+
+    const porAvaliacao = new Map<number, Av360HistoricoItem>()
+    for (const f of feedbacks) {
+        const existing = porAvaliacao.get(f.avaliacaoId)
+        if (existing) {
+            existing.totalAvaliados++
+        } else {
+            porAvaliacao.set(f.avaliacaoId, {
+                avaliacaoId: f.avaliacaoId,
+                avaliacaoNome: f.avaliacao.nome,
+                totalAvaliados: 1,
+                dataFim: f.avaliacao.dataFim,
+            })
+        }
+    }
+
+    return Array.from(porAvaliacao.values()).sort((a, b) =>
+        (b.dataFim?.getTime() ?? 0) - (a.dataFim?.getTime() ?? 0)
+    )
+}
+
 export async function getRelatorio360PorAvaliado(avaliacaoId: number, avaliadoId: number) {
     try {
         const avaliacao = await prisma.avaliacao360.findUnique({
@@ -771,10 +883,10 @@ export async function getRelatorio360PorAvaliado(avaliacaoId: number, avaliadoId
             }
 
             const mediaSimples = totalNotasDimensao > 0 ? somaNotasDimensao / totalNotasDimensao : 0;
-            const scorePonderado = mediaSimples * (dim.peso || 0);
+            const scorePonderado = mediaSimples * (Number(dim.peso) || 0);
 
             somaScoreGeral += scorePonderado;
-            somaPesosTotal += (dim.peso || 0);
+            somaPesosTotal += (Number(dim.peso) || 0);
 
             relatorioDimensoes.push({
                 dimensao: dim.titulo,
@@ -861,8 +973,8 @@ export async function getRelatorio360Geral(avaliacaoId: number) {
                 }
 
                 const mediaDim = totalNotas > 0 ? somaNotas / totalNotas : 0;
-                somaScore += mediaDim * (dim.peso || 0);
-                somaPesos += (dim.peso || 0);
+                somaScore += mediaDim * (Number(dim.peso) || 0);
+                somaPesos += (Number(dim.peso) || 0);
                 
                 if (!mediasPorDimensaoGlobal.has(dim.id)) {
                     mediasPorDimensaoGlobal.set(dim.id, { soma: 0, count: 0 });

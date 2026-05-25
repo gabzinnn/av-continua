@@ -9,6 +9,8 @@ import { criarPCO, CriarPCOInput } from "@/src/actions/pcoActions"
 interface PerguntaForm {
     texto: string
     tipo: "ESCALA" | "MULTIPLA_ESCOLHA" | "TEXTO_LIVRE"
+    obrigatoria: boolean
+    mostrarJustificativa: boolean
     opcoes: string[]
     expanded: boolean
 }
@@ -28,7 +30,7 @@ export function CriarPCOContent() {
         {
             titulo: "Seção 1",
             descricao: "",
-            perguntas: [{ texto: "", tipo: "ESCALA", opcoes: [], expanded: true }],
+            perguntas: [{ texto: "", tipo: "ESCALA", obrigatoria: true, mostrarJustificativa: false, opcoes: [], expanded: true }],
             expanded: true
         }
     ])
@@ -40,7 +42,7 @@ export function CriarPCOContent() {
         setSecoes([...secoes, {
             titulo: `Seção ${secoes.length + 1}`,
             descricao: "",
-            perguntas: [{ texto: "", tipo: "ESCALA", opcoes: [], expanded: true }],
+            perguntas: [{ texto: "", tipo: "ESCALA", obrigatoria: true, mostrarJustificativa: false, opcoes: [], expanded: true }],
             expanded: true
         }])
     }
@@ -67,7 +69,7 @@ export function CriarPCOContent() {
     // --- Pergunta handlers (dentro de seção) ---
     const handleAddPergunta = (secaoIndex: number) => {
         const updated = [...secoes]
-        updated[secaoIndex].perguntas.push({ texto: "", tipo: "ESCALA", opcoes: [], expanded: true })
+        updated[secaoIndex].perguntas.push({ texto: "", tipo: "ESCALA", obrigatoria: true, mostrarJustificativa: false, opcoes: [], expanded: true })
         setSecoes(updated)
     }
 
@@ -91,6 +93,10 @@ export function CriarPCOContent() {
             }
         } else if (field === "texto") {
             pergunta.texto = value as string
+        } else if (field === "obrigatoria") {
+            pergunta.obrigatoria = value as boolean
+        } else if (field === "mostrarJustificativa") {
+            pergunta.mostrarJustificativa = value as boolean
         } else if (field === "expanded") {
             pergunta.expanded = value as boolean
         }
@@ -170,6 +176,8 @@ export function CriarPCOContent() {
                 perguntas: s.perguntas.map((p) => ({
                     texto: p.texto,
                     tipo: p.tipo,
+                    obrigatoria: p.obrigatoria,
+                    mostrarJustificativa: p.tipo === "ESCALA" ? p.mostrarJustificativa : false,
                     opcoes: p.tipo === "MULTIPLA_ESCOLHA" ? p.opcoes.filter(o => o.trim()) : undefined
                 }))
             }))
@@ -386,42 +394,85 @@ export function CriarPCOContent() {
                                                                 <Plus size={16} />
                                                                 Adicionar opção
                                                             </button>
+                                                            <div className="pt-2 border-t border-border">
+                                                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={pergunta.obrigatoria}
+                                                                        onChange={(e) => handlePerguntaChange(sIndex, pIndex, "obrigatoria", e.target.checked)}
+                                                                        className="w-4 h-4 rounded accent-primary cursor-pointer"
+                                                                    />
+                                                                    <span className="text-sm text-text-main">Obrigatória</span>
+                                                                </label>
+                                                            </div>
                                                         </div>
                                                     )}
 
                                                     {/* Expanded preview for other types */}
                                                     {pergunta.expanded && pergunta.tipo === "ESCALA" && (
-                                                        <div className="p-6 bg-[#fcfbf8]">
-                                                            <p className="text-sm text-text-muted mb-3">Pré-visualização das opções:</p>
-                                                            <div className="flex flex-col gap-2">
-                                                                {[
-                                                                    { label: "Concordo", value: "+2" },
-                                                                    { label: "Concordo parcialmente", value: "+1" },
-                                                                    { label: "Discordo parcialmente", value: "-1" },
-                                                                    { label: "Discordo", value: "-2" },
-                                                                    { label: "Não consigo responder", value: "0" },
-                                                                ].map((opt) => (
-                                                                    <div
-                                                                        key={opt.value}
-                                                                        className="flex items-center justify-between bg-white rounded-lg border border-border px-4 py-2.5"
-                                                                    >
-                                                                        <span className="text-sm text-text-main">{opt.label}</span>
-                                                                        <span className="text-xs font-mono text-text-muted bg-gray-100 px-2 py-0.5 rounded">
-                                                                            valor: {opt.value}
-                                                                        </span>
-                                                                    </div>
-                                                                ))}
+                                                        <div className="p-6 bg-[#fcfbf8] space-y-4">
+                                                            <div>
+                                                                <p className="text-sm text-text-muted mb-3">Pré-visualização das opções:</p>
+                                                                <div className="flex flex-col gap-2">
+                                                                    {[
+                                                                        { label: "Concordo", value: "+2" },
+                                                                        { label: "Concordo parcialmente", value: "+1" },
+                                                                        { label: "Discordo parcialmente", value: "-1" },
+                                                                        { label: "Discordo", value: "-2" },
+                                                                        { label: "Não consigo responder", value: "0" },
+                                                                    ].map((opt) => (
+                                                                        <div
+                                                                            key={opt.value}
+                                                                            className="flex items-center justify-between bg-white rounded-lg border border-border px-4 py-2.5"
+                                                                        >
+                                                                            <span className="text-sm text-text-main">{opt.label}</span>
+                                                                            <span className="text-xs font-mono text-text-muted bg-gray-100 px-2 py-0.5 rounded">
+                                                                                valor: {opt.value}
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                            <p className="text-xs text-text-muted mt-3 italic">
-                                                                Os valores numéricos são visíveis apenas para coordenadores. O aluno verá somente os rótulos de texto + campo de justificativa.
-                                                            </p>
+                                                            <div className="flex flex-wrap gap-4 pt-2 border-t border-border">
+                                                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={pergunta.obrigatoria}
+                                                                        onChange={(e) => handlePerguntaChange(sIndex, pIndex, "obrigatoria", e.target.checked)}
+                                                                        className="w-4 h-4 rounded accent-primary cursor-pointer"
+                                                                    />
+                                                                    <span className="text-sm text-text-main">Obrigatória</span>
+                                                                </label>
+                                                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={pergunta.mostrarJustificativa}
+                                                                        onChange={(e) => handlePerguntaChange(sIndex, pIndex, "mostrarJustificativa", e.target.checked)}
+                                                                        className="w-4 h-4 rounded accent-primary cursor-pointer"
+                                                                    />
+                                                                    <span className="text-sm text-text-main">Solicitar justificativa</span>
+                                                                </label>
+                                                            </div>
                                                         </div>
                                                     )}
 
                                                     {pergunta.expanded && pergunta.tipo === "TEXTO_LIVRE" && (
-                                                        <div className="p-6 bg-[#fcfbf8]">
-                                                            <p className="text-sm text-text-muted mb-3">Pré-visualização:</p>
-                                                            <div className="w-full h-16 rounded-lg border border-dashed border-border bg-white"></div>
+                                                        <div className="p-6 bg-[#fcfbf8] space-y-4">
+                                                            <div>
+                                                                <p className="text-sm text-text-muted mb-3">Pré-visualização:</p>
+                                                                <div className="w-full h-16 rounded-lg border border-dashed border-border bg-white"></div>
+                                                            </div>
+                                                            <div className="pt-2 border-t border-border">
+                                                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={pergunta.obrigatoria}
+                                                                        onChange={(e) => handlePerguntaChange(sIndex, pIndex, "obrigatoria", e.target.checked)}
+                                                                        className="w-4 h-4 rounded accent-primary cursor-pointer"
+                                                                    />
+                                                                    <span className="text-sm text-text-main">Obrigatória</span>
+                                                                </label>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>

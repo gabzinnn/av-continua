@@ -459,13 +459,14 @@ model SecaoPCO {
 }
 
 model PerguntaPCO {
-  id          Int             @id @default(autoincrement())
-  secaoId     Int
-  texto       String
-  tipo        TipoPerguntaPCO @default(ESCALA)
-  obrigatoria Boolean         @default(true)
-  ordem       Int
-  createdAt   DateTime        @default(now())
+  id                   Int             @id @default(autoincrement())
+  secaoId              Int
+  texto                String
+  tipo                 TipoPerguntaPCO @default(ESCALA)
+  obrigatoria          Boolean         @default(true)
+  mostrarJustificativa Boolean         @default(false)
+  ordem                Int
+  createdAt            DateTime        @default(now())
 
   secao     SecaoPCO           @relation(fields: [secaoId], references: [id], onDelete: Cascade)
   opcoes    OpcaoPerguntaPCO[]

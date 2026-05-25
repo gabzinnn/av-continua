@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CheckCircle, ChevronRight, ChevronLeft, ClipboardList } from "lucide-react"
+import { CheckCircle, ChevronRight, ChevronLeft, ClipboardList, Eye, ArrowLeft } from "lucide-react"
 import { useMember } from "@/src/context/memberContext"
 import { Button } from "@/src/app/components/Button"
-import { getPCOsAtivasParaMembro, enviarRespostasPCO, PCOParaResponder } from "@/src/actions/pcoActions"
+import { getPCOsAtivasParaMembro, enviarRespostasPCO, getPCOsHistoricoMembro, getPCORespostasForMembro, PCOParaResponder, PCOHistoricoItem, PCORespostasView } from "@/src/actions/pcoActions"
 
 type RespostaMap = Record<number, { nota?: number; opcaoId?: number; texto?: string; justificativa?: string }>
 
@@ -19,18 +19,25 @@ const ESCALA_OPTIONS = [
 export function MembroPCOContent() {
     const { selectedMember } = useMember()
     const [pcos, setPcos] = useState<PCOParaResponder[]>([])
+    const [historico, setHistorico] = useState<PCOHistoricoItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [selectedPCO, setSelectedPCO] = useState<PCOParaResponder | null>(null)
     const [respostas, setRespostas] = useState<RespostaMap>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitted, setSubmitted] = useState(false)
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0)
+    const [respostasView, setRespostasView] = useState<PCORespostasView | null>(null)
+    const [loadingRespostas, setLoadingRespostas] = useState(false)
 
     const fetchData = async () => {
         if (!selectedMember) return
         try {
-            const data = await getPCOsAtivasParaMembro(Number(selectedMember.id))
-            setPcos(data)
+            const [ativas, hist] = await Promise.all([
+                getPCOsAtivasParaMembro(Number(selectedMember.id)),
+                getPCOsHistoricoMembro(Number(selectedMember.id)),
+            ])
+            setPcos(ativas)
+            setHistorico(hist)
         } catch (error) {
             console.error("Erro ao carregar PCOs:", error)
         } finally {
@@ -150,6 +157,17 @@ export function MembroPCOContent() {
         fetchData()
     }
 
+    const handleVerRespostas = async (pcoId: number) => {
+        if (!selectedMember) return
+        setLoadingRespostas(true)
+        try {
+            const data = await getPCORespostasForMembro(Number(selectedMember.id), pcoId)
+            setRespostasView(data)
+        } finally {
+            setLoadingRespostas(false)
+        }
+    }
+
     // Calculation utils
     const getTotalPerguntas = () => selectedPCO?.secoes.reduce((acc, s) => acc + s.perguntas.length, 0) || 0
     const getAnsweredCount = () => {
@@ -171,6 +189,140 @@ export function MembroPCOContent() {
         return (
             <div className="flex-1 flex items-center justify-center">
                 <div className="text-gray-500">Carregando...</div>
+            </div>
+        )
+    }
+
+    // =============== RESPOSTAS HISTÓRICAS PCO ===============
+    if (respostasView) {
+        const ESCALA_LABELS: Record<number, string> = {
+            2: "Concordo",
+            1: "Concordo parcialmente",
+            0: "Não consigo responder",
+            [-1]: "Discordo parcialmente",
+            [-2]: "Discordo",
+        }
+
+        return (
+            <div className="flex-1 overflow-y-auto">
+                {/* Header */}
+                <div className="sticky top-0 z-10 bg-bg-main border-b border-border px-6 py-4">
+                    <button
+                        onClick={() => setRespostasView(null)}
+                        className="flex items-center gap-2 text-sm text-text-muted hover:text-primary transition-colors cursor-pointer mb-3"
+                    >
+                        <ArrowLeft size={16} />
+                        Voltar ao histórico
+                    </button>
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h2 className="text-xl font-bold text-text-main">{respostasView.nome}</h2>
+                            {respostasView.descricao && (
+                                <p className="text-sm text-gray-500 mt-0.5">{respostasView.descricao}</p>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-semibold px-3 py-1 rounded-full border border-green-200">
+                                <CheckCircle size={13} />
+                                Respondida
+                            </span>
+                            {respostasView.dataFim && (
+                                <span className="text-xs text-gray-400">
+                                    {new Date(respostasView.dataFim).toLocaleDateString("pt-BR")}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Seções */}
+                <div className="p-6 max-w-3xl mx-auto space-y-6 pb-16">
+                    {respostasView.secoes.map((secao, sIdx) => (
+                        <div key={secao.id} className="bg-bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                            {/* Section header */}
+                            <div className="px-6 py-4 bg-[#fcfbf8] border-b border-border flex items-center gap-3">
+                                <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-text-main shrink-0">
+                                    {sIdx + 1}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-text-main">{secao.titulo}</h3>
+                                    {secao.descricao && <p className="text-xs text-text-muted mt-0.5">{secao.descricao}</p>}
+                                </div>
+                            </div>
+
+                            {/* Perguntas */}
+                            <div className="divide-y divide-border">
+                                {secao.perguntas.map((pergunta, pIdx) => (
+                                    <div key={pergunta.id} className="px-6 py-5">
+                                        <p className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-1">
+                                            Pergunta {pIdx + 1}
+                                        </p>
+                                        <p className="text-base font-medium text-text-main mb-4">{pergunta.texto}</p>
+
+                                        {/* ESCALA */}
+                                        {pergunta.tipo === "ESCALA" && (
+                                            <div className="space-y-3">
+                                                <div className="flex flex-wrap gap-2">
+                                                    {ESCALA_OPTIONS.map((opt) => {
+                                                        const selected = pergunta.resposta?.nota === opt.value
+                                                        return (
+                                                            <div
+                                                                key={opt.value}
+                                                                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-none select-none ${
+                                                                    selected
+                                                                        ? "bg-primary border-primary text-text-main"
+                                                                        : "bg-gray-100 border-transparent text-gray-400"
+                                                                }`}
+                                                            >
+                                                                {opt.label}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                                {pergunta.resposta?.nota === undefined && !pergunta.resposta && (
+                                                    <p className="text-gray-400 italic text-sm">— Não respondida</p>
+                                                )}
+                                                {pergunta.mostrarJustificativa && pergunta.resposta?.justificativa && (
+                                                    <div className="bg-gray-50 rounded-lg border border-border p-3 mt-2">
+                                                        <p className="text-xs text-text-muted font-medium mb-1">Justificativa</p>
+                                                        <p className="text-sm text-gray-700 italic">{pergunta.resposta.justificativa}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* MULTIPLA_ESCOLHA */}
+                                        {pergunta.tipo === "MULTIPLA_ESCOLHA" && (
+                                            <div>
+                                                {pergunta.resposta?.opcaoTexto ? (
+                                                    <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary rounded-lg px-4 py-2.5">
+                                                        <div className="w-3.5 h-3.5 rounded-full bg-primary shrink-0" />
+                                                        <span className="text-sm font-semibold text-text-main">{pergunta.resposta.opcaoTexto}</span>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-gray-400 italic text-sm">— Não respondida</p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* TEXTO_LIVRE */}
+                                        {pergunta.tipo === "TEXTO_LIVRE" && (
+                                            <div>
+                                                {pergunta.resposta?.texto ? (
+                                                    <div className="bg-gray-50 rounded-lg border border-border p-4">
+                                                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{pergunta.resposta.texto}</p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-gray-400 italic text-sm">— Não respondida</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         )
     }
@@ -313,16 +465,18 @@ export function MembroPCOContent() {
                                                 ))}
                                             </div>
                                             {/* Justificativa */}
-                                            <div>
-                                                <textarea
-                                                    placeholder="Justificativa (opcional)..."
-                                                    value={respostas[pergunta.id]?.justificativa || ""}
-                                                    onChange={(e) => handleSetJustificativa(pergunta.id, e.target.value)}
-                                                    className="w-full rounded-lg border border-border bg-transparent p-3 text-sm
-                                                        focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-                                                        placeholder:text-gray-300 resize-none h-20"
-                                                />
-                                            </div>
+                                            {pergunta.mostrarJustificativa && (
+                                                <div>
+                                                    <textarea
+                                                        placeholder="Justificativa (opcional)..."
+                                                        value={respostas[pergunta.id]?.justificativa || ""}
+                                                        onChange={(e) => handleSetJustificativa(pergunta.id, e.target.value)}
+                                                        className="w-full rounded-lg border border-border bg-transparent p-3 text-sm
+                                                            focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+                                                            placeholder:text-gray-300 resize-none h-20"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -478,25 +632,43 @@ export function MembroPCOContent() {
                     </div>
                 )}
 
-                {/* Already answered */}
-                {pcosRespondidas.length > 0 && (
+                {/* Histórico */}
+                {historico.length > 0 && (
                     <div className="flex flex-col gap-3">
                         <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 px-1">
-                            Respondidas ({pcosRespondidas.length})
+                            Histórico ({historico.length})
                         </h3>
-                        {pcosRespondidas.map((pco) => (
+                        {historico.map((pco) => (
                             <div
                                 key={pco.id}
-                                className="bg-bg-card rounded-xl p-6 border border-border opacity-60"
+                                className="bg-bg-card rounded-xl p-6 border border-border hover:border-primary/30 hover:shadow-md transition-all"
                             >
-                                <div className="flex items-center justify-between">
-                                    <div>
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="min-w-0">
                                         <h4 className="font-semibold text-text-main">{pco.nome}</h4>
-                                        <div className="flex items-center gap-2 mt-2 text-xs text-green-600">
-                                            <CheckCircle size={14} />
-                                            <span>Respondida</span>
+                                        {pco.descricao && (
+                                            <p className="text-sm text-gray-500 mt-1 line-clamp-1">{pco.descricao}</p>
+                                        )}
+                                        <div className="flex items-center gap-4 mt-2">
+                                            <div className="flex items-center gap-1.5 text-xs text-green-600">
+                                                <CheckCircle size={13} />
+                                                <span>Respondida</span>
+                                            </div>
+                                            {pco.dataFim && (
+                                                <span className="text-xs text-gray-400">
+                                                    Encerrada em {new Date(pco.dataFim).toLocaleDateString("pt-BR")}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
+                                    <button
+                                        onClick={() => handleVerRespostas(pco.id)}
+                                        disabled={loadingRespostas}
+                                        className="shrink-0 flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer disabled:opacity-50"
+                                    >
+                                        <Eye size={16} />
+                                        <span className="hidden sm:inline">Ver respostas</span>
+                                    </button>
                                 </div>
                             </div>
                         ))}
