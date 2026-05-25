@@ -439,9 +439,10 @@ model PCO {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  ciclo         Ciclo?            @relation(fields: [idCiclo], references: [id])
-  participacoes ParticipacaoPCO[]
-  secoes        SecaoPCO[]
+  ciclo          Ciclo?            @relation(fields: [idCiclo], references: [id])
+  participacoes  ParticipacaoPCO[]
+  secoes         SecaoPCO[]
+  relatorioMeta  RelatorioPCOMeta?
 }
 
 model SecaoPCO {
@@ -452,8 +453,9 @@ model SecaoPCO {
   ordem     Int
   createdAt DateTime @default(now())
 
-  pco       PCO           @relation(fields: [pcoId], references: [id], onDelete: Cascade)
-  perguntas PerguntaPCO[]
+  pco              PCO               @relation(fields: [pcoId], references: [id], onDelete: Cascade)
+  perguntas        PerguntaPCO[]
+  relatorioSecao   RelatorioSecaoPCO?
 
   @@index([pcoId])
 }
@@ -468,9 +470,10 @@ model PerguntaPCO {
   ordem                Int
   createdAt            DateTime        @default(now())
 
-  secao     SecaoPCO           @relation(fields: [secaoId], references: [id], onDelete: Cascade)
-  opcoes    OpcaoPerguntaPCO[]
-  respostas RespostaPCO[]
+  secao           SecaoPCO              @relation(fields: [secaoId], references: [id], onDelete: Cascade)
+  opcoes          OpcaoPerguntaPCO[]
+  respostas       RespostaPCO[]
+  relatorioPCO    RelatorioPerguntaPCO?
 
   @@index([secaoId])
 }
@@ -542,9 +545,10 @@ model Avaliacao360 {
   createdAt  DateTime           @default(now())
   updatedAt  DateTime           @updatedAt
 
-  ciclo     Ciclo?        @relation(fields: [idCiclo], references: [id])
-  dimensoes Dimensao360[]
-  feedbacks Feedback360[]
+  ciclo          Ciclo?             @relation(fields: [idCiclo], references: [id])
+  dimensoes      Dimensao360[]
+  feedbacks      Feedback360[]
+  relatorioMeta  RelatorioAV360Meta?
 }
 
 model Dimensao360 {
@@ -556,8 +560,9 @@ model Dimensao360 {
   ordem       Int
   createdAt   DateTime @default(now())
 
-  avaliacao Avaliacao360  @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
-  perguntas Pergunta360[]
+  avaliacao      Avaliacao360         @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  perguntas      Pergunta360[]
+  relatorioDim   RelatorioDimensao360?
 
   @@index([avaliacaoId])
 }
@@ -611,6 +616,68 @@ model RespostaPergunta360 {
   @@unique([feedbackId, perguntaId])
   @@index([feedbackId])
   @@index([perguntaId])
+}
+
+// ==========================================
+// RELATÓRIO CURADO — PCO
+// ==========================================
+
+model RelatorioPCOMeta {
+  id          Int      @id @default(autoincrement())
+  pcoId       Int      @unique
+  capaTitulo  String?
+  objetivo    String?
+  contexto    Json?
+  conclusao   String?
+  updatedAt   DateTime @updatedAt
+
+  pco PCO @relation(fields: [pcoId], references: [id], onDelete: Cascade)
+}
+
+model RelatorioSecaoPCO {
+  id         Int      @id @default(autoincrement())
+  secaoId    Int      @unique
+  introducao String?
+  conclusao  String?
+  updatedAt  DateTime @updatedAt
+
+  secao SecaoPCO @relation(fields: [secaoId], references: [id], onDelete: Cascade)
+}
+
+model RelatorioPerguntaPCO {
+  id            Int      @id @default(autoincrement())
+  perguntaId    Int      @unique
+  insightTexto  String?
+  callouts      Json?
+  agrupamentos  Json?
+  updatedAt     DateTime @updatedAt
+
+  pergunta PerguntaPCO @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// RELATÓRIO CURADO — AV360
+// ==========================================
+
+model RelatorioAV360Meta {
+  id          Int      @id @default(autoincrement())
+  avaliacaoId Int      @unique
+  capaTitulo  String?
+  objetivo    String?
+  conclusao   String?
+  updatedAt   DateTime @updatedAt
+
+  avaliacao Avaliacao360 @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+}
+
+model RelatorioDimensao360 {
+  id           Int      @id @default(autoincrement())
+  dimensaoId   Int      @unique
+  insightTexto String?
+  callouts     Json?
+  updatedAt    DateTime @updatedAt
+
+  dimensao Dimensao360 @relation(fields: [dimensaoId], references: [id], onDelete: Cascade)
 }
 
 // ==========================================

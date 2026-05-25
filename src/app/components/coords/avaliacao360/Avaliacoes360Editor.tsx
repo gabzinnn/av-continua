@@ -8,11 +8,13 @@ import {
     type SaveAvaliacaoFullPayload,
     ativarAvaliacao360,
     getPreviewAvaliacao360,
-    getMembrosAtivosBasico
+    getMembrosAtivosBasico,
+    vincularCicloAvaliacao360
 } from "@/src/actions/avaliacao360Actions"
+import { getCiclos, type Ciclo } from "@/src/actions/cicloActions"
 import type { TipoPergunta360 } from "@/src/generated/prisma/client"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
-import { ChevronRight, GripVertical, PlusCircle, Trash2, Save, Send } from "lucide-react"
+import { ChevronRight, GripVertical, PlusCircle, Trash2, Save, Send, X, Calendar } from "lucide-react"
 import Link from "next/link"
 import { PreviewAvaliacaoModal } from "@/src/app/components/coords/PreviewAvaliacaoModal"
 
@@ -50,6 +52,12 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
     const [previewData, setPreviewData] = useState<any[]>([])
     const [membrosAtivos, setMembrosAtivos] = useState<MembroBasico[]>([])
     const [isLoadingPreview, setIsLoadingPreview] = useState(false)
+
+    // Seleção de ciclo
+    const [cicloModalOpen, setCicloModalOpen] = useState(false)
+    const [ciclos, setCiclos] = useState<Ciclo[]>([])
+    const [cicloSelecionadoId, setCicloSelecionadoId] = useState<number | null>(null)
+    const [isVinculandoCiclo, setIsVinculandoCiclo] = useState(false)
     
     // Estado local das dimensões para ser manipulado livremente
     const [dimensoes, setDimensoes] = useState<LocalDimensao[]>([])
@@ -92,7 +100,7 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
     // HANDLERS GERAIS
     // ============================================
 
-    const handleSalvar = async (redirecionarParaDash = false) => {
+    const handleSalvar = async (redirecionarParaDash = false, silencioso = false) => {
         setIsSaving(true)
         const payload: SaveAvaliacaoFullPayload = {
             nome,
@@ -112,21 +120,22 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
         setIsSaving(false)
 
         if (!res.success) {
-            alert(res.error)
+            if (!silencioso) alert(res.error)
+            return res
         } else if (redirecionarParaDash) {
             router.push('/coord/avaliacoes-360')
-        } else {
+        } else if (!silencioso) {
              alert('Rascunho salvo com sucesso!')
         }
+        return res
     }
 
-    const handleAtivar = async () => {
+    const abrirPreview = async (cicloId: number | undefined) => {
         setPreviewModalOpen(true)
         setIsLoadingPreview(true)
-
         try {
             const [paresPreview, membros] = await Promise.all([
-                idCiclo ? getPreviewAvaliacao360(idCiclo) : Promise.resolve([]),
+                cicloId ? getPreviewAvaliacao360(cicloId) : Promise.resolve([]),
                 getMembrosAtivosBasico()
             ])
             setPreviewData(paresPreview)
@@ -139,8 +148,34 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
         }
     }
 
+    const handleAtivar = async () => {
+        if (!idCiclo) {
+            const lista = await getCiclos()
+            setCiclos(lista)
+            setCicloSelecionadoId(lista.find(c => c.ativo)?.id ?? lista[0]?.id ?? null)
+            setCicloModalOpen(true)
+            return
+        }
+        await abrirPreview(idCiclo)
+    }
+
+    const handleConfirmarCiclo = async () => {
+        if (!cicloSelecionadoId) return
+        setIsVinculandoCiclo(true)
+        const res = await vincularCicloAvaliacao360(id, cicloSelecionadoId)
+        setIsVinculandoCiclo(false)
+        if (!res.success) { alert(res.error); return }
+        setIdCiclo(cicloSelecionadoId)
+        setCicloModalOpen(false)
+        await abrirPreview(cicloSelecionadoId)
+    }
+
     const handleConfirmAtivar = async (paresFinais: Array<{avaliadorId: number, avaliadoId: number}>) => {
-        await handleSalvar(false)
+        const salvo = await handleSalvar(false, true)
+        if (salvo && !salvo.success) {
+            alert(salvo.error)
+            return
+        }
         setIsSaving(true)
         const res = await ativarAvaliacao360(id, paresFinais)
         if (res.success) {
@@ -451,6 +486,77 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
                     )}
                  </div>
              </div>
+
+             {/* Modal: Selecionar Ciclo */}
+             {cicloModalOpen && (
+                 <div className="fixed inset-0 z-50 flex items-center justify-center">
+                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setCicloModalOpen(false)} />
+                     <div className="relative bg-bg-card rounded-xl shadow-xl w-full max-w-md mx-4 p-6 flex flex-col gap-5">
+                         <div className="flex items-center justify-between">
+                             <div className="flex items-center gap-3">
+                                 <div className="p-2 bg-primary/10 rounded-lg">
+                                     <Calendar size={20} className="text-primary" />
+                                 </div>
+                                 <div>
+                                     <h2 className="text-lg font-bold text-text-main">Vincular Ciclo</h2>
+                                     <p className="text-xs text-text-muted">Selecione o ciclo desta avaliação</p>
+                                 </div>
+                             </div>
+                             <button onClick={() => setCicloModalOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg cursor-pointer">
+                                 <X size={18} className="text-gray-500" />
+                             </button>
+                         </div>
+
+                         {ciclos.length === 0 ? (
+                             <p className="text-sm text-text-muted text-center py-4">Nenhum ciclo cadastrado no sistema.</p>
+                         ) : (
+                             <div className="flex flex-col gap-2">
+                                 {ciclos.map(c => (
+                                     <label
+                                         key={c.id}
+                                         className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                             cicloSelecionadoId === c.id
+                                                 ? "border-primary bg-primary/5"
+                                                 : "border-border hover:border-primary/40"
+                                         }`}
+                                     >
+                                         <input
+                                             type="radio"
+                                             name="ciclo"
+                                             value={c.id}
+                                             checked={cicloSelecionadoId === c.id}
+                                             onChange={() => setCicloSelecionadoId(c.id)}
+                                             className="accent-primary"
+                                         />
+                                         <span className="font-medium text-text-main">{c.nome}</span>
+                                         {c.ativo && (
+                                             <span className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                                                 Ativo
+                                             </span>
+                                         )}
+                                     </label>
+                                 ))}
+                             </div>
+                         )}
+
+                         <div className="flex gap-3 pt-1">
+                             <button
+                                 onClick={() => setCicloModalOpen(false)}
+                                 className="flex-1 h-10 rounded-lg border border-border text-sm font-bold text-text-muted hover:bg-gray-50 transition-colors cursor-pointer"
+                             >
+                                 Cancelar
+                             </button>
+                             <button
+                                 onClick={handleConfirmarCiclo}
+                                 disabled={!cicloSelecionadoId || isVinculandoCiclo}
+                                 className="flex-1 h-10 rounded-lg bg-primary text-text-main text-sm font-bold shadow-sm hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
+                             >
+                                 {isVinculandoCiclo ? "Salvando..." : "Confirmar e Continuar"}
+                             </button>
+                         </div>
+                     </div>
+                 </div>
+             )}
 
              {/* Preview Modal */}
              {previewModalOpen && (

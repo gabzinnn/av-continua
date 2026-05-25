@@ -3,6 +3,7 @@
 import prisma from "@/src/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { PCO, PerguntaPCO, TipoPerguntaPCO } from "../generated/prisma/client"
+import type { PCOReportData, SecaoRelatorio, PerguntaRelatorio } from "@/src/lib/reports/pco/types"
 
 // ==========================================
 // TIPOS
@@ -957,5 +958,148 @@ export async function exportarRespostasPCO(pcoId: number): Promise<{ headers: st
     }
 
     return { headers, rows }
+}
+
+// ==========================================
+// RELATÓRIO PCO — tipos e server actions
+// ==========================================
+
+export interface SalvarRelatorioPayload {
+    meta?: {
+        capaTitulo?: string
+        objetivo?: string
+        conclusao?: string
+        contexto?: any
+    }
+    secoes?: Array<{
+        secaoId: number
+        introducao?: string
+        conclusao?: string
+    }>
+    perguntas?: Array<{
+        perguntaId: number
+        insightTexto?: string
+        agrupamentos?: { count: number; texto: string }[]
+        callouts?: { tipo: "DESVIO" | "ATENCAO"; texto: string }[]
+    }>
+}
+
+export async function getRelatorioPCO(pcoId: number): Promise<PCOReportData | null> {
+    const detalhes = await getPCODetalhes(pcoId)
+    if (!detalhes) return null
+
+    const allPerguntaIds = detalhes.secoes.flatMap(s => s.perguntas.map(p => p.id))
+    const allSecaoIds = detalhes.secoes.map(s => s.id)
+
+    const [meta, secoesRel, perguntasRel] = await Promise.all([
+        (prisma as any).relatorioPCOMeta.findUnique({ where: { pcoId } }),
+        (prisma as any).relatorioSecaoPCO.findMany({
+            where: { secaoId: { in: allSecaoIds } }
+        }),
+        (prisma as any).relatorioPerguntaPCO.findMany({
+            where: { perguntaId: { in: allPerguntaIds } }
+        }),
+    ])
+
+    const secaoRelMap = new Map<number, any>(secoesRel.map((s: any) => [s.secaoId, s]))
+    const perguntaRelMap = new Map<number, any>(perguntasRel.map((p: any) => [p.perguntaId, p]))
+
+    const totalRespostas = detalhes.totalRespostas
+    const totalParticipantes = detalhes.totalParticipantes
+    const taxaResposta = totalParticipantes > 0 ? Math.round((totalRespostas / totalParticipantes) * 100) : 0
+
+    const secoes: SecaoRelatorio[] = detalhes.secoes.map(s => {
+        const sr = secaoRelMap.get(s.id)
+        const perguntas: PerguntaRelatorio[] = s.perguntas.map(p => {
+            const pr = perguntaRelMap.get(p.id)
+            return {
+                id: p.id,
+                texto: p.texto,
+                tipo: p.tipo as "ESCALA" | "MULTIPLA_ESCOLHA" | "TEXTO_LIVRE",
+                ordem: p.ordem,
+                mediaPorGrupo: p.mediaPorGrupo,
+                distribuicaoPorGrupo: p.distribuicaoPorGrupo,
+                distribuicaoOpcoes: p.distribuicaoOpcoes,
+                respostasTexto: p.respostasTexto,
+                justificativas: p.justificativas,
+                insightTexto: pr?.insightTexto ?? null,
+                agrupamentos: pr?.agrupamentos ?? null,
+                callouts: pr?.callouts ?? null,
+            }
+        })
+        return {
+            id: s.id,
+            titulo: s.titulo,
+            descricao: s.descricao ?? null,
+            ordem: s.ordem,
+            perguntas,
+            introducao: sr?.introducao ?? null,
+            conclusao: sr?.conclusao ?? null,
+        }
+    })
+
+    return {
+        id: detalhes.id,
+        nome: detalhes.nome,
+        grupos: detalhes.grupos,
+        secoes,
+        totalParticipantes,
+        totalRespostas,
+        taxaResposta,
+        meta: {
+            capaTitulo: meta?.capaTitulo ?? null,
+            objetivo: meta?.objetivo ?? null,
+            conclusao: meta?.conclusao ?? null,
+            contexto: meta?.contexto ?? null,
+        },
+    }
+}
+
+export async function salvarRelatorioPCO(
+    pcoId: number,
+    payload: SalvarRelatorioPayload
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await (prisma as any).$transaction(async (tx: any) => {
+            if (payload.meta) {
+                await tx.relatorioPCOMeta.upsert({
+                    where: { pcoId },
+                    update: { ...payload.meta },
+                    create: { pcoId, ...payload.meta },
+                })
+            }
+            if (payload.secoes) {
+                for (const secao of payload.secoes) {
+                    await tx.relatorioSecaoPCO.upsert({
+                        where: { secaoId: secao.secaoId },
+                        update: { introducao: secao.introducao, conclusao: secao.conclusao },
+                        create: { secaoId: secao.secaoId, introducao: secao.introducao, conclusao: secao.conclusao },
+                    })
+                }
+            }
+            if (payload.perguntas) {
+                for (const pergunta of payload.perguntas) {
+                    await tx.relatorioPerguntaPCO.upsert({
+                        where: { perguntaId: pergunta.perguntaId },
+                        update: {
+                            insightTexto: pergunta.insightTexto,
+                            agrupamentos: pergunta.agrupamentos ?? undefined,
+                            callouts: pergunta.callouts ?? undefined,
+                        },
+                        create: {
+                            perguntaId: pergunta.perguntaId,
+                            insightTexto: pergunta.insightTexto,
+                            agrupamentos: pergunta.agrupamentos ?? undefined,
+                            callouts: pergunta.callouts ?? undefined,
+                        },
+                    })
+                }
+            }
+        })
+        return { success: true }
+    } catch (err: any) {
+        console.error("salvarRelatorioPCO error:", err)
+        return { success: false, error: err?.message ?? "Erro desconhecido" }
+    }
 }
 

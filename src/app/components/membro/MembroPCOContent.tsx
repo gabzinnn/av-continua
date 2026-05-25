@@ -8,6 +8,19 @@ import { getPCOsAtivasParaMembro, enviarRespostasPCO, getPCOsHistoricoMembro, ge
 
 type RespostaMap = Record<number, { nota?: number; opcaoId?: number; texto?: string; justificativa?: string }>
 
+function getDraftKey(membroId: number, pcoId: number) {
+    return `pco_draft_${membroId}_${pcoId}`
+}
+function saveDraft(membroId: number, pcoId: number, respostas: RespostaMap) {
+    try { localStorage.setItem(getDraftKey(membroId, pcoId), JSON.stringify(respostas)) } catch {}
+}
+function loadDraft(membroId: number, pcoId: number): RespostaMap | null {
+    try { const raw = localStorage.getItem(getDraftKey(membroId, pcoId)); return raw ? JSON.parse(raw) : null } catch { return null }
+}
+function clearDraft(membroId: number, pcoId: number) {
+    try { localStorage.removeItem(getDraftKey(membroId, pcoId)) } catch {}
+}
+
 const ESCALA_OPTIONS = [
     { label: "Discordo", value: -2 },
     { label: "Discordo parcialmente", value: -1 },
@@ -52,37 +65,42 @@ export function MembroPCOContent() {
 
     const handleSelectPCO = (pco: PCOParaResponder) => {
         setSelectedPCO(pco)
-        setRespostas({})
+        const draft = selectedMember ? loadDraft(Number(selectedMember.id), pco.id) : null
+        setRespostas(draft ?? {})
         setCurrentSectionIndex(0)
         setSubmitted(false)
     }
 
     const handleSetNota = (perguntaId: number, nota: number) => {
-        setRespostas((prev) => ({
-            ...prev,
-            [perguntaId]: { ...prev[perguntaId], nota },
-        }))
+        setRespostas((prev) => {
+            const next = { ...prev, [perguntaId]: { ...prev[perguntaId], nota } }
+            if (selectedMember && selectedPCO) saveDraft(Number(selectedMember.id), selectedPCO.id, next)
+            return next
+        })
     }
 
     const handleSetOpcao = (perguntaId: number, opcaoId: number) => {
-        setRespostas((prev) => ({
-            ...prev,
-            [perguntaId]: { ...prev[perguntaId], opcaoId },
-        }))
+        setRespostas((prev) => {
+            const next = { ...prev, [perguntaId]: { ...prev[perguntaId], opcaoId } }
+            if (selectedMember && selectedPCO) saveDraft(Number(selectedMember.id), selectedPCO.id, next)
+            return next
+        })
     }
 
     const handleSetTexto = (perguntaId: number, texto: string) => {
-        setRespostas((prev) => ({
-            ...prev,
-            [perguntaId]: { ...prev[perguntaId], texto },
-        }))
+        setRespostas((prev) => {
+            const next = { ...prev, [perguntaId]: { ...prev[perguntaId], texto } }
+            if (selectedMember && selectedPCO) saveDraft(Number(selectedMember.id), selectedPCO.id, next)
+            return next
+        })
     }
 
     const handleSetJustificativa = (perguntaId: number, justificativa: string) => {
-        setRespostas((prev) => ({
-            ...prev,
-            [perguntaId]: { ...prev[perguntaId], justificativa },
-        }))
+        setRespostas((prev) => {
+            const next = { ...prev, [perguntaId]: { ...prev[perguntaId], justificativa } }
+            if (selectedMember && selectedPCO) saveDraft(Number(selectedMember.id), selectedPCO.id, next)
+            return next
+        })
     }
 
     const validateCurrentSection = () => {
@@ -143,6 +161,7 @@ export function MembroPCOContent() {
             })
 
             if (result.success) {
+                if (selectedMember && selectedPCO) clearDraft(Number(selectedMember.id), selectedPCO.id)
                 setSubmitted(true)
             } else {
                 alert(result.error || "Erro ao enviar respostas.")
@@ -354,6 +373,7 @@ export function MembroPCOContent() {
         const totalPerguntas = getTotalPerguntas()
         const answeredCount = getAnsweredCount()
         const progressPct = totalPerguntas > 0 ? Math.round((answeredCount / totalPerguntas) * 100) : 0
+        const hasDraft = selectedMember ? loadDraft(Number(selectedMember.id), selectedPCO.id) !== null : false
 
         return (
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
@@ -367,9 +387,16 @@ export function MembroPCOContent() {
                             <ChevronLeft size={16} />
                             Voltar para pesquisas
                         </button>
-                        <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
-                            {selectedPCO.nome}
-                        </h1>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
+                                {selectedPCO.nome}
+                            </h1>
+                            {hasDraft && (
+                                <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                    Rascunho salvo
+                                </span>
+                            )}
+                        </div>
                         {selectedPCO.descricao && (
                             <p className="text-gray-400 text-sm mt-1 text-justify">{selectedPCO.descricao}</p>
                         )}

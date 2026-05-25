@@ -1,12 +1,10 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Download, ChevronRight, Users, BarChart2, MessageSquare, CheckCircle, XCircle } from "lucide-react"
+import { Download, ChevronRight, Users, BarChart2, MessageSquare, CheckCircle, XCircle, Edit3 } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
-import { getPCODetalhes, exportarRespostasPCO, PCODetalhes, PerguntaDetalhes, DistribuicaoGrupo } from "@/src/actions/pcoActions"
-import html2canvas from "html2canvas"
-import jsPDF from "jspdf"
+import { getPCODetalhes, exportarRespostasPCO, getRelatorioPCO, salvarRelatorioPCO, PCODetalhes, PerguntaDetalhes, DistribuicaoGrupo } from "@/src/actions/pcoActions"
 
 interface PCODetalhesContentProps {
     pcoId: number
@@ -16,7 +14,21 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
     const [data, setData] = useState<PCODetalhes | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isGenerating, setIsGenerating] = useState(false)
-    const reportRef = useRef<HTMLDivElement>(null)
+    const [editModalOpen, setEditModalOpen] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+    const [editData, setEditData] = useState<{
+        capaTitulo: string;
+        objetivo: string;
+        conclusao: string;
+        secoes: Array<{ secaoId: number; titulo: string; introducao: string; conclusao: string }>;
+        perguntas: Array<{ perguntaId: number; texto: string; insightTexto: string; agrupamentos: Array<{ count: number; texto: string }>; hasDesvio: boolean }>;
+    }>({
+        capaTitulo: "",
+        objetivo: "",
+        conclusao: "",
+        secoes: [],
+        perguntas: [],
+    })
 
     const fetchData = async () => {
         try {
@@ -33,6 +45,21 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
         fetchData()
     }, [pcoId])
 
+    useEffect(() => {
+        if (data) {
+            setEditData({
+                capaTitulo: "",
+                objetivo: "",
+                conclusao: "",
+                secoes: data.secoes.map(s => ({ secaoId: s.id, titulo: s.titulo, introducao: "", conclusao: "" })),
+                perguntas: data.secoes
+                    .flatMap(s => s.perguntas)
+                    .filter(p => p.tipo === "ESCALA")
+                    .map(p => ({ perguntaId: p.id, texto: p.texto, insightTexto: "", agrupamentos: [], hasDesvio: false })),
+            })
+        }
+    }, [data])
+
     const handleExport = async () => {
         const { headers, rows } = await exportarRespostasPCO(pcoId)
         if (rows.length === 0) return
@@ -48,51 +75,25 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
     }
 
     const handleDownloadPDF = async () => {
-        if (!reportRef.current || isGenerating) return
+        if (isGenerating) return
         setIsGenerating(true)
-        
         try {
-            const canvas = await html2canvas(reportRef.current, {
-                // @ts-ignore
-                scale: 2,
-                useCORS: true, 
-                logging: false,
-                backgroundColor: "#ffffff"
-            });
-            const imgData = canvas.toDataURL("image/jpeg", 0.8);
-            const pdf = new jsPDF({ 
-                orientation: "portrait", 
-                unit: "mm", 
-                format: "a4",
-                compress: true 
-            });
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = canvas.width;
-            const imgHeight = canvas.height;
-            const ratio = pdfWidth / imgWidth; 
-            const imgHeightInPdfUnits = imgHeight * ratio;
-            let totalPages = Math.ceil(imgHeightInPdfUnits / pdfHeight);
-            
-            if (totalPages > 1) {
-                const lastPageContentHeight = imgHeightInPdfUnits % pdfHeight;
-                if (lastPageContentHeight > 0 && lastPageContentHeight < 5) {
-                    totalPages--;
-                }
-            }
-
-            for (let i = 0; i < totalPages; i++) {
-                if (i > 0) pdf.addPage();
-                const destY = -(i * pdfHeight);
-                pdf.addImage(imgData, "JPEG", 0, destY, pdfWidth, imgHeight * ratio);
-            }
-            
-            pdf.save(`pco_${pcoId}_relatorio.pdf`);
-        } catch (error) {
-            console.error(error);
-            alert("Erro ao gerar PDF");
+            const { pdf } = await import("@react-pdf/renderer")
+            const { PCOReport } = await import("@/src/lib/reports/pco/PCOReport")
+            const dados = await getRelatorioPCO(pcoId)
+            if (!dados) throw new Error("Dados não encontrados")
+            const blob = await pdf(<PCOReport data={dados} />).toBlob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `pco_${dados.nome.replace(/\s+/g, "_")}.pdf`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error(err)
+            alert("Erro ao gerar PDF")
         } finally {
-            setIsGenerating(false);
+            setIsGenerating(false)
         }
     }
 
@@ -136,7 +137,7 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
 
     return (
         <div className="flex-1 overflow-y-auto p-8">
-            <div className="max-w-[1200px] mx-auto flex flex-col gap-12 pb-12" ref={reportRef}>
+            <div className="max-w-[1200px] mx-auto flex flex-col gap-12 pb-12">
                 {/* Breadcrumb & Header */}
                 <div className="flex flex-col gap-6">
                     <nav className="flex items-center gap-2 text-sm text-gray-500" data-html2canvas-ignore>
@@ -174,6 +175,15 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                                 isLoading={isGenerating}
                             >
                                 Exportar PDF
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={<Edit3 size={18} />}
+                                iconPosition="left"
+                                onClick={() => setEditModalOpen(true)}
+                            >
+                                Editar relatório
                             </Button>
                             <Button
                                 variant="secondary"
@@ -353,6 +363,175 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Edit Report Modal */}
+            {editModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-border">
+                            <h2 className="text-xl font-bold text-text-main">Editar Relatório PDF</h2>
+                            <button onClick={() => setEditModalOpen(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">✕</button>
+                        </div>
+                        {/* Scrollable body */}
+                        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+                            {/* Capa */}
+                            <section className="flex flex-col gap-3">
+                                <h3 className="font-bold text-text-main">Capa</h3>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm text-gray-500">Título da capa (ex: PCO 2025.2)</label>
+                                    <input
+                                        className="border border-border rounded-lg px-3 py-2 text-sm"
+                                        value={editData.capaTitulo}
+                                        onChange={e => setEditData(d => ({ ...d, capaTitulo: e.target.value }))}
+                                        placeholder="PCO 2025.2"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm text-gray-500">Objetivo</label>
+                                    <textarea
+                                        className="border border-border rounded-lg px-3 py-2 text-sm min-h-[80px] resize-none"
+                                        value={editData.objetivo}
+                                        onChange={e => setEditData(d => ({ ...d, objetivo: e.target.value }))}
+                                        placeholder="Descreva o objetivo da PCO..."
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <label className="text-sm text-gray-500">Conclusão geral</label>
+                                    <textarea
+                                        className="border border-border rounded-lg px-3 py-2 text-sm min-h-[80px] resize-none"
+                                        value={editData.conclusao}
+                                        onChange={e => setEditData(d => ({ ...d, conclusao: e.target.value }))}
+                                        placeholder="Texto de conclusão..."
+                                    />
+                                </div>
+                            </section>
+
+                            {/* Perguntas escala */}
+                            <section className="flex flex-col gap-4">
+                                <h3 className="font-bold text-text-main">Insights por pergunta (escala)</h3>
+                                {editData.perguntas.map((p, pi) => (
+                                    <div key={p.perguntaId} className="border border-border rounded-xl p-4 flex flex-col gap-3">
+                                        <p className="text-sm font-medium text-text-main">{p.texto}</p>
+                                        <div className="flex flex-col gap-1">
+                                            <label className="text-xs text-gray-500">Frase-insight</label>
+                                            <textarea
+                                                className="border border-border rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none"
+                                                value={p.insightTexto}
+                                                onChange={e => setEditData(d => ({
+                                                    ...d,
+                                                    perguntas: d.perguntas.map((pp, i) => i === pi ? { ...pp, insightTexto: e.target.value } : pp)
+                                                }))}
+                                                placeholder="Em sua maioria, os membros..."
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-xs text-gray-500">Agrupamentos (badges Nx)</label>
+                                            {p.agrupamentos.map((ag, ai) => (
+                                                <div key={ai} className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        className="w-16 border border-border rounded-lg px-2 py-1 text-sm"
+                                                        value={ag.count}
+                                                        onChange={e => setEditData(d => ({
+                                                            ...d,
+                                                            perguntas: d.perguntas.map((pp, i) => i !== pi ? pp : {
+                                                                ...pp,
+                                                                agrupamentos: pp.agrupamentos.map((a, j) => j === ai ? { ...a, count: Number(e.target.value) } : a)
+                                                            })
+                                                        }))}
+                                                    />
+                                                    <input
+                                                        className="flex-1 border border-border rounded-lg px-2 py-1 text-sm"
+                                                        value={ag.texto}
+                                                        onChange={e => setEditData(d => ({
+                                                            ...d,
+                                                            perguntas: d.perguntas.map((pp, i) => i !== pi ? pp : {
+                                                                ...pp,
+                                                                agrupamentos: pp.agrupamentos.map((a, j) => j === ai ? { ...a, texto: e.target.value } : a)
+                                                            })
+                                                        }))}
+                                                        placeholder="Texto do badge"
+                                                    />
+                                                    <button
+                                                        className="text-red-400 text-xs hover:text-red-600 cursor-pointer"
+                                                        onClick={() => setEditData(d => ({
+                                                            ...d,
+                                                            perguntas: d.perguntas.map((pp, i) => i !== pi ? pp : {
+                                                                ...pp,
+                                                                agrupamentos: pp.agrupamentos.filter((_, j) => j !== ai)
+                                                            })
+                                                        }))}
+                                                    >✕</button>
+                                                </div>
+                                            ))}
+                                            <button
+                                                className="text-xs text-primary hover:underline text-left cursor-pointer"
+                                                onClick={() => setEditData(d => ({
+                                                    ...d,
+                                                    perguntas: d.perguntas.map((pp, i) => i !== pi ? pp : {
+                                                        ...pp,
+                                                        agrupamentos: [...pp.agrupamentos, { count: 1, texto: "" }]
+                                                    })
+                                                }))}
+                                            >+ Adicionar badge</button>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                id={`desvio-${pi}`}
+                                                checked={p.hasDesvio}
+                                                onChange={e => setEditData(d => ({
+                                                    ...d,
+                                                    perguntas: d.perguntas.map((pp, i) => i === pi ? { ...pp, hasDesvio: e.target.checked } : pp)
+                                                }))}
+                                            />
+                                            <label htmlFor={`desvio-${pi}`} className="text-xs text-gray-500 cursor-pointer">
+                                                Marcar "Alto desvio padrão"
+                                            </label>
+                                        </div>
+                                    </div>
+                                ))}
+                            </section>
+                        </div>
+                        {/* Footer */}
+                        <div className="p-6 border-t border-border flex justify-end gap-2">
+                            <Button variant="secondary" size="sm" onClick={() => setEditModalOpen(false)}>Cancelar</Button>
+                            <Button
+                                size="sm"
+                                isLoading={isSaving}
+                                onClick={async () => {
+                                    setIsSaving(true)
+                                    try {
+                                        const result = await salvarRelatorioPCO(pcoId, {
+                                            meta: {
+                                                capaTitulo: editData.capaTitulo || undefined,
+                                                objetivo: editData.objetivo || undefined,
+                                                conclusao: editData.conclusao || undefined,
+                                            },
+                                            perguntas: editData.perguntas.map(p => ({
+                                                perguntaId: p.perguntaId,
+                                                insightTexto: p.insightTexto || undefined,
+                                                agrupamentos: p.agrupamentos.length > 0 ? p.agrupamentos : undefined,
+                                                callouts: p.hasDesvio ? [{ tipo: "DESVIO" as const, texto: "Alto desvio padrão" }] : undefined,
+                                            })),
+                                        })
+                                        if (result.success) {
+                                            setEditModalOpen(false)
+                                        } else {
+                                            alert(result.error || "Erro ao salvar")
+                                        }
+                                    } finally {
+                                        setIsSaving(false)
+                                    }
+                                }}
+                            >
+                                Salvar
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

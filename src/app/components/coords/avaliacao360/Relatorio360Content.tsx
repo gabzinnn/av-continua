@@ -1,14 +1,12 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getRelatorio360Geral, getRelatorio360PorAvaliado } from "@/src/actions/avaliacao360Actions"
+import { getRelatorio360Geral, getRelatorio360PorAvaliado, salvarRelatorioAV360, getRelatorioAV360 } from "@/src/actions/avaliacao360Actions"
 import { Card } from "../../Card"
 import { Button } from "../../Button"
-import { ArrowLeft, Download, Users, BarChart3, TrendingUp, Star } from "lucide-react"
+import { ArrowLeft, Download, Users, BarChart3, TrendingUp, Star, Edit3, X, Save } from "lucide-react"
 import Image from "next/image"
-import html2canvas from "html2canvas"
-import jsPDF from "jspdf"
 import dynamic from "next/dynamic"
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false })
@@ -21,7 +19,15 @@ export function Relatorio360Content({ id }: { id: number }) {
     const [membroSelecionado, setMembroSelecionado] = useState<number | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isGenerating, setIsGenerating] = useState(false)
-    const reportRef = useRef<HTMLDivElement>(null)
+
+    // Edit modal state
+    const [editModalOpen, setEditModalOpen] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+    const [editData, setEditData] = useState({
+        capaTitulo: "",
+        objetivo: "",
+        conclusao: "",
+    })
 
     useEffect(() => {
         getRelatorio360Geral(id).then(data => {
@@ -42,51 +48,48 @@ export function Relatorio360Content({ id }: { id: number }) {
     }, [membroSelecionado, id])
 
     const handleDownloadPDF = async () => {
-        if (!reportRef.current || isGenerating) return
+        if (isGenerating) return
         setIsGenerating(true)
-        
         try {
-            const canvas = await html2canvas(reportRef.current, {
-                // @ts-ignore
-                scale: 2,
-                useCORS: true, 
-                logging: false,
-                backgroundColor: "#ffffff"
-            });
-            const imgData = canvas.toDataURL("image/jpeg", 0.8);
-            const pdf = new jsPDF({ 
-                orientation: "portrait", 
-                unit: "mm", 
-                format: "a4",
-                compress: true 
-            });
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = canvas.width;
-            const imgHeight = canvas.height;
-            const ratio = pdfWidth / imgWidth; 
-            const imgHeightInPdfUnits = imgHeight * ratio;
-            let totalPages = Math.ceil(imgHeightInPdfUnits / pdfHeight);
-            
-            if (totalPages > 1) {
-                const lastPageContentHeight = imgHeightInPdfUnits % pdfHeight;
-                if (lastPageContentHeight > 0 && lastPageContentHeight < 5) {
-                    totalPages--;
-                }
-            }
-
-            for (let i = 0; i < totalPages; i++) {
-                if (i > 0) pdf.addPage();
-                const destY = -(i * pdfHeight);
-                pdf.addImage(imgData, "JPEG", 0, destY, pdfWidth, imgHeight * ratio);
-            }
-            
-            pdf.save(`relatorio-360-${id}.pdf`);
-        } catch (error) {
-            console.error(error);
-            alert("Erro ao gerar PDF");
+            const { pdf } = await import("@react-pdf/renderer")
+            const { AV360Report } = await import("@/src/lib/reports/av360/AV360Report")
+            const dados = await getRelatorioAV360(id)
+            if (!dados) throw new Error("Dados não encontrados")
+            const blob = await pdf(<AV360Report data={dados} />).toBlob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `av360_${dados.nome.replace(/\s+/g, "_")}.pdf`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error(err)
+            alert("Erro ao gerar PDF")
         } finally {
-            setIsGenerating(false);
+            setIsGenerating(false)
+        }
+    }
+
+    const handleSaveEdit = async () => {
+        setIsSaving(true)
+        try {
+            const result = await salvarRelatorioAV360(id, {
+                meta: {
+                    capaTitulo: editData.capaTitulo || undefined,
+                    objetivo: editData.objetivo || undefined,
+                    conclusao: editData.conclusao || undefined,
+                },
+            })
+            if (!result.success) {
+                alert(result.error || "Erro ao salvar")
+            } else {
+                setEditModalOpen(false)
+            }
+        } catch (err) {
+            console.error(err)
+            alert("Erro ao salvar relatório")
+        } finally {
+            setIsSaving(false)
         }
     }
 
@@ -160,19 +163,27 @@ export function Relatorio360Content({ id }: { id: number }) {
                 </div>
                 <div className="flex gap-4">
                     <div className="flex bg-gray-100 rounded-lg p-1">
-                        <button 
+                        <button
                             className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all cursor-pointer ${tab === "geral" ? "bg-white shadow-sm text-gray-900" : "text-gray-500"}`}
                             onClick={() => setTab("geral")}
                         >
                             Visão Geral
                         </button>
-                        <button 
+                        <button
                             className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all cursor-pointer ${tab === "individual" ? "bg-white shadow-sm text-gray-900" : "text-gray-500"}`}
                             onClick={() => setTab("individual")}
                         >
                             Por Avaliado
                         </button>
                     </div>
+                    <Button
+                        variant="secondary"
+                        onClick={() => setEditModalOpen(true)}
+                        icon={<Edit3 size={18} />}
+                        iconPosition="left"
+                    >
+                        Editar relatório
+                    </Button>
                     <Button onClick={handleDownloadPDF} isLoading={isGenerating} icon={<Download size={18} />} iconPosition="left" className="bg-[#fad519] hover:bg-[#eac416] text-[#1c1a0d]">
                         Exportar PDF
                     </Button>
@@ -180,7 +191,7 @@ export function Relatorio360Content({ id }: { id: number }) {
             </header>
 
             <div className="flex-1 p-8 overflow-y-auto w-full">
-                <div ref={reportRef} className="max-w-[1200px] mx-auto bg-white p-8 rounded-xl shadow-sm border border-gray-200 min-h-[800px]">
+                <div className="max-w-[1200px] mx-auto bg-white p-8 rounded-xl shadow-sm border border-gray-200 min-h-[800px]">
                     <div className="text-center mb-8 pb-6 border-b border-gray-200">
                         <h2 className="text-3xl font-black text-gray-900 mb-2">Resultados: Avaliação 360</h2>
                         <p className="text-gray-500">Média Global: <span className="font-bold text-[#fad519] text-xl">{relatorioGeral.scoreGlobalMedia?.toFixed(2) || '0.00'}</span> / 10</p>
@@ -226,7 +237,7 @@ export function Relatorio360Content({ id }: { id: number }) {
                             <div className="w-72 flex flex-col gap-2 overflow-y-auto max-h-[600px] pr-2">
                                 <h3 className="font-bold text-gray-500 text-xs uppercase mb-2">Selecione o membro</h3>
                                 {relatorioGeral.ranking.map((r: any) => (
-                                    <button 
+                                    <button
                                         key={r.membroId}
                                         onClick={() => setMembroSelecionado(r.membroId)}
                                         className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all cursor-pointer
@@ -324,6 +335,82 @@ export function Relatorio360Content({ id }: { id: number }) {
                     )}
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            {editModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 flex flex-col">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-lg font-bold text-gray-900">Editar relatório AV360</h2>
+                            <button
+                                onClick={() => setEditModalOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 flex flex-col gap-4 overflow-y-auto">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                                    Título da capa
+                                </label>
+                                <textarea
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-[#fad519] focus:border-transparent"
+                                    rows={2}
+                                    placeholder="Título que aparecerá na capa do PDF..."
+                                    value={editData.capaTitulo}
+                                    onChange={(e) => setEditData(prev => ({ ...prev, capaTitulo: e.target.value }))}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                                    Objetivo
+                                </label>
+                                <textarea
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-[#fad519] focus:border-transparent"
+                                    rows={3}
+                                    placeholder="Objetivo da avaliação 360..."
+                                    value={editData.objetivo}
+                                    onChange={(e) => setEditData(prev => ({ ...prev, objetivo: e.target.value }))}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                                    Conclusão
+                                </label>
+                                <textarea
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-[#fad519] focus:border-transparent"
+                                    rows={5}
+                                    placeholder="Conclusão e considerações finais do relatório..."
+                                    value={editData.conclusao}
+                                    onChange={(e) => setEditData(prev => ({ ...prev, conclusao: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                            <Button
+                                variant="secondary"
+                                onClick={() => setEditModalOpen(false)}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={handleSaveEdit}
+                                isLoading={isSaving}
+                                icon={<Save size={16} />}
+                                iconPosition="left"
+                                className="bg-[#fad519] hover:bg-[#eac416] text-[#1c1a0d]"
+                            >
+                                Salvar
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

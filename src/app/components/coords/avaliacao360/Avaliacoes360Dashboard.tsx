@@ -10,7 +10,6 @@ import {
     getAvaliacoes360PageData,
     type Avaliacao360PageData,
     type Avaliacao360Resumo,
-    ativarAvaliacao360,
     encerrarAvaliacao360,
     deletarAvaliacao360,
     criarAvaliacao360,
@@ -104,15 +103,8 @@ export function Avaliacoes360Dashboard() {
         }
     }
 
-    const handleIniciar = async (id: number) => {
-        setActionLoading(id)
-        try {
-            const result = await ativarAvaliacao360(id)
-            if (result.success) fetchData()
-            else alert(result.error)
-        } finally {
-            setActionLoading(null)
-        }
+    const handleIniciar = (id: number) => {
+        router.push(`/coord/avaliacoes-360/${id}/editar`)
     }
 
     const handleEncerrar = async (id: number) => {

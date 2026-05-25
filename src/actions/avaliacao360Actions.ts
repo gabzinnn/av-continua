@@ -5,6 +5,7 @@
 import prisma from "@/src/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { StatusAvaliacao360, TipoPergunta360 } from "@/src/generated/prisma/client"
+import type { AV360ReportData, AV360MembroDetalhes } from "@/src/lib/reports/av360/types"
 
 // Tipos para Retorno e View
 export type Avaliacao360Resumo = {
@@ -416,6 +417,19 @@ export async function getMembrosAtivosBasico() {
     } catch (error) {
         console.error(error)
         return []
+    }
+}
+
+export async function vincularCicloAvaliacao360(avaliacaoId: number, idCiclo: number) {
+    try {
+        await prisma.avaliacao360.update({
+            where: { id: avaliacaoId },
+            data: { idCiclo }
+        })
+        return { success: true }
+    } catch (error) {
+        console.error(error)
+        return { success: false, error: "Erro ao vincular ciclo" }
     }
 }
 
@@ -972,6 +986,92 @@ export async function getRelatorio360PorAvaliado(avaliacaoId: number, avaliadoId
         console.error(error);
         return null;
     }
+}
+
+export async function getRelatorioAV360(avaliacaoId: number): Promise<AV360ReportData | null> {
+  try {
+    const [geral, avaliacao, metaCurada] = await Promise.all([
+      getRelatorio360Geral(avaliacaoId),
+      prisma.avaliacao360.findUnique({
+        where: { id: avaliacaoId },
+        select: { nome: true, dimensoes: { select: { id: true } } },
+      }),
+      (prisma as any).relatorioAV360Meta.findUnique({ where: { avaliacaoId } }),
+    ]);
+
+    if (!geral || !avaliacao) return null;
+
+    const membrosDetalhes: AV360MembroDetalhes[] = await Promise.all(
+      geral.ranking.map(async (r: any) => {
+        const detalhes = await getRelatorio360PorAvaliado(avaliacaoId, r.membroId);
+        return {
+          membroId: r.membroId,
+          nome: r.nome,
+          scoreGeral: r.scoreGeral,
+          numRespondentes: detalhes?.numRespondentes ?? 0,
+          dimensoes: (detalhes?.dimensoes ?? []).map((d: any) => ({
+            dimensao: d.dimensao,
+            mediaSimples: d.mediaSimples,
+            distribuicao: d.distribuicao,
+          })),
+          comentarios: detalhes?.comentarios ?? [],
+        };
+      })
+    );
+
+    return {
+      avaliacaoId,
+      nome: avaliacao.nome,
+      scoreGlobalMedia: geral.scoreGlobalMedia,
+      ranking: geral.ranking,
+      dimensoesGlobais: geral.dimensoesGlobais,
+      membrosDetalhes,
+      meta: {
+        capaTitulo: metaCurada?.capaTitulo ?? null,
+        objetivo: metaCurada?.objetivo ?? null,
+        conclusao: metaCurada?.conclusao ?? null,
+      },
+    };
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export interface SalvarRelatorioAV360Payload {
+  meta?: {
+    capaTitulo?: string;
+    objetivo?: string;
+    conclusao?: string;
+  };
+}
+
+export async function salvarRelatorioAV360(
+  avaliacaoId: number,
+  payload: SalvarRelatorioAV360Payload
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (payload.meta) {
+      await (prisma as any).relatorioAV360Meta.upsert({
+        where: { avaliacaoId },
+        update: {
+          capaTitulo: payload.meta.capaTitulo ?? null,
+          objetivo: payload.meta.objetivo ?? null,
+          conclusao: payload.meta.conclusao ?? null,
+        },
+        create: {
+          avaliacaoId,
+          capaTitulo: payload.meta.capaTitulo ?? null,
+          objetivo: payload.meta.objetivo ?? null,
+          conclusao: payload.meta.conclusao ?? null,
+        },
+      });
+    }
+    return { success: true };
+  } catch (error: any) {
+    console.error(error);
+    return { success: false, error: error.message || "Erro ao salvar relatório." };
+  }
 }
 
 export async function getRelatorio360Geral(avaliacaoId: number) {
