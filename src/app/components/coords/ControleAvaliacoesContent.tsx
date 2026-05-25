@@ -99,7 +99,7 @@ export function ControleAvaliacoesContent() {
         setIsLoadingPreview(false)
     }
 
-    const handleCriarAvaliacao = async () => {
+    const handleCriarAvaliacao = async (_pares?: Array<{avaliadorId: number, avaliadoId: number}>) => {
         if (!nomeNovaAvaliacao.trim() || !coordenador || !selectedCicloId) return
         setIsCreating(true)
         const result = await criarAvaliacao(nomeNovaAvaliacao, coordenador.id, selectedCicloId)

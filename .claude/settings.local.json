@@ -5,7 +5,15 @@
       "Bash(Get-Content \"D:\\\\Gabriel\\\\av-continua\\\\src\\\\actions\\\\pcoActions.ts\" -Raw)",
       "Bash(Select-String -Pattern \"\\\\.respostas|\\\\.perguntas|findMany|include:\" -Context 0,3)",
       "Bash(Get-Content \"D:\\\\Gabriel\\\\av-continua\\\\src\\\\actions\\\\avaliacao360Actions.ts\" -Raw)",
-      "Bash(Select-String -Pattern \"RespostaPergunta360|\\\\.respostas|findMany\" -Context 0,2)"
+      "Bash(Select-String -Pattern \"RespostaPergunta360|\\\\.respostas|findMany\" -Context 0,2)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Gabriel\\\\av-continua\" -Recurse -Directory -Depth 2)",
+      "Bash(Select-Object -First 30 FullName)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Gabriel\\\\av-continua\" -Directory -Force)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "PowerShell(Get-ChildItem -Path \"D:\\\\Gabriel\\\\av-continua\\\\src\\\\app\" -Recurse -File | Where-Object {$_.Name -match \"avalia|av360|scale|question|demand\" -or $_.FullName -match \"avalia|av360|scale|question|demand\"} | Select-Object FullName | Sort-Object)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx|sql\\)$\")",
+      "PowerShell(Select-String -Path \"D:\\\\Gabriel\\\\av-continua\\\\prisma\\\\schema.prisma\" -Pattern \"model AlocacaoDemanda\" -Context 0,15 | ForEach-Object { $_.Line; $_.Context.PostContext } | Select-Object -First 20)",
+      "PowerShell(Select-String -Path \"D:\\\\Gabriel\\\\av-continua\\\\prisma\\\\schema.prisma\" -Pattern \"^model Demanda\" -Context 0,20 | ForEach-Object { $_.Line; $_.Context.PostContext } | Select-Object -First 25)"
     ]
   }
 }

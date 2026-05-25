@@ -103,6 +103,56 @@ export async function criarAvaliacao360(data: { nome: string, idCiclo?: number }
     }
 }
 
+export async function duplicarAvaliacao360(id: number) {
+    try {
+        const original = await prisma.avaliacao360.findUnique({
+            where: { id },
+            include: {
+                dimensoes: {
+                    include: { perguntas: { orderBy: { ordem: 'asc' } } },
+                    orderBy: { ordem: 'asc' }
+                }
+            }
+        })
+        if (!original) return { success: false, error: "Avaliação não encontrada" }
+
+        const nova = await prisma.$transaction(async (tx) => {
+            const criada = await tx.avaliacao360.create({
+                data: {
+                    nome: `Cópia de ${original.nome}`,
+                    status: StatusAvaliacao360.RASCUNHO,
+                }
+            })
+
+            for (let i = 0; i < original.dimensoes.length; i++) {
+                const dim = original.dimensoes[i]
+                const novaDim = await tx.dimensao360.create({
+                    data: { avaliacaoId: criada.id, titulo: dim.titulo, ordem: i }
+                })
+                if (dim.perguntas.length > 0) {
+                    await tx.pergunta360.createMany({
+                        data: dim.perguntas.map((p, j) => ({
+                            dimensaoId: novaDim.id,
+                            texto: p.texto,
+                            tipo: p.tipo,
+                            obrigatoria: p.obrigatoria,
+                            ordem: j
+                        }))
+                    })
+                }
+            }
+
+            return criada
+        })
+
+        revalidatePath('/coord/avaliacoes-360')
+        return { success: true, id: nova.id }
+    } catch (error) {
+        console.error(error)
+        return { success: false, error: "Erro ao duplicar avaliação" }
+    }
+}
+
 export async function deletarAvaliacao360(id: number) {
     try {
         await prisma.avaliacao360.delete({
@@ -355,7 +405,21 @@ export async function getPreviewAvaliacao360(idCiclo: number) {
     }
 }
 
-export async function ativarAvaliacao360(id: number) {
+export async function getMembrosAtivosBasico() {
+    try {
+        const membros = await prisma.membro.findMany({
+            where: { isAtivo: true },
+            select: { id: true, nome: true, fotoUrl: true, area: { select: { nome: true } } },
+            orderBy: [{ area: { nome: 'asc' } }, { nome: 'asc' }]
+        })
+        return membros.map(m => ({ id: m.id, nome: m.nome, fotoUrl: m.fotoUrl, area: m.area.nome }))
+    } catch (error) {
+        console.error(error)
+        return []
+    }
+}
+
+export async function ativarAvaliacao360(id: number, customPares?: Array<{avaliadorId: number, avaliadoId: number}>) {
     try {
         const avaliacao = await prisma.avaliacao360.findUnique({
             where: { id }
@@ -365,11 +429,15 @@ export async function ativarAvaliacao360(id: number) {
             return { success: false, error: "Avaliação não encontrada" }
         }
 
-        if (!avaliacao.idCiclo) {
-            return { success: false, error: "Avaliação sem ciclo associado" }
+        let pares: Array<{avaliadorId: number, avaliadoId: number}>
+        if (customPares && customPares.length > 0) {
+            pares = customPares
+        } else {
+            if (!avaliacao.idCiclo) {
+                return { success: false, error: "Avaliação sem ciclo associado" }
+            }
+            pares = await gerarParesAvaliacao360(avaliacao.idCiclo)
         }
-
-        const pares = await gerarParesAvaliacao360(avaliacao.idCiclo)
 
         await prisma.$transaction(async (tx) => {
             if (pares.length > 0) {
@@ -420,7 +488,6 @@ export type SaveAvaliacaoFullPayload = {
     dimensoes: Array<{
         id?: number;
         titulo: string;
-        peso: number;
         perguntas: Array<{
             id?: number;
             texto: string;
@@ -449,7 +516,6 @@ export async function salvarRascunhoAvaliacao360(avaliacaoId: number, data: Save
                     data: {
                         avaliacaoId,
                         titulo: dim.titulo,
-                        peso: dim.peso,
                         ordem: i,
                     }
                 })
@@ -650,7 +716,7 @@ export async function finalizarFeedback360(feedbackId: number, membroId: number)
                     return { success: false, error: "Preencha todas as respostas obrigatórias" };
                 }
                 if (p.tipo === TipoPergunta360.ESCALA) {
-                    if (resp.nota === null || resp.nota < 1 || resp.nota > 5) {
+                    if (resp.nota === null || resp.nota < 1 || resp.nota > 10) {
                         return { success: false, error: "Preencha todas as respostas obrigatórias com notas válidas" };
                     }
                 } else if (p.tipo === TipoPergunta360.TEXTO_ABERTO) {
@@ -883,16 +949,13 @@ export async function getRelatorio360PorAvaliado(avaliacaoId: number, avaliadoId
             }
 
             const mediaSimples = totalNotasDimensao > 0 ? somaNotasDimensao / totalNotasDimensao : 0;
-            const scorePonderado = mediaSimples * (Number(dim.peso) || 0);
 
-            somaScoreGeral += scorePonderado;
-            somaPesosTotal += (Number(dim.peso) || 0);
+            somaScoreGeral += mediaSimples;
+            somaPesosTotal += 1;
 
             relatorioDimensoes.push({
                 dimensao: dim.titulo,
-                peso: dim.peso,
                 mediaSimples,
-                scorePonderado,
                 distribuicao: distribuicaoDimensao
             });
         }
@@ -973,8 +1036,8 @@ export async function getRelatorio360Geral(avaliacaoId: number) {
                 }
 
                 const mediaDim = totalNotas > 0 ? somaNotas / totalNotas : 0;
-                somaScore += mediaDim * (Number(dim.peso) || 0);
-                somaPesos += (Number(dim.peso) || 0);
+                somaScore += mediaDim;
+                somaPesos += 1;
                 
                 if (!mediasPorDimensaoGlobal.has(dim.id)) {
                     mediasPorDimensaoGlobal.set(dim.id, { soma: 0, count: 0 });

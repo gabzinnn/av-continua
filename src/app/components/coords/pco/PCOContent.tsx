@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Eye, TimerOff, Play, Trash2, Search, Pencil } from "lucide-react"
+import { Plus, Eye, TimerOff, Play, Trash2, Search, Pencil, Copy } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
-import { getPCOPageData, PCOPageData, PCOResumo, iniciarPCO, encerrarPCO, deletarPCO } from "@/src/actions/pcoActions"
+import { getPCOPageData, PCOPageData, PCOResumo, iniciarPCO, encerrarPCO, deletarPCO, duplicarPCO } from "@/src/actions/pcoActions"
 import dynamic from "next/dynamic"
 import { TableColumn } from "react-data-table-component"
 
@@ -127,6 +127,20 @@ export function PCOContent() {
 
     const handleVerRespostas = (id: number) => {
         router.push(`/coord/pco/${id}`)
+    }
+
+    const handleDuplicar = async (id: number) => {
+        setActionLoading(id)
+        try {
+            const result = await duplicarPCO(id)
+            if (result.success && result.id) {
+                router.push(`/coord/pco/${result.id}/editar`)
+            } else {
+                alert(result.error)
+            }
+        } finally {
+            setActionLoading(null)
+        }
     }
 
     const formatDate = (date: Date | null) => {
@@ -298,6 +312,14 @@ export function PCOContent() {
                                     <Pencil size={16} /> Editar
                                 </button>
                                 <button
+                                    onClick={() => handleDuplicar(row.id)}
+                                    disabled={isDisabled}
+                                    className="text-gray-500 hover:text-primary font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                                    title="Duplicar"
+                                >
+                                    <Copy size={16} />
+                                </button>
+                                <button
                                     onClick={() => handleDeletar(row.id)}
                                     disabled={isDisabled}
                                     className="text-gray-500 hover:text-red-500 font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
@@ -315,6 +337,14 @@ export function PCOContent() {
                                     className="text-gray-500 hover:text-primary font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
                                     <Eye size={16} /> Relatório
+                                </button>
+                                <button
+                                    onClick={() => handleDuplicar(row.id)}
+                                    disabled={isDisabled}
+                                    className="text-gray-500 hover:text-primary font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                                    title="Duplicar"
+                                >
+                                    <Copy size={16} />
                                 </button>
                             </div>
                         )

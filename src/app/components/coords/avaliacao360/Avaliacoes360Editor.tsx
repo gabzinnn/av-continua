@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { 
-    getAvaliacao360ById, 
-    salvarRascunhoAvaliacao360, 
+import {
+    getAvaliacao360ById,
+    salvarRascunhoAvaliacao360,
     type SaveAvaliacaoFullPayload,
     ativarAvaliacao360,
-    getPreviewAvaliacao360
+    getPreviewAvaliacao360,
+    getMembrosAtivosBasico
 } from "@/src/actions/avaliacao360Actions"
 import type { TipoPergunta360 } from "@/src/generated/prisma/client"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
@@ -27,8 +28,14 @@ type LocalDimensao = {
     idLocal: string;
     id?: number;
     titulo: string;
-    peso: number;
     perguntas: LocalPergunta[];
+}
+
+type MembroBasico = {
+    id: number;
+    nome: string;
+    fotoUrl: string | null;
+    area: string;
 }
 
 export function Avaliacoes360Editor({ id }: { id: number }) {
@@ -41,6 +48,7 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
     // Preview
     const [previewModalOpen, setPreviewModalOpen] = useState(false)
     const [previewData, setPreviewData] = useState<any[]>([])
+    const [membrosAtivos, setMembrosAtivos] = useState<MembroBasico[]>([])
     const [isLoadingPreview, setIsLoadingPreview] = useState(false)
     
     // Estado local das dimensões para ser manipulado livremente
@@ -57,7 +65,6 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
                     idLocal: `dim-${d.id || Math.random()}`,
                     id: d.id,
                     titulo: d.titulo,
-                    peso: d.peso ? Number(d.peso) : 0,
                     perguntas: d.perguntas.map(p => ({
                         idLocal: `perg-${p.id || Math.random()}`,
                         id: p.id,
@@ -70,7 +77,7 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
                 // Se estiver vazio, já joga uma dimensão fake pra UI não ficar feia
                 if (dims.length === 0) {
                      const fakeId = `dim-${Date.now()}`
-                     dims.push({ idLocal: fakeId, titulo: "Nova Dimensão", peso: 100, perguntas: [] })
+                     dims.push({ idLocal: fakeId, titulo: "Nova Dimensão", perguntas: [] })
                 }
 
                 setDimensoes(dims)
@@ -92,7 +99,6 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
             dimensoes: dimensoes.map(d => ({
                 id: d.id,
                 titulo: d.titulo,
-                peso: d.peso,
                 perguntas: d.perguntas.map(p => ({
                     id: p.id,
                     texto: p.texto,
@@ -115,16 +121,16 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
     }
 
     const handleAtivar = async () => {
-        if (!idCiclo) {
-            alert("Esta avaliação não possui ciclo associado.")
-            return
-        }
         setPreviewModalOpen(true)
         setIsLoadingPreview(true)
-        
+
         try {
-            const paresPreview = await getPreviewAvaliacao360(idCiclo)
+            const [paresPreview, membros] = await Promise.all([
+                idCiclo ? getPreviewAvaliacao360(idCiclo) : Promise.resolve([]),
+                getMembrosAtivosBasico()
+            ])
             setPreviewData(paresPreview)
+            setMembrosAtivos(membros)
         } catch (err) {
             console.error(err)
             alert("Erro ao carregar preview")
@@ -133,10 +139,10 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
         }
     }
 
-    const handleConfirmAtivar = async () => {
-        await handleSalvar(false) 
+    const handleConfirmAtivar = async (paresFinais: Array<{avaliadorId: number, avaliadoId: number}>) => {
+        await handleSalvar(false)
         setIsSaving(true)
-        const res = await ativarAvaliacao360(id)
+        const res = await ativarAvaliacao360(id, paresFinais)
         if (res.success) {
             router.push('/coord/avaliacoes-360')
         } else {
@@ -162,7 +168,6 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
         const nova: LocalDimensao = {
             idLocal: `dim-${Date.now()}`,
             titulo: "Nova Dimensão",
-            peso: 10,
             perguntas: []
         }
         setDimensoes([...dimensoes, nova])
@@ -341,19 +346,10 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
                                 <div className="flex gap-4">
                                      <div className="flex-1">
                                         <label className="block text-xs font-bold text-text-muted uppercase mb-1">Título da Dimensão</label>
-                                        <input 
+                                        <input
                                             type="text"
                                             value={activeDim.titulo}
                                             onChange={(e) => updateActiveDim({ titulo: e.target.value })}
-                                            className="w-full border-border rounded-lg text-sm bg-white focus:ring-primary focus:border-primary h-10 px-3"
-                                        />
-                                     </div>
-                                     <div className="w-1/3">
-                                        <label className="block text-xs font-bold text-text-muted uppercase mb-1">Peso (%)</label>
-                                        <input 
-                                            type="number"
-                                            value={activeDim.peso}
-                                            onChange={(e) => updateActiveDim({ peso: Number(e.target.value) })}
                                             className="w-full border-border rounded-lg text-sm bg-white focus:ring-primary focus:border-primary h-10 px-3"
                                         />
                                      </div>
@@ -403,7 +399,7 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
                                                                                         onChange={(e) => updatePergunta(perg.idLocal, { tipo: e.target.value as TipoPergunta360 })}
                                                                                         className="border-border rounded-lg text-xs py-1.5 px-3 bg-white focus:ring-primary focus:border-primary"
                                                                                     >
-                                                                                        <option value="ESCALA">Escala Linear (1-5)</option>
+                                                                                        <option value="ESCALA">Escala Linear (1-10)</option>
                                                                                         <option value="TEXTO_ABERTO">Texto Aberto</option>
                                                                                     </select>
                                                                                </div>
@@ -473,6 +469,7 @@ export function Avaliacoes360Editor({ id }: { id: number }) {
                          isCreating={isSaving}
                          previewData={previewData}
                          nomeAvaliacao={nome}
+                         membrosAtivos={membrosAtivos}
                      />
                  )
              )}

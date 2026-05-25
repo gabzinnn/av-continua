@@ -1,6 +1,7 @@
 "use server"
 
 import prisma from "@/src/lib/prisma"
+import { revalidatePath } from "next/cache"
 import { PCO, PerguntaPCO, TipoPerguntaPCO } from "../generated/prisma/client"
 
 // ==========================================
@@ -196,6 +197,60 @@ export async function encerrarPCO(id: number): Promise<{ success: boolean; error
 // ==========================================
 // COORD-SIDE: DELETAR PCO (RASCUNHO)
 // ==========================================
+
+export async function duplicarPCO(id: number): Promise<{ success: boolean; id?: number; error?: string }> {
+    try {
+        const original = await prisma.pCO.findUnique({
+            where: { id },
+            include: {
+                secoes: {
+                    include: {
+                        perguntas: {
+                            include: { opcoes: { orderBy: { ordem: 'asc' } } },
+                            orderBy: { ordem: 'asc' }
+                        }
+                    },
+                    orderBy: { ordem: 'asc' }
+                }
+            }
+        })
+        if (!original) return { success: false, error: "PCO não encontrada" }
+
+        const nova = await prisma.pCO.create({
+            data: {
+                nome: `Cópia de ${original.nome}`,
+                descricao: original.descricao,
+                anonima: original.anonima,
+                status: "RASCUNHO",
+                secoes: {
+                    create: original.secoes.map((s, sIndex) => ({
+                        titulo: s.titulo,
+                        descricao: s.descricao,
+                        ordem: sIndex + 1,
+                        perguntas: {
+                            create: s.perguntas.map((p, pIndex) => ({
+                                texto: p.texto,
+                                tipo: p.tipo,
+                                obrigatoria: p.obrigatoria,
+                                mostrarJustificativa: p.mostrarJustificativa,
+                                ordem: pIndex + 1,
+                                opcoes: p.opcoes.length > 0
+                                    ? { create: p.opcoes.map((o, i) => ({ texto: o.texto, ordem: i + 1 })) }
+                                    : undefined,
+                            }))
+                        }
+                    }))
+                }
+            }
+        })
+
+        revalidatePath('/coord/pco')
+        return { success: true, id: nova.id }
+    } catch (error) {
+        console.error("Erro ao duplicar PCO:", error)
+        return { success: false, error: "Erro ao duplicar a pesquisa." }
+    }
+}
 
 export async function deletarPCO(id: number): Promise<{ success: boolean; error?: string }> {
     try {

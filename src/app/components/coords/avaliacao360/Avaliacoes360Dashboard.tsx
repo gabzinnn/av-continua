@@ -2,18 +2,19 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Eye, TimerOff, Play, Trash2, Search, BarChart3, Clock, Settings } from "lucide-react"
+import { Plus, Eye, TimerOff, Play, Trash2, Search, BarChart3, Clock, Settings, Copy } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import dynamic from "next/dynamic"
 import { TableColumn } from "react-data-table-component"
-import { 
-    getAvaliacoes360PageData, 
-    type Avaliacao360PageData, 
+import {
+    getAvaliacoes360PageData,
+    type Avaliacao360PageData,
     type Avaliacao360Resumo,
     ativarAvaliacao360,
     encerrarAvaliacao360,
     deletarAvaliacao360,
-    criarAvaliacao360
+    criarAvaliacao360,
+    duplicarAvaliacao360
 } from "@/src/actions/avaliacao360Actions"
 import type { StatusAvaliacao360 } from "@/src/generated/prisma/client"
 
@@ -140,6 +141,20 @@ export function Avaliacoes360Dashboard() {
 
     const handleEditar = (id: number) => {
         router.push(`/coord/avaliacoes-360/${id}/editar`)
+    }
+
+    const handleDuplicar = async (id: number) => {
+        setActionLoading(id)
+        try {
+            const result = await duplicarAvaliacao360(id)
+            if (result.success && result.id) {
+                router.push(`/coord/avaliacoes-360/${result.id}/editar`)
+            } else {
+                alert(result.error)
+            }
+        } finally {
+            setActionLoading(null)
+        }
     }
 
     const handleVerRelatorio = (id: number) => {
@@ -279,6 +294,14 @@ export function Avaliacoes360Dashboard() {
                                     <Settings size={16} /> Editar
                                 </button>
                                 <button
+                                    onClick={() => handleDuplicar(row.id)}
+                                    disabled={isDisabled}
+                                    className="text-gray-500 hover:text-primary font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                                    title="Duplicar"
+                                >
+                                    <Copy size={16} />
+                                </button>
+                                <button
                                     onClick={() => handleIniciar(row.id)}
                                     disabled={isDisabled}
                                     className="text-gray-500 hover:text-green-600 font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
@@ -303,6 +326,14 @@ export function Avaliacoes360Dashboard() {
                                     className="text-primary hover:brightness-95 font-bold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer px-4 py-2 bg-primary/10 rounded-lg"
                                 >
                                     <BarChart3 size={16} /> Ver Relatório
+                                </button>
+                                <button
+                                    onClick={() => handleDuplicar(row.id)}
+                                    disabled={isDisabled}
+                                    className="text-gray-500 hover:text-primary font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                                    title="Duplicar"
+                                >
+                                    <Copy size={16} />
                                 </button>
                             </div>
                         )

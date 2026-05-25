@@ -180,11 +180,11 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                     <div className="flex items-center gap-4 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                         <span className="text-xs font-bold uppercase tracking-wider opacity-60">Legenda:</span>
                         <div className="flex gap-3 text-xs font-medium">
-                            <span className="flex items-center gap-1"><b className="text-red-500">1</b> Insuficiente</span>
-                            <span className="flex items-center gap-1"><b className="text-orange-500">2</b> Regular</span>
-                            <span className="flex items-center gap-1"><b className="text-[#fad519]">3</b> Bom</span>
-                            <span className="flex items-center gap-1"><b className="text-green-600">4</b> Muito Bom</span>
-                            <span className="flex items-center gap-1"><b className="text-blue-600">5</b> Excepcional</span>
+                            <span className="flex items-center gap-1"><b className="text-red-500">1–2</b> Insuficiente</span>
+                            <span className="flex items-center gap-1"><b className="text-orange-500">3–4</b> Regular</span>
+                            <span className="flex items-center gap-1"><b className="text-[#fad519]">5–6</b> Bom</span>
+                            <span className="flex items-center gap-1"><b className="text-green-600">7–8</b> Muito Bom</span>
+                            <span className="flex items-center gap-1"><b className="text-blue-600">9–10</b> Excepcional</span>
                         </div>
                     </div>
                 </div>
@@ -253,7 +253,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                             
                                             {feedbacks.map(f => {
                                                 const resp = respostas[f.id]?.[pergunta.id]
-                                                const isFilled = pergunta.tipo === "ESCALA" ? (resp?.nota >= 1 && resp?.nota <= 5) : (resp?.texto?.trim() !== "")
+                                                const isFilled = pergunta.tipo === "ESCALA" ? (resp?.nota >= 1 && resp?.nota <= 10) : (resp?.texto?.trim() !== "")
                                                 
                                                 return (
                                                     <td key={f.id} className="p-6 text-center border-l border-gray-200 align-middle">
@@ -262,9 +262,9 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                                                 className={`w-14 h-14 rounded-lg bg-gray-50 border text-center font-bold text-lg focus:ring-0 focus:outline-none focus:border-[#fad519] transition-all
                                                                     ${isFilled ? 'border-[#fad519] shadow-[0_0_0_2px_rgba(250,213,25,0.2)]' : 'border-gray-200'}
                                                                 `}
-                                                                type="number" 
-                                                                min="1" 
-                                                                max="5" 
+                                                                type="number"
+                                                                min="1"
+                                                                max="10"
                                                                 placeholder="-"
                                                                 value={resp?.nota || ''}
                                                                 onChange={(e) => handleRespostaChange(f.id, pergunta.id, TipoPergunta360.ESCALA, parseInt(e.target.value) || null)}
