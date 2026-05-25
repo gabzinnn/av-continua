@@ -399,6 +399,7 @@ function EscalaPerguntaCard({ pergunta, grupos }: { pergunta: PerguntaDetalhes; 
                 <div className="flex flex-wrap items-center gap-4 mb-5 text-xs">
                     <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-green-500"></span>Concordo</span>
                     <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-green-300"></span>Concordo parcialmente</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-gray-300"></span>Não consigo responder</span>
                     <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-300"></span>Discordo parcialmente</span>
                     <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-400"></span>Discordo</span>
                 </div>
@@ -436,11 +437,12 @@ function EscalaPerguntaCard({ pergunta, grupos }: { pergunta: PerguntaDetalhes; 
 // ==========================================
 
 function StackedBar({ label, dist }: { label: string; dist: DistribuicaoGrupo }) {
-    const total = dist.concordo + dist.concordoParcial + dist.discordoParcial + dist.discordo
+    const total = dist.concordo + dist.concordoParcial + dist.naoConsigo + dist.discordoParcial + dist.discordo
     if (total === 0) return null
 
     const pctConcordo = (dist.concordo / total) * 100
     const pctConcordoP = (dist.concordoParcial / total) * 100
+    const pctNaoConsigo = (dist.naoConsigo / total) * 100
     const pctDiscordoP = (dist.discordoParcial / total) * 100
     const pctDiscordo = (dist.discordo / total) * 100
 
@@ -455,6 +457,9 @@ function StackedBar({ label, dist }: { label: string; dist: DistribuicaoGrupo })
                 )}
                 {pctConcordoP > 0 && (
                     <div className="bg-green-300 h-full transition-all" style={{ width: `${pctConcordoP}%` }} title={`Concordo parcialmente: ${dist.concordoParcial}`} />
+                )}
+                {pctNaoConsigo > 0 && (
+                    <div className="bg-gray-300 h-full transition-all" style={{ width: `${pctNaoConsigo}%` }} title={`Não consigo responder: ${dist.naoConsigo}`} />
                 )}
                 {pctDiscordoP > 0 && (
                     <div className="bg-orange-300 h-full transition-all" style={{ width: `${pctDiscordoP}%` }} title={`Discordo parcialmente: ${dist.discordoParcial}`} />

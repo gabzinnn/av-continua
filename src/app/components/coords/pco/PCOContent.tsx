@@ -367,7 +367,7 @@ export function PCOContent() {
         <div className="flex-1 overflow-y-auto">
             {/* Header & Controls */}
             <div className="bg-bg-main border-b border-border">
-                <div className="px-8 py-6 max-w-[1400px] mx-auto w-full flex flex-col gap-6">
+                <div className="px-8 py-6 max-w-350 mx-auto w-full flex flex-col gap-6">
                     {/* Breadcrumbs */}
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="text-text-muted">Home</span>
@@ -435,7 +435,7 @@ export function PCOContent() {
 
             {/* Table */}
             <div className="px-8 pb-8 pt-6">
-                <div className="max-w-[1400px] mx-auto w-full">
+                <div className="max-w-350 mx-auto w-full">
                     <div className="bg-bg-card rounded-xl shadow-sm border border-border overflow-x-auto">
                         <DataTable
                             columns={columns as TableColumn<unknown>[]}

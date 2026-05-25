@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CheckCircle, ChevronRight, ChevronLeft, ClipboardList, Eye, ArrowLeft } from "lucide-react"
 import { useMember } from "@/src/context/memberContext"
 import { Button } from "@/src/app/components/Button"
@@ -28,6 +28,7 @@ export function MembroPCOContent() {
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0)
     const [respostasView, setRespostasView] = useState<PCORespostasView | null>(null)
     const [loadingRespostas, setLoadingRespostas] = useState(false)
+    const scrollContainerRef = useRef<HTMLDivElement>(null)
 
     const fetchData = async () => {
         if (!selectedMember) return
@@ -114,13 +115,13 @@ export function MembroPCOContent() {
     const handleNext = () => {
         if (validateCurrentSection()) {
             setCurrentSectionIndex((prev) => Math.min((selectedPCO?.secoes.length || 1) - 1, prev + 1))
-            window.scrollTo({ top: 0, behavior: "smooth" })
+            scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
         }
     }
 
     const handlePrev = () => {
         setCurrentSectionIndex((prev) => Math.max(0, prev - 1))
-        window.scrollTo({ top: 0, behavior: "smooth" })
+        scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" })
     }
 
     const handleSubmit = async () => {
@@ -355,7 +356,7 @@ export function MembroPCOContent() {
         const progressPct = totalPerguntas > 0 ? Math.round((answeredCount / totalPerguntas) * 100) : 0
 
         return (
-            <div className="flex-1 overflow-y-auto">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
                 <div className="max-w-[900px] mx-auto py-8 px-6 flex flex-col gap-8 pb-12">
                     {/* Header */}
                     <div>
@@ -370,7 +371,7 @@ export function MembroPCOContent() {
                             {selectedPCO.nome}
                         </h1>
                         {selectedPCO.descricao && (
-                            <p className="text-gray-400 text-sm mt-1 max-w-2xl">{selectedPCO.descricao}</p>
+                            <p className="text-gray-400 text-sm mt-1 text-justify">{selectedPCO.descricao}</p>
                         )}
                     </div>
 
@@ -399,11 +400,6 @@ export function MembroPCOContent() {
                                         >
                                             {idx + 1}
                                         </div>
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider text-center hidden md:block max-w-[100px] truncate
-                                            ${idx === currentSectionIndex ? "text-primary" : "text-gray-400"}`}
-                                        >
-                                            {s.titulo}
-                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -412,7 +408,7 @@ export function MembroPCOContent() {
                                 <div>
                                     <h2 className="text-xl font-bold text-text-main">{currentSection.titulo}</h2>
                                     {currentSection.descricao && (
-                                        <p className="text-sm text-gray-500 mt-1 max-w-xl">{currentSection.descricao}</p>
+                                        <p className="text-sm text-gray-500 mt-1 text-justify">{currentSection.descricao}</p>
                                     )}
                                 </div>
                                 <div className="text-right">

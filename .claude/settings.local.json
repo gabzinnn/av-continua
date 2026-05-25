@@ -13,7 +13,10 @@
       "PowerShell(Get-ChildItem -Path \"D:\\\\Gabriel\\\\av-continua\\\\src\\\\app\" -Recurse -File | Where-Object {$_.Name -match \"avalia|av360|scale|question|demand\" -or $_.FullName -match \"avalia|av360|scale|question|demand\"} | Select-Object FullName | Sort-Object)",
       "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx|sql\\)$\")",
       "PowerShell(Select-String -Path \"D:\\\\Gabriel\\\\av-continua\\\\prisma\\\\schema.prisma\" -Pattern \"model AlocacaoDemanda\" -Context 0,15 | ForEach-Object { $_.Line; $_.Context.PostContext } | Select-Object -First 20)",
-      "PowerShell(Select-String -Path \"D:\\\\Gabriel\\\\av-continua\\\\prisma\\\\schema.prisma\" -Pattern \"^model Demanda\" -Context 0,20 | ForEach-Object { $_.Line; $_.Context.PostContext } | Select-Object -First 25)"
+      "PowerShell(Select-String -Path \"D:\\\\Gabriel\\\\av-continua\\\\prisma\\\\schema.prisma\" -Pattern \"^model Demanda\" -Context 0,20 | ForEach-Object { $_.Line; $_.Context.PostContext } | Select-Object -First 25)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Gabriel\\\\av-continua\\\\src\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
     ]
   }
 }
