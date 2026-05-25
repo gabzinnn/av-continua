@@ -283,14 +283,14 @@ export function PCOContent() {
                                     disabled={isDisabled}
                                     className="text-gray-500 hover:text-primary font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    <Eye size={16} /> Ver
+                                    <Eye size={16} />
                                 </button>
                                 <button
                                     onClick={() => handleEncerrar(row.id)}
                                     disabled={isDisabled}
                                     className="text-gray-500 hover:text-red-500 font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    <TimerOff size={16} /> Encerrar
+                                    <TimerOff size={16} />
                                 </button>
                             </div>
                         )
@@ -302,14 +302,14 @@ export function PCOContent() {
                                     disabled={isDisabled}
                                     className="text-gray-500 hover:text-primary font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    <Play size={16} /> Iniciar
+                                    <Play size={16} />
                                 </button>
                                 <button
                                     onClick={() => router.push(`/coord/pco/${row.id}/editar`)}
                                     disabled={isDisabled}
                                     className="text-gray-500 hover:text-blue-500 font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    <Pencil size={16} /> Editar
+                                    <Pencil size={16} />
                                 </button>
                                 <button
                                     onClick={() => handleDuplicar(row.id)}
@@ -324,7 +324,7 @@ export function PCOContent() {
                                     disabled={isDisabled}
                                     className="text-gray-500 hover:text-red-500 font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    <Trash2 size={16} /> Excluir
+                                    <Trash2 size={16} />
                                 </button>
                             </div>
                         )

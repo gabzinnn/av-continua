@@ -102,7 +102,7 @@ export function Relatorio360Content({ id }: { id: number }) {
         labels: relatorioIndividual?.dimensoes?.map((d: any) => d.dimensao) || [],
         yaxis: {
             min: 0,
-            max: 5,
+            max: 10,
             tickAmount: 5,
         },
         fill: {
@@ -183,7 +183,7 @@ export function Relatorio360Content({ id }: { id: number }) {
                 <div ref={reportRef} className="max-w-[1200px] mx-auto bg-white p-8 rounded-xl shadow-sm border border-gray-200 min-h-[800px]">
                     <div className="text-center mb-8 pb-6 border-b border-gray-200">
                         <h2 className="text-3xl font-black text-gray-900 mb-2">Resultados: Avaliação 360</h2>
-                        <p className="text-gray-500">Média Global: <span className="font-bold text-[#fad519] text-xl">{relatorioGeral.scoreGlobalMedia?.toFixed(2) || '0.00'}</span> / 5</p>
+                        <p className="text-gray-500">Média Global: <span className="font-bold text-[#fad519] text-xl">{relatorioGeral.scoreGlobalMedia?.toFixed(2) || '0.00'}</span> / 10</p>
                     </div>
 
                     {tab === "geral" && (
@@ -281,17 +281,17 @@ export function Relatorio360Content({ id }: { id: number }) {
                                                         <span className="font-bold text-sm text-gray-900">{d.mediaSimples}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        {[1,2,3,4,5].map(n => (
+                                                        {[1,2,3,4,5,6,7,8,9,10].map(n => (
                                                             <div key={n} className="h-1.5 flex-1 bg-gray-100 rounded-full overflow-hidden">
-                                                                <div 
-                                                                    className="h-full bg-[#fad519]" 
+                                                                <div
+                                                                    className="h-full bg-[#fad519]"
                                                                     style={{ width: `${relatorioIndividual.numRespondentes > 0 ? (d.distribuicao[n] / relatorioIndividual.numRespondentes) * 100 : 0}%` }}
                                                                 />
                                                             </div>
                                                         ))}
                                                     </div>
                                                     <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-                                                        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                                                        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
                                                     </div>
                                                 </div>
                                             ))}

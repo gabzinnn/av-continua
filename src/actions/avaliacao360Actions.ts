@@ -924,7 +924,7 @@ export async function getRelatorio360PorAvaliado(avaliacaoId: number, avaliadoId
         for (const dim of avaliacao.dimensoes) {
             let somaNotasDimensao = 0;
             let totalNotasDimensao = 0;
-            const distribuicaoDimensao = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+            const distribuicaoDimensao = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 };
 
             for (const perg of dim.perguntas) {
                 const respostas = respostasPorPergunta.get(perg.id) || [];
