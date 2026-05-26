@@ -69,7 +69,7 @@ export function HomeContent() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="w-full max-w-[1200px] mx-auto p-6 md:p-8 flex flex-col gap-8">
+      <div className="w-full max-w-300 mx-auto p-6 md:p-8 flex flex-col gap-8">
         {/* Page Heading */}
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-text-main">

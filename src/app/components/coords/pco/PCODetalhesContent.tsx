@@ -81,7 +81,7 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
             const { pdf } = await import("@react-pdf/renderer")
             const { PCOReport } = await import("@/src/lib/reports/pco/PCOReport")
             const dados = await getRelatorioPCO(pcoId)
-            if (!dados) throw new Error("Dados não encontrados")
+            if (!dados) throw new Error("PCO não encontrada. Verifique se a pesquisa existe e tente novamente.")
             const blob = await pdf(<PCOReport data={dados} />).toBlob()
             const url = URL.createObjectURL(blob)
             const a = document.createElement("a")
@@ -91,7 +91,7 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
             URL.revokeObjectURL(url)
         } catch (err) {
             console.error(err)
-            alert("Erro ao gerar PDF")
+            alert(err instanceof Error ? err.message : "Erro inesperado ao gerar o PDF. Tente novamente.")
         } finally {
             setIsGenerating(false)
         }

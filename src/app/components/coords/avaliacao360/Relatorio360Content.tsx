@@ -54,7 +54,7 @@ export function Relatorio360Content({ id }: { id: number }) {
             const { pdf } = await import("@react-pdf/renderer")
             const { AV360Report } = await import("@/src/lib/reports/av360/AV360Report")
             const dados = await getRelatorioAV360(id)
-            if (!dados) throw new Error("Dados não encontrados")
+            if (!dados) throw new Error("Avaliação 360 não encontrada. Verifique se a avaliação existe e possui feedbacks finalizados.")
             const blob = await pdf(<AV360Report data={dados} />).toBlob()
             const url = URL.createObjectURL(blob)
             const a = document.createElement("a")
@@ -64,7 +64,7 @@ export function Relatorio360Content({ id }: { id: number }) {
             URL.revokeObjectURL(url)
         } catch (err) {
             console.error(err)
-            alert("Erro ao gerar PDF")
+            alert(err instanceof Error ? err.message : "Erro inesperado ao gerar o PDF. Tente novamente.")
         } finally {
             setIsGenerating(false)
         }

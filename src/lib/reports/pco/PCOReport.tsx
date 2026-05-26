@@ -1,6 +1,7 @@
-import React from "react";
+﻿import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { COLORS, FONT, baseStyles } from "../theme";
+import { computeStdDev } from "../utils/distribution";
 import { Cover } from "../components/Cover";
 import { MethodologyPage } from "../components/MethodologyPage";
 import { SectionTitle } from "../components/SectionTitle";
@@ -144,16 +145,22 @@ interface PerguntaDetailPageProps {
   secaoTitulo: string;
 }
 
+const STD_DEV_THRESHOLD = 0.9;
+
 function PerguntaDetailPage({
   pergunta,
   grupos,
   secaoTitulo,
 }: PerguntaDetailPageProps) {
-  const showRawJustificativas =
-    pergunta.justificativas.length > 0 &&
-    (!pergunta.agrupamentos || pergunta.agrupamentos.length === 0);
+  const geralDist = pergunta.distribuicaoPorGrupo["Geral"];
+  const stdDev = geralDist ? computeStdDev(geralDist) : 0;
+  const hasAltoDesvio = stdDev >= STD_DEV_THRESHOLD;
 
-  const justificativasToShow = pergunta.justificativas.slice(0, 6);
+  // Manually-set callouts from coord editing
+  const manualCallouts = pergunta.callouts ?? [];
+  // Avoid duplicating "DESVIO" callout if coord already added one
+  const showAutoDesvio =
+    hasAltoDesvio && !manualCallouts.some((c) => c.tipo === "DESVIO");
 
   return (
     <Page size="A4" style={styles.page}>
@@ -191,7 +198,7 @@ function PerguntaDetailPage({
         <InsightSentence texto={pergunta.insightTexto} />
       ) : null}
 
-      {/* Agrupamentos */}
+      {/* Agrupamentos (badges Nx) */}
       {pergunta.agrupamentos && pergunta.agrupamentos.length > 0 ? (
         <View style={styles.agrupamentosSection}>
           {pergunta.agrupamentos.map((ag, i) => (
@@ -200,23 +207,24 @@ function PerguntaDetailPage({
         </View>
       ) : null}
 
-      {/* Callouts */}
-      {pergunta.callouts && pergunta.callouts.length > 0 ? (
+      {/* Callouts manuais + auto desvio padrão */}
+      {(manualCallouts.length > 0 || showAutoDesvio) ? (
         <View style={styles.calloutsSection}>
-          {pergunta.callouts.map((c, i) => (
+          {manualCallouts.map((c, i) => (
             <CalloutBox key={i} texto={c.texto} tipo={c.tipo} />
           ))}
+          {showAutoDesvio ? (
+            <CalloutBox texto="Alto desvio padrão" tipo="DESVIO" />
+          ) : null}
         </View>
       ) : null}
 
-      {/* Raw justificativas fallback */}
-      {showRawJustificativas ? (
+      {/* Justificativas — sempre exibidas quando existem */}
+      {pergunta.justificativas.length > 0 ? (
         <View style={styles.justificativasSection}>
-          {justificativasToShow.map((j, i) => (
+          {pergunta.justificativas.map((j, i) => (
             <Text key={i} style={styles.justificativaItem}>
-              {"“"}
-              {j}
-              {"”"}
+              {"“"}{j}{"”"}
             </Text>
           ))}
         </View>

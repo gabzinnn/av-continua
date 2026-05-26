@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Eye, TimerOff, Play, Trash2, Search, BarChart3, Clock, Settings, Copy } from "lucide-react"
+import { Plus, Eye, TimerOff, Play, Trash2, Search, BarChart3, Clock, Settings, Copy, RotateCcw } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
 import dynamic from "next/dynamic"
 import { TableColumn } from "react-data-table-component"
@@ -12,6 +12,7 @@ import {
     type Avaliacao360Resumo,
     encerrarAvaliacao360,
     deletarAvaliacao360,
+    reabrirAvaliacao360,
     criarAvaliacao360,
     duplicarAvaliacao360
 } from "@/src/actions/avaliacao360Actions"
@@ -124,6 +125,18 @@ export function Avaliacoes360Dashboard() {
         setActionLoading(id)
         try {
             const result = await deletarAvaliacao360(id)
+            if (result.success) fetchData()
+            else alert(result.error)
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    const handleReabrir = async (id: number) => {
+        if (!confirm("Reabrir esta avaliação? Ela voltará para o status ATIVA.")) return
+        setActionLoading(id)
+        try {
+            const result = await reabrirAvaliacao360(id)
             if (result.success) fetchData()
             else alert(result.error)
         } finally {
@@ -252,6 +265,18 @@ export function Avaliacoes360Dashboard() {
             width: "140px",
         },
         {
+            name: "Alocação",
+            cell: (row) => (
+                <div className="text-center text-sm text-gray-600">
+                    {row.status === "RASCUNHO" || row.totalPares === 0 ? "—" : `${row.totalPares} pares`}
+                </div>
+            ),
+            sortable: true,
+            selector: (row) => row.totalPares,
+            center: true,
+            width: "120px",
+        },
+        {
             name: "Ações",
             cell: (row) => {
                 const isDisabled = actionLoading === row.id
@@ -272,6 +297,24 @@ export function Avaliacoes360Dashboard() {
                                     className="text-gray-500 hover:text-red-500 font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
                                     <TimerOff size={16} /> Encerrar
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm("Esta avaliação tem respostas em andamento. Excluir mesmo assim? Esta ação não pode ser desfeita.")) return
+                                        setActionLoading(row.id)
+                                        try {
+                                            const result = await deletarAvaliacao360(row.id)
+                                            if (result.success) fetchData()
+                                            else alert(result.error)
+                                        } finally {
+                                            setActionLoading(null)
+                                        }
+                                    }}
+                                    disabled={isDisabled}
+                                    className="text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                                    title="Excluir"
+                                >
+                                    <Trash2 size={16} />
                                 </button>
                             </div>
                         )
@@ -326,6 +369,22 @@ export function Avaliacoes360Dashboard() {
                                     title="Duplicar"
                                 >
                                     <Copy size={16} />
+                                </button>
+                                <button
+                                    onClick={() => handleReabrir(row.id)}
+                                    disabled={isDisabled}
+                                    className="text-gray-500 hover:text-green-600 font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                                    title="Reabrir"
+                                >
+                                    <RotateCcw size={16} />
+                                </button>
+                                <button
+                                    onClick={() => handleDeletar(row.id)}
+                                    disabled={isDisabled}
+                                    className="text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                                    title="Excluir"
+                                >
+                                    <Trash2 size={16} />
                                 </button>
                             </div>
                         )

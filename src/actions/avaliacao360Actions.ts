@@ -17,6 +17,7 @@ export type Avaliacao360Resumo = {
     totalParticipantes: number
     totalRespostas: number
     taxaResposta: number
+    totalPares: number
     createdAt: Date
 }
 
@@ -67,6 +68,7 @@ export async function getAvaliacoes360PageData(): Promise<Avaliacao360PageData> 
                 totalParticipantes,
                 totalRespostas: feedbacksFinalizados,
                 taxaResposta,
+                totalPares: feedbacks.length,
                 createdAt: av.createdAt
             }
         })
@@ -164,6 +166,20 @@ export async function deletarAvaliacao360(id: number) {
     } catch (error) {
         console.error(error)
         return { success: false, error: "Erro ao deletar" }
+    }
+}
+
+export async function reabrirAvaliacao360(id: number): Promise<{ success: boolean; error?: string }> {
+    try {
+        await prisma.avaliacao360.update({
+            where: { id },
+            data: { status: StatusAvaliacao360.ATIVA, dataFim: null },
+        })
+        revalidatePath('/coord/avaliacoes-360')
+        return { success: true }
+    } catch (error) {
+        console.error(error)
+        return { success: false, error: "Erro ao reabrir avaliação" }
     }
 }
 
