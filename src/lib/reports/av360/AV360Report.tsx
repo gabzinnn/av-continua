@@ -217,8 +217,8 @@ function RadarChart({ dimensoes }: { dimensoes: AV360DimensaoMembro[] }) {
       {/* Data polygon */}
       <Polygon
         points={dataPointsStr}
-        fill="#fad51933"
-        stroke="#fad519"
+        fill="#fad41933"
+        stroke="#fad419"
         strokeWidth={1.5}
       />
       {/* Labels */}

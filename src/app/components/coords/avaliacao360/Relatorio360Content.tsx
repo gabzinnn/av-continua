@@ -110,17 +110,17 @@ export function Relatorio360Content({ id }: { id: number }) {
         },
         fill: {
             opacity: 0.2,
-            colors: ["#fad519"]
+            colors: ["#fad419"]
         },
         stroke: {
             show: true,
             width: 2,
-            colors: ["#fad519"]
+            colors: ["#fad419"]
         },
         markers: {
             size: 4,
             colors: ["#fff"],
-            strokeColors: "#fad519",
+            strokeColors: "#fad419",
             strokeWidth: 2,
         }
     }
@@ -139,11 +139,11 @@ export function Relatorio360Content({ id }: { id: number }) {
         plotOptions: {
             bar: { borderRadius: 4, horizontal: true }
         },
-        colors: ["#fad519"],
+        colors: ["#fad419"],
         xaxis: {
             categories: relatorioGeral.dimensoesGlobais.map((d: any) => d.titulo),
             min: 0,
-            max: 5
+            max: 10
         }
     }
 
@@ -184,7 +184,7 @@ export function Relatorio360Content({ id }: { id: number }) {
                     >
                         Editar relatório
                     </Button>
-                    <Button onClick={handleDownloadPDF} isLoading={isGenerating} icon={<Download size={18} />} iconPosition="left" className="bg-[#fad519] hover:bg-[#eac416] text-[#1c1a0d]">
+                    <Button onClick={handleDownloadPDF} isLoading={isGenerating} icon={<Download size={18} />} iconPosition="left" className="bg-[#fad419] hover:bg-[#eac416] text-[#1c1a0d]">
                         Exportar PDF
                     </Button>
                 </div>
@@ -194,20 +194,20 @@ export function Relatorio360Content({ id }: { id: number }) {
                 <div className="max-w-[1200px] mx-auto bg-white p-8 rounded-xl shadow-sm border border-gray-200 min-h-[800px]">
                     <div className="text-center mb-8 pb-6 border-b border-gray-200">
                         <h2 className="text-3xl font-black text-gray-900 mb-2">Resultados: Avaliação 360</h2>
-                        <p className="text-gray-500">Média Global: <span className="font-bold text-[#fad519] text-xl">{relatorioGeral.scoreGlobalMedia?.toFixed(2) || '0.00'}</span> / 10</p>
+                        <p className="text-gray-500">Média Global: <span className="font-bold text-[#fad419] text-xl">{relatorioGeral.scoreGlobalMedia?.toFixed(2) || '0.00'}</span> / 10</p>
                     </div>
 
                     {tab === "geral" && (
                         <div className="space-y-8 animate-in fade-in duration-300">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <Card className="p-6">
-                                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><BarChart3 size={20} className="text-[#fad519]" /> Médias por Dimensão</h3>
+                                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><BarChart3 size={20} className="text-[#fad419]" /> Médias por Dimensão</h3>
                                     <div className="h-[300px]">
                                         <Chart options={barOptions} series={barSeries} type="bar" height="100%" />
                                     </div>
                                 </Card>
                                 <Card className="p-6 overflow-hidden flex flex-col">
-                                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><TrendingUp size={20} className="text-[#fad519]" /> Ranking de Score Geral</h3>
+                                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><TrendingUp size={20} className="text-[#fad419]" /> Ranking de Score Geral</h3>
                                     <div className="flex-1 overflow-y-auto space-y-3">
                                         {relatorioGeral.ranking.map((r: any, idx: number) => (
                                             <div key={r.membroId} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100">
@@ -270,13 +270,13 @@ export function Relatorio360Content({ id }: { id: number }) {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-xs uppercase font-bold text-gray-500">Score Geral</p>
-                                        <p className="text-4xl font-black text-[#fad519]">{relatorioIndividual.scoreGeral?.toFixed(2) || '0.00'}</p>
+                                        <p className="text-4xl font-black text-[#fad419]">{relatorioIndividual.scoreGeral?.toFixed(2) || '0.00'}</p>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <Card className="p-6">
-                                        <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Star size={18} className="text-[#fad519]" /> Mapa de Competências</h4>
+                                        <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Star size={18} className="text-[#fad419]" /> Mapa de Competências</h4>
                                         <div className="h-[300px]">
                                             <Chart options={radarOptions} series={radarSeries} type="radar" height="100%" />
                                         </div>
@@ -295,7 +295,7 @@ export function Relatorio360Content({ id }: { id: number }) {
                                                         {[1,2,3,4,5,6,7,8,9,10].map(n => (
                                                             <div key={n} className="h-1.5 flex-1 bg-gray-100 rounded-full overflow-hidden">
                                                                 <div
-                                                                    className="h-full bg-[#fad519]"
+                                                                    className="h-full bg-[#fad419]"
                                                                     style={{ width: `${relatorioIndividual.numRespondentes > 0 ? (d.distribuicao[n] / relatorioIndividual.numRespondentes) * 100 : 0}%` }}
                                                                 />
                                                             </div>
@@ -356,7 +356,7 @@ export function Relatorio360Content({ id }: { id: number }) {
                                     Título da capa
                                 </label>
                                 <textarea
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-[#fad519] focus:border-transparent"
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-[#fad419] focus:border-transparent"
                                     rows={2}
                                     placeholder="Título que aparecerá na capa do PDF..."
                                     value={editData.capaTitulo}
@@ -369,7 +369,7 @@ export function Relatorio360Content({ id }: { id: number }) {
                                     Objetivo
                                 </label>
                                 <textarea
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-[#fad519] focus:border-transparent"
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-[#fad419] focus:border-transparent"
                                     rows={3}
                                     placeholder="Objetivo da avaliação 360..."
                                     value={editData.objetivo}
@@ -382,7 +382,7 @@ export function Relatorio360Content({ id }: { id: number }) {
                                     Conclusão
                                 </label>
                                 <textarea
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-[#fad519] focus:border-transparent"
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-[#fad419] focus:border-transparent"
                                     rows={5}
                                     placeholder="Conclusão e considerações finais do relatório..."
                                     value={editData.conclusao}
@@ -403,7 +403,7 @@ export function Relatorio360Content({ id }: { id: number }) {
                                 isLoading={isSaving}
                                 icon={<Save size={16} />}
                                 iconPosition="left"
-                                className="bg-[#fad519] hover:bg-[#eac416] text-[#1c1a0d]"
+                                className="bg-[#fad419] hover:bg-[#eac416] text-[#1c1a0d]"
                             >
                                 Salvar
                             </Button>

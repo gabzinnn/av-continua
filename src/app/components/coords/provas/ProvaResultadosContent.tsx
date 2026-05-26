@@ -289,8 +289,8 @@ export function ProvaResultadosContent({ provaId }: ProvaResultadosContentProps)
                     opacity: 0.5,
                 },
                 '&:hover:not(:disabled)': {
-                    backgroundColor: '#fad519',
-                    borderColor: '#fad519',
+                    backgroundColor: '#fad419',
+                    borderColor: '#fad419',
                 },
             },
         },

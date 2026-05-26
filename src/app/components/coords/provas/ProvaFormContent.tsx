@@ -320,16 +320,16 @@ export function ProvaFormContent({ mode, provaId }: ProvaFormContentProps) {
                                         ...base,
                                         minHeight: '44px',
                                         backgroundColor: '#f9fafb',
-                                        borderColor: state.isFocused ? '#fad519' : '#e5e7eb',
+                                        borderColor: state.isFocused ? '#fad419' : '#e5e7eb',
                                         borderRadius: '0.5rem',
-                                        boxShadow: state.isFocused ? '0 0 0 1px #fad519' : 'none',
+                                        boxShadow: state.isFocused ? '0 0 0 1px #fad419' : 'none',
                                         '&:hover': {
-                                            borderColor: '#fad519'
+                                            borderColor: '#fad419'
                                         }
                                     }),
                                     option: (base, state) => ({
                                         ...base,
-                                        backgroundColor: state.isSelected ? '#fad519' : state.isFocused ? '#fef9e7' : 'white',
+                                        backgroundColor: state.isSelected ? '#fad419' : state.isFocused ? '#fef9e7' : 'white',
                                         color: '#1f2937',
                                         cursor: 'pointer'
                                     }),

@@ -34,24 +34,24 @@ function ProvaFinalizadaContent() {
 
     const getIconBgClass = () => {
         if (isTabSwitch) return "bg-red-500/10";
-        return "bg-[#fad519]/10";
+        return "bg-[#fad419]/10";
     };
 
     const getIconColorClass = () => {
         if (isTabSwitch) return "text-red-500";
-        return "text-[#fad519]";
+        return "text-[#fad419]";
     };
 
     return (
         <div className="layout-container flex w-full h-full grow flex-col items-center justify-center p-4 sm:p-8">
             {/* Main Content Card */}
-            <main className={`w-full max-w-md bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden border-t-8 ${isTabSwitch ? 'border-red-500' : 'border-[#fad519]'} relative animate-fade-in-up`}>
+            <main className={`w-full max-w-md bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden border-t-8 ${isTabSwitch ? 'border-red-500' : 'border-[#fad419]'} relative animate-fade-in-up`}>
                 {/* Decorative Pattern Header (Subtle) */}
-                <div className={`h-2 w-full ${isTabSwitch ? 'bg-linear-to-r from-red-500 to-red-400' : 'bg-linear-to-r from-[#fad519] to-secondary'} absolute top-0 left-0`}></div>
+                <div className={`h-2 w-full ${isTabSwitch ? 'bg-linear-to-r from-red-500 to-red-400' : 'bg-linear-to-r from-[#fad419] to-secondary'} absolute top-0 left-0`}></div>
                 <div className="flex flex-col items-center text-center p-10 pt-12 space-y-6">
                     {/* Status Icon Container */}
                     <div className="relative">
-                        <div className={`absolute inset-0 ${isTabSwitch ? 'bg-red-500/20' : 'bg-[#fad519]/20'} rounded-full blur-xl scale-150`}></div>
+                        <div className={`absolute inset-0 ${isTabSwitch ? 'bg-red-500/20' : 'bg-[#fad419]/20'} rounded-full blur-xl scale-150`}></div>
                         <div className={`relative flex items-center justify-center w-24 h-24 ${getIconBgClass()} rounded-full`}>
                             <span className={`material-symbols-outlined text-6xl ${getIconColorClass()} font-bold`}>
                                 {getIcon()}
@@ -68,9 +68,9 @@ function ProvaFinalizadaContent() {
                         </p>
                     </div>
                     {/* Divider */}
-                    <div className={`w-16 h-1 ${isTabSwitch ? 'bg-red-500/30' : 'bg-[#fad519]/30'} rounded-full my-2`}></div>
+                    <div className={`w-16 h-1 ${isTabSwitch ? 'bg-red-500/30' : 'bg-[#fad419]/30'} rounded-full my-2`}></div>
                     {/* Helper Text */}
-                    <div className={`${isTabSwitch ? 'bg-red-50 border-red-100' : 'bg-bg-main border-[#fad519]/10'} rounded-lg p-4 w-full border`}>
+                    <div className={`${isTabSwitch ? 'bg-red-50 border-red-100' : 'bg-bg-main border-[#fad419]/10'} rounded-lg p-4 w-full border`}>
                         <div className="flex items-start gap-3 justify-center text-left sm:text-center">
                             <span className="material-symbols-outlined text-text-muted text-xl shrink-0 mt-0.5">
                                 {isTabSwitch ? 'info' : 'lock_clock'}
@@ -95,7 +95,7 @@ function ProvaFinalizadaContent() {
             {/* Footer */}
             <footer className="mt-12 text-center opacity-60">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-[#fad519] text-xl">
+                    <span className="material-symbols-outlined text-[#fad419] text-xl">
                         school
                     </span>
                     <span className="font-bold text-text-muted">

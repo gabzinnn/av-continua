@@ -19,7 +19,7 @@ export function NavItem({ href, icon: Icon, label, subItems }: NavItemProps) {
   // Verifica se o item atual (ou um de seus subitems) está ativo
   const isDirectlyActive = href ? pathname === href : false
   const isSubItemActive = subItems?.some(subItem => pathname === subItem.href)
-  const isPartiallyActive = href ? pathname.startsWith(href) && href !== "/" : false
+  const isPartiallyActive = href ? (pathname === href || pathname.startsWith(href + "/")) && href !== "/" : false
 
   const isActive = isDirectlyActive || isSubItemActive || (!hasSubItems && isPartiallyActive)
 

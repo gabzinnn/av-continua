@@ -17,7 +17,7 @@ export const COLORS = {
   bg: "#000000",
   surface: "#1a1a1a",
   surfaceAlt: "#242424",
-  accent: "#fad519",
+  accent: "#fad419",
   text: "#ffffff",
   muted: "#9ca3af",
   border: "#2a2a2a",
@@ -25,7 +25,7 @@ export const COLORS = {
   agreePartial: "#16a34a",
   disagreePartial: "#b91c1c",
   disagree: "#ef4444",
-  yellow: "#fad519",
+  yellow: "#fad419",
 };
 
 export const FONT = {

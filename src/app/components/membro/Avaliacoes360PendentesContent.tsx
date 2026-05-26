@@ -246,7 +246,7 @@ export function Avaliacoes360PendentesContent() {
                                         <div className="flex flex-wrap gap-2 mt-4">
                                             {av.feedbacks.map((f: any) => (
                                                 <div key={f.id} className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full text-xs">
-                                                    <div className="w-2 h-2 rounded-full bg-[#fad519]" />
+                                                    <div className="w-2 h-2 rounded-full bg-[#fad419]" />
                                                     {f.avaliadoNome} ({f.progresso}%)
                                                 </div>
                                             ))}
@@ -254,7 +254,7 @@ export function Avaliacoes360PendentesContent() {
                                     </div>
                                     <Link
                                         href={`/avaliacoes-360/${av.avaliacaoId}`}
-                                        className="bg-[#fad519] hover:bg-[#eac416] text-[#1c1a0d] px-6 py-2 rounded-lg font-bold text-sm text-center shadow-sm transition-colors whitespace-nowrap"
+                                        className="bg-[#fad419] hover:bg-[#eac416] text-[#1c1a0d] px-6 py-2 rounded-lg font-bold text-sm text-center shadow-sm transition-colors whitespace-nowrap"
                                     >
                                         Responder
                                     </Link>

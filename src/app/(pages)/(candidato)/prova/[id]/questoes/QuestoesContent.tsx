@@ -384,7 +384,7 @@ export default function QuestoesContent({ provaId }: QuestoesContentProps) {
                                             />
                                             <div className={`flex items-center p-4 md:p-5 rounded-lg border-2 transition-all h-full
                                             ${isSelected
-                                                    ? "border-primary bg-primary/5 shadow-[0_0_0_1px_#fad519]"
+                                                    ? "border-primary bg-primary/5 shadow-[0_0_0_1px_#fad419]"
                                                     : "border-border-ui bg-bg-card hover:border-secondary"
                                                 }`}>
                                                 <div className={`shrink-0 size-6 rounded-full border-2 mr-4 flex items-center justify-center transition-colors

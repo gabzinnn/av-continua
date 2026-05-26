@@ -60,7 +60,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                         totalObrigatorias++
                         const resp = respostas[f.id]?.[p.id]
                         if (resp) {
-                            if (p.tipo === "ESCALA" && resp.nota >= 1 && resp.nota <= 5) {
+                            if (p.tipo === "ESCALA" && resp.nota >= 1 && resp.nota <= 10) {
                                 respondidas++
                             } else if (p.tipo === "TEXTO_ABERTO" && resp.texto?.trim() !== "") {
                                 respondidas++
@@ -156,7 +156,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
     const dimensoes = avaliacao.dimensoes
 
     return (
-        <div className="flex-1 flex flex-col items-center py-10 px-6 max-w-350 mx-auto w-full">
+        <div className="flex-1 flex flex-col items-center py-10 px-6 max-w-350 mx-auto w-full overflow-y-auto">
             <CustomAlert 
                 isOpen={alert.isOpen}
                 type={alert.type}
@@ -170,24 +170,10 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                 <h1 className="text-gray-900 text-3xl font-black leading-tight tracking-[-0.033em]">
                     Responder Avaliação 360: {avaliacao.nome}
                 </h1>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <p className="text-gray-600 text-base font-normal leading-normal max-w-2xl">
-                        Atribua notas de 1 a 5 para cada competência ou escreva seu comentário nas perguntas abertas. 
-                        Recomendamos salvar rascunho regularmente.
-                    </p>
-                    
-                    {/* Scale Legend */}
-                    <div className="flex items-center gap-4 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                        <span className="text-xs font-bold uppercase tracking-wider opacity-60">Legenda:</span>
-                        <div className="flex gap-3 text-xs font-medium">
-                            <span className="flex items-center gap-1"><b className="text-red-500">1–2</b> Insuficiente</span>
-                            <span className="flex items-center gap-1"><b className="text-orange-500">3–4</b> Regular</span>
-                            <span className="flex items-center gap-1"><b className="text-[#fad519]">5–6</b> Bom</span>
-                            <span className="flex items-center gap-1"><b className="text-green-600">7–8</b> Muito Bom</span>
-                            <span className="flex items-center gap-1"><b className="text-blue-600">9–10</b> Excepcional</span>
-                        </div>
-                    </div>
-                </div>
+                <p className="text-gray-600 text-base font-normal leading-normal max-w-2xl">
+                    Atribua notas de 1 a 10 para cada competência ou escreva seu comentário nas perguntas abertas.
+                    Recomendamos salvar rascunho regularmente.
+                </p>
             </div>
 
             {/* Main Matrix Card */}
@@ -199,35 +185,11 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                 <th className="sticky left-0 bg-gray-50 text-left p-6 min-w-87.5 font-bold text-sm z-10 border-r border-gray-200">
                                     Competência / Comportamento
                                 </th>
-                                {feedbacks.map(f => {
-                                    // Calc personal progress
-                                    const perguntas = f.avaliacao.dimensoes.flatMap((d: any) => d.perguntas)
-                                    let req = 0; let done = 0;
-                                    perguntas.forEach((p: any) => {
-                                        if (p.obrigatoria) {
-                                            req++
-                                            const resp = respostas[f.id]?.[p.id]
-                                            if (resp && ((p.tipo === "ESCALA" && resp.nota >= 1 && resp.nota <= 5) || (p.tipo === "TEXTO_ABERTO" && resp.texto?.trim() !== ""))) {
-                                                done++
-                                            }
-                                        }
-                                    })
-                                    const perc = req > 0 ? Math.round((done/req)*100) : 100
-                                    
-                                    return (
-                                        <th key={f.id} className="p-6 min-w-45 text-center align-bottom border-l border-gray-200 bg-gray-50">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-1.5 h-16 bg-gray-200 rounded-full relative overflow-hidden">
-                                                    <div className="absolute bottom-0 left-0 w-full bg-[#fad519] transition-all duration-300" style={{ height: `${perc}%` }}></div>
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-sm">{f.avaliado.nome}</span>
-                                                    <span className="text-xs text-[#fad519] font-bold mt-1">{perc}%</span>
-                                                </div>
-                                            </div>
-                                        </th>
-                                    )
-                                })}
+                                {feedbacks.map(f => (
+                                    <th key={f.id} className="p-4 min-w-45 text-center align-middle border-l border-gray-200 bg-gray-50">
+                                        <span className="font-bold text-sm">{f.avaliado.nome}</span>
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>
@@ -237,7 +199,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                     <tr className="bg-gray-50/50">
                                         <td className="p-4 border-b border-gray-200" colSpan={feedbacks.length + 1}>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-1 h-6 bg-[#fad519] rounded-full"></div>
+                                                <div className="w-1 h-6 bg-[#fad419] rounded-full"></div>
                                                 <h3 className="font-bold text-base tracking-tight text-gray-700">{dimensao.titulo}</h3>
                                             </div>
                                         </td>
@@ -248,7 +210,6 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                         <tr key={pergunta.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                                             <td className="sticky left-0 p-6 bg-white border-r border-gray-200 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                                                 <p className="font-medium text-sm text-gray-900">{pergunta.texto}</p>
-                                                {pergunta.obrigatoria && <p className="text-xs text-red-500 mt-1 font-semibold">* Obrigatória</p>}
                                             </td>
                                             
                                             {feedbacks.map(f => {
@@ -259,8 +220,8 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                                     <td key={f.id} className="p-6 text-center border-l border-gray-200 align-middle">
                                                         {pergunta.tipo === "ESCALA" ? (
                                                             <input 
-                                                                className={`w-14 h-14 rounded-lg bg-gray-50 border text-center font-bold text-lg focus:ring-0 focus:outline-none focus:border-[#fad519] transition-all
-                                                                    ${isFilled ? 'border-[#fad519] shadow-[0_0_0_2px_rgba(250,213,25,0.2)]' : 'border-gray-200'}
+                                                                className={`w-14 h-14 rounded-lg bg-gray-50 border text-center font-bold text-lg focus:ring-0 focus:outline-none focus:border-[#fad419] transition-all
+                                                                    ${isFilled ? 'border-[#fad419] shadow-[0_0_0_2px_rgba(250,213,25,0.2)]' : 'border-gray-200'}
                                                                 `}
                                                                 type="number"
                                                                 min="1"
@@ -271,8 +232,8 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                                             />
                                                         ) : (
                                                             <textarea 
-                                                                className={`w-full min-w-50 h-20 p-3 rounded-lg bg-gray-50 border text-sm resize-none focus:ring-0 focus:outline-none focus:border-[#fad519] transition-all
-                                                                    ${isFilled ? 'border-[#fad519]' : 'border-gray-200'}
+                                                                className={`w-full min-w-50 h-20 p-3 rounded-lg bg-gray-50 border text-sm resize-none focus:ring-0 focus:outline-none focus:border-[#fad419] transition-all
+                                                                    ${isFilled ? 'border-[#fad419]' : 'border-gray-200'}
                                                                 `}
                                                                 placeholder="Escreva aqui..."
                                                                 value={resp?.texto || ''}
@@ -299,7 +260,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                         <span className="text-xl font-black">{progresso}%</span>
                     </div>
                     <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#fad519] rounded-full transition-all duration-500" style={{ width: `${progresso}%` }}></div>
+                        <div className="h-full bg-[#fad419] rounded-full transition-all duration-500" style={{ width: `${progresso}%` }}></div>
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
