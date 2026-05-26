@@ -156,7 +156,8 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
     const dimensoes = avaliacao.dimensoes
 
     return (
-        <div className="flex-1 flex flex-col items-center py-10 px-6 max-w-350 mx-auto w-full overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex flex-col items-center py-10 px-6 max-w-350 mx-auto w-full">
             <CustomAlert 
                 isOpen={alert.isOpen}
                 type={alert.type}
@@ -197,12 +198,15 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                 <React.Fragment key={dimensao.id}>
                                     {/* Dimension Header */}
                                     <tr className="bg-gray-50/50">
-                                        <td className="p-4 border-b border-gray-200" colSpan={feedbacks.length + 1}>
+                                        <td className="sticky left-0 p-4 border-b border-gray-200 bg-gray-50/50 z-10">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-1 h-6 bg-[#fad419] rounded-full"></div>
                                                 <h3 className="font-bold text-base tracking-tight text-gray-700">{dimensao.titulo}</h3>
                                             </div>
                                         </td>
+                                        {feedbacks.map(f => (
+                                            <td key={f.id} className="border-b border-gray-200 bg-gray-50/50" />
+                                        ))}
                                     </tr>
                                     
                                     {/* Dimension Questions */}
@@ -251,6 +255,8 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                     </table>
                 </div>
             </div>
+
+        </div>
 
             {/* Sticky Footer Progress Bar */}
             <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-4 px-10 flex items-center justify-between shadow-2xl z-50">
