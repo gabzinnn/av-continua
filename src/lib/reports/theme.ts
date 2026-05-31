@@ -10,8 +10,10 @@ Font.register({
   family: "Montserrat",
   fonts: [
     { src: "/fonts/Montserrat-Regular.ttf", fontWeight: 400 },
+    { src: "/fonts/Montserrat-Regular.ttf", fontWeight: 400, fontStyle: "italic" },
     { src: "/fonts/Montserrat-Medium.ttf", fontWeight: 500 },
     { src: "/fonts/Montserrat-Bold.ttf", fontWeight: 700 },
+    { src: "/fonts/Montserrat-Bold.ttf", fontWeight: 700, fontStyle: "italic" },
   ],
 });
 
