@@ -1365,22 +1365,79 @@ export async function getRelatorioAV360XlsxData(avaliacaoId: number): Promise<AV
             const pontosFortes: string[] = [];
             const pontosDesenvolver: string[] = [];
 
+            const SPLIT_REGEX = /^(?:pontos?\s+fortes?:\s*)?([\s\S]+?)\s+(?:desenvolvimento|desenvolver|pontos?\s+a\s+desenvolver|pontos?\s+de\s+desenvolvimento):\s*([\s\S]+)$/i;
+
+            function processTextResponse(texto: string) {
+                const trimmed = texto.trim();
+                const match = trimmed.match(SPLIT_REGEX);
+                if (match) {
+                    const f = match[1].trim();
+                    const d = match[2].trim();
+                    if (f) pontosFortes.push(f.charAt(0).toUpperCase() + f.slice(1));
+                    if (d) pontosDesenvolver.push(d.charAt(0).toUpperCase() + d.slice(1));
+                } else {
+                    if (/^(?:desenvolvimento|desenvolver|pontos?\s+a\s+desenvolver|pontos?\s+de\s+desenvolvimento):\s*/i.test(trimmed)) {
+                        const dClean = trimmed.replace(/^(?:desenvolvimento|desenvolver|pontos?\s+a\s+desenvolver|pontos?\s+de\s+desenvolvimento):\s*/i, '').trim();
+                        if (dClean) pontosDesenvolver.push(dClean.charAt(0).toUpperCase() + dClean.slice(1));
+                    } else {
+                        const fClean = trimmed.replace(/^(?:pontos?\s+fortes?:\s*)/i, '').trim();
+                        if (fClean) pontosFortes.push(fClean.charAt(0).toUpperCase() + fClean.slice(1));
+                    }
+                }
+            }
+
             if (textoAbertoIds.length >= 2) {
                 const firstId = textoAbertoIds[0];
                 const secondId = textoAbertoIds[1];
                 const respostasFortes = textosPorPergunta.get(firstId) || [];
                 for (const r of respostasFortes) {
-                    if (r.texto && r.texto.trim()) pontosFortes.push(r.texto.trim());
+                    if (r.texto && r.texto.trim()) {
+                        processTextResponse(r.texto);
+                    }
                 }
                 const respostasDesenvolver = textosPorPergunta.get(secondId) || [];
                 for (const r of respostasDesenvolver) {
-                    if (r.texto && r.texto.trim()) pontosDesenvolver.push(r.texto.trim());
+                    if (r.texto && r.texto.trim()) {
+                        const trimmed = r.texto.trim();
+                        const match = trimmed.match(SPLIT_REGEX);
+                        if (match) {
+                            const f = match[1].trim();
+                            const d = match[2].trim();
+                            if (f) pontosFortes.push(f.charAt(0).toUpperCase() + f.slice(1));
+                            if (d) pontosDesenvolver.push(d.charAt(0).toUpperCase() + d.slice(1));
+                        } else {
+                            const dClean = trimmed.replace(/^(?:desenvolvimento|desenvolver|pontos?\s+a\s+desenvolver|pontos?\s+de\s+desenvolvimento):\s*/i, '').trim();
+                            if (dClean) pontosDesenvolver.push(dClean.charAt(0).toUpperCase() + dClean.slice(1));
+                        }
+                    }
                 }
             } else if (textoAbertoIds.length === 1) {
                 const respostas = textosPorPergunta.get(textoAbertoIds[0]) || [];
                 for (const r of respostas) {
-                    if (r.texto && r.texto.trim()) pontosFortes.push(r.texto.trim());
+                    if (r.texto && r.texto.trim()) {
+                        processTextResponse(r.texto);
+                    }
                 }
+            }
+
+            function groupAndFormatFeedback(items: string[]): string[] {
+                const counts = new Map<string, number>();
+                for (const item of items) {
+                    const normalized = item.trim();
+                    if (!normalized) continue;
+                    let foundKey = normalized;
+                    for (const key of counts.keys()) {
+                        if (key.toLowerCase() === normalized.toLowerCase()) {
+                            foundKey = key;
+                            break;
+                        }
+                    }
+                    counts.set(foundKey, (counts.get(foundKey) || 0) + 1);
+                }
+                const formatted = Array.from(counts.entries()).map(([text, count]) => {
+                    return count > 1 ? `${text} (${count}x)` : text;
+                });
+                return formatted.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
             }
 
             membros.push({
@@ -1391,8 +1448,8 @@ export async function getRelatorioAV360XlsxData(avaliacaoId: number): Promise<AV
                 scoreGeral,
                 numRespondentes,
                 dimensoes,
-                pontosFortes,
-                pontosDesenvolver
+                pontosFortes: groupAndFormatFeedback(pontosFortes),
+                pontosDesenvolver: groupAndFormatFeedback(pontosDesenvolver)
             });
         }
 

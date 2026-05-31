@@ -32,66 +32,29 @@ const THIN_BORDER: Partial<ExcelJS.Borders> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function lerpColor(c1: [number, number, number], c2: [number, number, number], t: number): [number, number, number] {
-    return [
-        Math.round(c1[0] + (c2[0] - c1[0]) * t),
-        Math.round(c1[1] + (c2[1] - c1[1]) * t),
-        Math.round(c1[2] + (c2[2] - c1[2]) * t),
-    ];
-}
-
-function rgbToArgb(r: number, g: number, b: number): string {
-    return 'FF' + [r, g, b].map(v => v.toString(16).padStart(2, '0').toUpperCase()).join('');
-}
-
-// Média: 3-point gradient min=2 → mid=6 → max=10
-const MEDIA_MIN: [number, number, number] = [255, 0, 0];      // vermelho
-const MEDIA_MID: [number, number, number] = [255, 255, 0];    // amarelo
-const MEDIA_MAX: [number, number, number] = [46, 176, 78];     // verde #2EB04E
-
 function mediaColor(value: number): string {
-    const clamped = Math.max(2, Math.min(10, value));
-    if (clamped <= 6) {
-        const t = (clamped - 2) / 4; // 0..1 entre min e mid
-        const [r, g, b] = lerpColor(MEDIA_MIN, MEDIA_MID, t);
-        return rgbToArgb(r, g, b);
-    } else {
-        const t = (clamped - 6) / 4; // 0..1 entre mid e max
-        const [r, g, b] = lerpColor(MEDIA_MID, MEDIA_MAX, t);
-        return rgbToArgb(r, g, b);
-    }
+    if (value <= 5.50) return 'FFFF0000'; // Vermelho (#ff0000)
+    if (value <= 6.00) return 'FFE36C09'; // Laranja (#e36c09)
+    if (value <= 6.50) return 'FFF1C232'; // Amarelo (#f1c232)
+    if (value <= 7.00) return 'FFAFD7A2'; // Verde Claro (#afd7a2)
+    if (value <= 8.00) return 'FF84DA5E'; // Verde Médio (#84da5e)
+    return 'FF43BC00';                   // Verde Escuro (#43bc00)
 }
 
-/** Font color for Média cells — dark text on light backgrounds, white on dark. */
+/** Font color for Média cells — always white. */
 function mediaFg(value: number): string {
-    return value >= 4.0 ? 'FF000000' : 'FFFFFFFF';
+    return 'FFFFFFFF';
 }
-
-const DESVIO_MIN: [number, number, number] = [0, 0, 0];        // preto
-const DESVIO_MAX: [number, number, number] = [112, 48, 160];   // roxo #7030A0
 
 function getDesvioColor(desvio: number): string {
-    const clamped = Math.max(0, Math.min(1.8, desvio));
-    const t = clamped / 1.8;
-    const [r, g, b] = lerpColor(DESVIO_MIN, DESVIO_MAX, t);
-    return rgbToArgb(r, g, b);
+    if (desvio < 0.95) return 'FF381850'; // Roxo Escuro (#381850)
+    return 'FF7030A0';                    // Roxo Claro (#7030a0)
 }
 
-const DISC_NEG: [number, number, number] = [63, 113, 173];     // azul #3F71AD
-const DISC_MID: [number, number, number] = [0, 0, 0];           // preto
-const DISC_POS: [number, number, number] = [255, 0, 0];         // vermelho
-
 function getDiscColor(value: number): string {
-    const clamped = Math.max(-1.5, Math.min(1.5, value));
-    if (clamped <= 0) {
-        const t = (clamped + 1.5) / 1.5; // 0..1 (azul→preto)
-        const [r, g, b] = lerpColor(DISC_NEG, DISC_MID, t);
-        return rgbToArgb(r, g, b);
-    } else {
-        const t = clamped / 1.5; // 0..1 (preto→vermelho)
-        const [r, g, b] = lerpColor(DISC_MID, DISC_POS, t);
-        return rgbToArgb(r, g, b);
-    }
+    if (value < -0.80) return 'FFFF0000'; // Vermelho (#ff0000)
+    if (value <= 0.80) return 'FF000000'; // Preto (#000000)
+    return 'FF3D85C6';                    // Azul (#3d85c6)
 }
 
 function scoreColor(value: number): { bg: string; fg: string } {
