@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getRelatorio360Geral, getRelatorio360PorAvaliado, salvarRelatorioAV360, getRelatorioAV360 } from "@/src/actions/avaliacao360Actions"
+import { getRelatorio360Geral, getRelatorio360PorAvaliado, salvarRelatorioAV360, getRelatorioAV360, gerarRelatorioAV360Xlsx } from "@/src/actions/avaliacao360Actions"
 import { Card } from "../../Card"
 import { Button } from "../../Button"
 import { ArrowLeft, Download, Users, BarChart3, TrendingUp, Star, Edit3, X, Save } from "lucide-react"
@@ -19,6 +19,7 @@ export function Relatorio360Content({ id }: { id: number }) {
     const [membroSelecionado, setMembroSelecionado] = useState<number | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isGenerating, setIsGenerating] = useState(false)
+    const [isGeneratingXlsx, setIsGeneratingXlsx] = useState(false)
 
     // Edit modal state
     const [editModalOpen, setEditModalOpen] = useState(false)
@@ -67,6 +68,29 @@ export function Relatorio360Content({ id }: { id: number }) {
             alert(err instanceof Error ? err.message : "Erro inesperado ao gerar o PDF. Tente novamente.")
         } finally {
             setIsGenerating(false)
+        }
+    }
+
+    const handleDownloadXlsx = async () => {
+        if (isGeneratingXlsx) return
+        setIsGeneratingXlsx(true)
+        try {
+            const result = await gerarRelatorioAV360Xlsx(id)
+            if (!result) throw new Error("Avaliação 360 não encontrada ou sem dados suficientes.")
+            const blob = new Blob([new Uint8Array(result.bytes)], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `av360_${result.nome.replace(/\s+/g, "_")}.xlsx`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error(err)
+            alert(err instanceof Error ? err.message : "Erro ao gerar planilha. Tente novamente.")
+        } finally {
+            setIsGeneratingXlsx(false)
         }
     }
 
@@ -183,6 +207,9 @@ export function Relatorio360Content({ id }: { id: number }) {
                         iconPosition="left"
                     >
                         Editar relatório
+                    </Button>
+                    <Button variant="secondary" onClick={handleDownloadXlsx} isLoading={isGeneratingXlsx} icon={<Download size={18} />} iconPosition="left">
+                        Baixar Planilha
                     </Button>
                     <Button onClick={handleDownloadPDF} isLoading={isGenerating} icon={<Download size={18} />} iconPosition="left" className="bg-[#fad419] hover:bg-[#eac416] text-[#1c1a0d]">
                         Exportar PDF

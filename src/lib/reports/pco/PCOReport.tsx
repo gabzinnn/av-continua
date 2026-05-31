@@ -1,8 +1,10 @@
-﻿import React from "react";
+import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { COLORS, FONT, baseStyles } from "../theme";
 import { computeStdDev } from "../utils/distribution";
 import { Cover } from "../components/Cover";
+import { IndicePage } from "../components/IndicePage";
+import { ContextoPage } from "../components/ContextoPage";
 import { MethodologyPage } from "../components/MethodologyPage";
 import { SectionTitle } from "../components/SectionTitle";
 import { ScaleTable } from "../components/ScaleTable";
@@ -10,6 +12,11 @@ import { StackedBarChart } from "../components/StackedBarChart";
 import { InsightSentence } from "../components/InsightSentence";
 import { InsightBadge } from "../components/InsightBadge";
 import { CalloutBox } from "../components/CalloutBox";
+import { DonutChart } from "../components/DonutChart";
+import type { DonutSegment } from "../components/DonutChart";
+import { NPSChart } from "../components/NPSChart";
+import { ConclusaoCallout } from "../components/ConclusaoCallout";
+import { LogoPage } from "../components/LogoPage";
 import type { PCOReportData, PerguntaRelatorio, SecaoRelatorio } from "./types";
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
@@ -21,9 +28,10 @@ const styles = StyleSheet.create({
   // ResumoPage
   resumoHeading: {
     fontFamily: FONT.display,
-    fontSize: 36,
+    fontSize: 48,
     color: COLORS.accent,
-    marginBottom: 12,
+    textAlign: "center",
+    marginBottom: 20,
   },
   introText: {
     fontFamily: FONT.body,
@@ -35,35 +43,37 @@ const styles = StyleSheet.create({
   // PerguntaDetailPage
   breadcrumb: {
     fontFamily: FONT.body,
-    fontSize: 8,
+    fontSize: 12,
     color: COLORS.muted,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   questionText: {
-    fontFamily: FONT.body,
-    fontSize: 14,
-    fontWeight: 700,
+    fontFamily: FONT.display,
+    fontSize: 18,
     color: COLORS.text,
     lineHeight: 1.4,
+    textAlign: "justify",
     marginBottom: 16,
   },
   legendRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     marginBottom: 12,
   },
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginRight: 14,
+    marginRight: 16,
+    marginBottom: 4,
   },
   legendSquare: {
     width: 10,
     height: 10,
-    marginRight: 4,
+    marginRight: 5,
   },
   legendLabel: {
     fontFamily: FONT.body,
-    fontSize: 8,
+    fontSize: 9,
     color: COLORS.muted,
   },
   barsSection: {
@@ -88,19 +98,6 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
     marginBottom: 4,
   },
-  // ConclusaoPage
-  conclusaoHeading: {
-    fontFamily: FONT.display,
-    fontSize: 36,
-    color: COLORS.accent,
-    marginBottom: 20,
-  },
-  conclusaoText: {
-    fontFamily: FONT.body,
-    fontSize: 12,
-    color: COLORS.text,
-    lineHeight: 1.6,
-  },
 });
 
 // ─── Legend constants ─────────────────────────────────────────────────────────
@@ -111,6 +108,31 @@ const LEGEND_ITEMS = [
   { color: COLORS.disagreePartial, label: "Discordo parcialmente" },
   { color: COLORS.disagree, label: "Discordo" },
 ];
+
+// ─── Donut colors ─────────────────────────────────────────────────────────────
+
+const DONUT_COLORS = [COLORS.accent, "#555555", "#888888", "#b0b0b0", "#222222"];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function isNPSQuestion(p: PerguntaRelatorio): boolean {
+  return (
+    p.tipo === "MULTIPLA_ESCOLHA" &&
+    (p.texto.toLowerCase().includes("recomendaria") ||
+      p.texto.toLowerCase().includes("0 a 10"))
+  );
+}
+
+function toDonutSegments(
+  donutData: NonNullable<PerguntaRelatorio["donutData"]>
+): DonutSegment[] {
+  return donutData.map((item, i) => ({
+    label: item.texto,
+    count: item.count,
+    percent: item.percent,
+    color: DONUT_COLORS[i % DONUT_COLORS.length],
+  }));
+}
 
 // ─── Sub-pages ────────────────────────────────────────────────────────────────
 
@@ -164,7 +186,7 @@ function PerguntaDetailPage({
 
   return (
     <Page size="A4" style={styles.page}>
-      <Text style={styles.breadcrumb}>{secaoTitulo.toUpperCase()}</Text>
+      <Text style={styles.breadcrumb}>{secaoTitulo}</Text>
 
       <View>
         <Text style={styles.questionText}>{pergunta.texto}</Text>
@@ -233,17 +255,36 @@ function PerguntaDetailPage({
   );
 }
 
-interface ConclusaoPageProps {
-  texto: string;
+// ─── Page number estimation ───────────────────────────────────────────────────
+
+interface IndiceItem {
+  titulo: string;
+  paginaInicio: number;
+  subitems?: Array<{ titulo: string; paginaInicio: number }>;
 }
 
-function ConclusaoPage({ texto }: ConclusaoPageProps) {
-  return (
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.conclusaoHeading}>{"CONCLUSÃO"}</Text>
-      <Text style={styles.conclusaoText}>{texto}</Text>
-    </Page>
-  );
+function buildIndiceItems(secoes: SecaoRelatorio[]): IndiceItem[] {
+  // Fixed pages: Cover=1, Indice=2, Contexto=3, Metodologia=4
+  let nextPage = 5;
+
+  return secoes.map((secao) => {
+    const perguntasEscala = secao.perguntas.filter((p) => p.tipo === "ESCALA");
+    const resumoPage = nextPage;
+
+    // ResumoPage + one page per ESCALA question
+    nextPage += 1 + perguntasEscala.length;
+
+    const subitems = perguntasEscala.map((p, i) => ({
+      titulo: p.texto.slice(0, 50),
+      paginaInicio: resumoPage + 1 + i,
+    }));
+
+    return {
+      titulo: secao.titulo,
+      paginaInicio: resumoPage,
+      subitems: subitems.length > 0 ? subitems : undefined,
+    };
+  });
 }
 
 // ─── Main Document ────────────────────────────────────────────────────────────
@@ -253,35 +294,98 @@ interface PCOReportProps {
 }
 
 export function PCOReport({ data }: PCOReportProps) {
+  // All sections except "Identificação" (which becomes Contexto)
+  const secoesConteudo = data.secoes.filter(
+    (s) => s.titulo !== "Identificação"
+  );
+
+  const indiceItems = buildIndiceItems(secoesConteudo);
+
   return (
     <Document>
+      {/* 1. Cover */}
       <Cover titulo="PCO" subtitulo={data.meta.capaTitulo ?? data.nome} />
+
+      {/* 2. Index */}
+      <IndicePage items={indiceItems} />
+
+      {/* 3. Contexto */}
+      <ContextoPage
+        objetivo={data.meta.objetivo}
+        contexto={data.meta.contexto}
+      />
+
+      {/* 4. Methodology */}
       <MethodologyPage />
 
-      {data.secoes.map((secao) => {
+      {/* 5. For each section: Resumo + ESCALA details + MULTIPLA_ESCOLHA donuts + NPS */}
+      {secoesConteudo.map((secao) => {
         const perguntasEscala = secao.perguntas.filter(
           (p) => p.tipo === "ESCALA"
         );
-        return [
-          <ResumoPage
-            key={`resumo-${secao.id}`}
-            secao={secao}
-            grupos={data.grupos}
-          />,
-          ...perguntasEscala.map((p) => (
-            <PerguntaDetailPage
-              key={`pergunta-${p.id}`}
-              pergunta={p}
-              grupos={data.grupos}
-              secaoTitulo={secao.titulo}
-            />
-          )),
-        ];
+        const perguntasMultipla = secao.perguntas.filter(
+          (p) => p.tipo === "MULTIPLA_ESCOLHA"
+        );
+        const perguntasDonut = perguntasMultipla.filter(
+          (p) => !isNPSQuestion(p)
+        );
+        const perguntaNPS = perguntasMultipla.find((p) => isNPSQuestion(p));
+
+        return (
+          <React.Fragment key={`secao-${secao.id}`}>
+            {/* a. ResumoPage */}
+            <ResumoPage secao={secao} grupos={data.grupos} />
+
+            {/* b. PerguntaDetailPage for each ESCALA question */}
+            {perguntasEscala.map((p) => (
+              <PerguntaDetailPage
+                key={`pergunta-${p.id}`}
+                pergunta={p}
+                grupos={data.grupos}
+                secaoTitulo={secao.titulo}
+              />
+            ))}
+
+            {/* c. DonutPage for each non-NPS MULTIPLA_ESCOLHA question */}
+            {perguntasDonut.map((p) => (
+              <Page key={`donut-${p.id}`} size="A4" style={styles.page}>
+                <Text style={styles.breadcrumb}>{secao.titulo}</Text>
+                <Text style={styles.questionText}>{p.texto}</Text>
+                {p.donutData && p.donutData.length > 0 ? (
+                  <DonutChart segments={toDonutSegments(p.donutData)} />
+                ) : null}
+              </Page>
+            ))}
+
+            {/* d. NPSPage for the NPS question */}
+            {perguntaNPS && perguntaNPS.npsData ? (
+              <Page key={`nps-${perguntaNPS.id}`} size="A4" style={styles.page}>
+                <Text style={styles.breadcrumb}>{secao.titulo}</Text>
+                <Text style={styles.questionText}>{perguntaNPS.texto}</Text>
+                <NPSChart
+                  npsData={perguntaNPS.npsData}
+                  cicloAtual={data.nome}
+                  historico={data.meta.npsHistorico ?? []}
+                />
+              </Page>
+            ) : null}
+
+            {/* e. ConclusaoCallout pages for TEXTO_LIVRE questions */}
+            {secao.perguntas
+              .filter((p) => p.tipo === "TEXTO_LIVRE")
+              .map((p) => (
+                <Page key={`textol-${p.id}`} size="A4" style={styles.page}>
+                  <Text style={styles.breadcrumb}>{secao.titulo}</Text>
+                  <Text style={styles.questionText}>{p.texto}</Text>
+                  <ConclusaoCallout items={p.agrupamentos ?? []} />
+                </Page>
+              ))}
+          </React.Fragment>
+        );
       })}
 
-      {data.meta.conclusao ? (
-        <ConclusaoPage texto={data.meta.conclusao} />
-      ) : null}
+      {/* 6. LogoPage */}
+      <LogoPage />
     </Document>
   );
 }

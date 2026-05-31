@@ -21,6 +21,7 @@
     "apexcharts": "^5.3.6",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.8.0",
+    "exceljs": "^4.4.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.0.0",
     "katex": "^0.16.28",

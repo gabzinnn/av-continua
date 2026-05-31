@@ -629,6 +629,7 @@ model RelatorioPCOMeta {
   objetivo    String?
   contexto    Json?
   conclusao   String?
+  npsHistorico Json?
   updatedAt   DateTime @updatedAt
 
   pco PCO @relation(fields: [pcoId], references: [id], onDelete: Cascade)

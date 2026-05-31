@@ -1,5 +1,6 @@
 import { Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { COLORS, FONT, baseStyles } from "../theme";
+import { Logo } from "./Logo";
 
 interface CoverProps {
   titulo: string;
@@ -19,22 +20,22 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontFamily: FONT.display,
-    fontSize: 80,
+    fontSize: 120,
     color: COLORS.text,
     lineHeight: 1,
   },
-  yellowDot: {
-    width: 18,
-    height: 18,
+  yellowSquare: {
+    width: 28,
+    height: 28,
     backgroundColor: COLORS.accent,
-    marginLeft: 6,
-    marginBottom: 14,
+    marginLeft: 8,
+    marginBottom: 18,
   },
   subtitle: {
-    fontFamily: FONT.body,
-    fontSize: 32,
+    fontFamily: FONT.display,
+    fontSize: 55,
     color: "#888888",
-    marginTop: 16,
+    marginTop: 20,
   },
   bottomRight: {
     position: "absolute",
@@ -43,34 +44,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  logoCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: COLORS.accent,
-    marginRight: 8,
-  },
-  logoText: {
-    fontFamily: FONT.body,
-    fontSize: 8,
-    color: "#9ca3af",
-    lineHeight: 1.4,
-  },
 });
 
 export function Cover({ titulo, subtitulo }: CoverProps) {
   return (
     <Page size="A4" style={styles.page}>
       <View style={styles.titleRow}>
-        <Text style={styles.titleText}>{titulo}</Text>
-        <View style={styles.yellowDot} />
+        <Text style={styles.titleText}>{titulo}.</Text>
+        <View style={styles.yellowSquare} />
       </View>
       <Text style={styles.subtitle}>{subtitulo}</Text>
 
       <View style={styles.bottomRight}>
-        <View style={styles.logoCircle} />
-        <Text style={styles.logoText}>{"UFRJ\nCONSULTING\nCLUB"}</Text>
+        <Logo size={40} />
       </View>
     </Page>
   );

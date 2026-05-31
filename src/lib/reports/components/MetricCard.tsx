@@ -9,20 +9,20 @@ interface MetricCardProps {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 6,
-    padding: 10,
+    borderRadius: 4,
+    padding: 12,
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 64,
+    minWidth: 90,
   },
   value: {
     fontFamily: FONT.display,
-    fontSize: 22,
+    fontSize: 36,
     lineHeight: 1.1,
   },
   label: {
     fontFamily: FONT.body,
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: 700,
     textTransform: "uppercase",
     marginTop: 3,

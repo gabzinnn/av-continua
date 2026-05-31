@@ -1,6 +1,5 @@
 import { View, Text, StyleSheet } from "@react-pdf/renderer";
 import { COLORS, FONT } from "../theme";
-import { mediaToColor } from "../utils/colorScale";
 
 interface ScaleTableProps {
   grupos: string[];
@@ -10,45 +9,58 @@ interface ScaleTableProps {
   }>;
 }
 
-const COL_WIDTH = 52;
+const COL_WIDTH = 56;
 const QUESTION_COL_FLEX = 1;
+
+function valueColor(val: number): string {
+  if (val >= 1.0) return "#22c55e";
+  if (val >= 0) return COLORS.accent;
+  return "#ef4444";
+}
+
+function formatValue(val: number): string {
+  return val.toFixed(3).replace(".", ",").replace(/,?0+$/, "").replace(/,$/, "");
+}
 
 const styles = StyleSheet.create({
   table: {
     width: "100%",
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   headerRow: {
     flexDirection: "row",
-    backgroundColor: COLORS.surface,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    backgroundColor: "#2a2a2a",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   headerQuestionCell: {
     flex: QUESTION_COL_FLEX,
     fontFamily: FONT.body,
-    fontSize: 8,
-    color: COLORS.muted,
+    fontSize: 9,
+    color: COLORS.accent,
     fontWeight: 700,
+    textAlign: "center",
   },
   headerGroupCell: {
     width: COL_WIDTH,
     fontFamily: FONT.body,
-    fontSize: 8,
-    color: COLORS.muted,
+    fontSize: 9,
+    color: COLORS.accent,
     fontWeight: 700,
     textAlign: "center",
   },
   row: {
     flexDirection: "row",
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   rowAlt: {
-    backgroundColor: COLORS.surfaceAlt,
+    backgroundColor: "#2a2a2a",
   },
   questionCell: {
     flex: QUESTION_COL_FLEX,
@@ -56,24 +68,24 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: COLORS.text,
     paddingRight: 8,
+    textAlign: "center",
   },
   groupCell: {
     width: COL_WIDTH,
     alignItems: "center",
     justifyContent: "center",
-  },
-  mediaBadge: {
-    width: 36,
-    height: 18,
-    borderRadius: 3,
-    alignItems: "center",
-    justifyContent: "center",
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.border,
   },
   mediaText: {
     fontFamily: FONT.body,
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 700,
-    color: "#000000",
+  },
+  mutedText: {
+    fontFamily: FONT.body,
+    fontSize: 10,
+    color: COLORS.muted,
   },
 });
 
@@ -82,7 +94,7 @@ export function ScaleTable({ grupos, rows }: ScaleTableProps) {
     <View style={styles.table}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <Text style={styles.headerQuestionCell}>AFIRMATIVA</Text>
+        <Text style={styles.headerQuestionCell}>Perguntas</Text>
         {grupos.map((g) => (
           <Text key={g} style={styles.headerGroupCell}>
             {g}
@@ -96,19 +108,14 @@ export function ScaleTable({ grupos, rows }: ScaleTableProps) {
           <Text style={styles.questionCell}>{row.texto}</Text>
           {grupos.map((g) => {
             const val = row.mediaPorGrupo[g];
-            const color = val !== undefined ? mediaToColor(val) : COLORS.border;
             return (
               <View key={g} style={styles.groupCell}>
                 {val !== undefined ? (
-                  <View style={[styles.mediaBadge, { backgroundColor: color }]}>
-                    <Text style={styles.mediaText}>
-                      {val >= 0 ? `+${val.toFixed(1)}` : val.toFixed(1)}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={[styles.mediaText, { color: COLORS.muted }]}>
-                    —
+                  <Text style={[styles.mediaText, { color: valueColor(val) }]}>
+                    {formatValue(val)}
                   </Text>
+                ) : (
+                  <Text style={styles.mutedText}>—</Text>
                 )}
               </View>
             );

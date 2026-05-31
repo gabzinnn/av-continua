@@ -3,7 +3,10 @@
 import prisma from "@/src/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { PCO, PerguntaPCO, TipoPerguntaPCO } from "../generated/prisma/client"
-import type { PCOReportData, SecaoRelatorio, PerguntaRelatorio } from "@/src/lib/reports/pco/types"
+import type { PCOReportData, SecaoRelatorio, PerguntaRelatorio, DonutItem } from "@/src/lib/reports/pco/types"
+import { extractNPSFromDistribuicao } from "@/src/lib/reports/utils/nps"
+import { computeBreakdownAreas, computeFaixasPeriodo, computeTotalRespondentes } from "@/src/lib/reports/utils/contexto"
+import { agruparTextos } from "@/src/lib/reports/utils/agrupamento"
 
 // ==========================================
 // TIPOS
@@ -970,6 +973,7 @@ export interface SalvarRelatorioPayload {
         objetivo?: string
         conclusao?: string
         contexto?: any
+        npsHistorico?: Array<{ ciclo: string; nps: number }>
     }
     secoes?: Array<{
         secaoId: number
@@ -1008,35 +1012,159 @@ export async function getRelatorioPCO(pcoId: number): Promise<PCOReportData | nu
     const totalParticipantes = detalhes.totalParticipantes
     const taxaResposta = totalParticipantes > 0 ? Math.round((totalRespostas / totalParticipantes) * 100) : 0
 
-    const secoes: SecaoRelatorio[] = detalhes.secoes.map(s => {
-        const sr = secaoRelMap.get(s.id)
-        const perguntas: PerguntaRelatorio[] = s.perguntas.map(p => {
-            const pr = perguntaRelMap.get(p.id)
+    // ── 1. Separate the "Identificação" section ──────────────────────────────
+    const identificacaoSecao = detalhes.secoes.find(
+        s => s.titulo === "Identificação" || s.ordem === 1
+    )
+
+    // Helper to find a pergunta by text substring within the Identificação section
+    const findIdentPergunta = (substring: string) =>
+        identificacaoSecao?.perguntas.find(p =>
+            p.texto.toLowerCase().includes(substring.toLowerCase())
+        )
+
+    // Compute contexto from Identificação section (unless coord override exists)
+    let contexto: PCOReportData["meta"]["contexto"] = meta?.contexto ?? null
+    if (!contexto && identificacaoSecao) {
+        const areaPergunta = findIdentPergunta("área de alocação") ?? findIdentPergunta("area de alocacao")
+        const periodoPergunta = findIdentPergunta("período atual") ?? findIdentPergunta("periodo atual")
+
+        if (areaPergunta) {
+            contexto = {
+                totalMembros: computeTotalRespondentes(areaPergunta.distribuicaoOpcoes),
+                breakdownAreas: computeBreakdownAreas(areaPergunta.distribuicaoOpcoes),
+                faixas: periodoPergunta
+                    ? computeFaixasPeriodo(periodoPergunta.distribuicaoOpcoes)
+                    : [],
+            }
+        }
+    }
+
+    // ── 2. Build secoes (skip Identificação) ────────────────────────────────
+    const isNPSQuestion = (texto: string, tipo: string) =>
+        tipo === "MULTIPLA_ESCOLHA" &&
+        (texto.toLowerCase().includes("recomendaria") ||
+            texto.toLowerCase().includes("0 a 10"))
+
+    const secoes: SecaoRelatorio[] = detalhes.secoes
+        .filter(s => s.titulo !== "Identificação" && s.ordem !== 1)
+        .map(s => {
+            const sr = secaoRelMap.get(s.id)
+            const perguntas: PerguntaRelatorio[] = s.perguntas.map(p => {
+                const pr = perguntaRelMap.get(p.id)
+                const tipo = p.tipo as "ESCALA" | "MULTIPLA_ESCOLHA" | "TEXTO_LIVRE"
+
+                // ── 2a. NPS ──
+                let npsData: PerguntaRelatorio["npsData"] = null
+                if (isNPSQuestion(p.texto, tipo)) {
+                    npsData = extractNPSFromDistribuicao(p.distribuicaoOpcoes)
+                }
+
+                // ── 2b. Donut (MULTIPLA_ESCOLHA that is NOT the NPS question) ──
+                let donutData: DonutItem[] | null = null
+                if (tipo === "MULTIPLA_ESCOLHA" && !isNPSQuestion(p.texto, tipo)) {
+                    const total = p.distribuicaoOpcoes.reduce((acc, o) => acc + o.count, 0)
+                    donutData = p.distribuicaoOpcoes
+                        .filter(o => o.count > 0)
+                        .map(o => ({
+                            texto: o.texto,
+                            count: o.count,
+                            percent: total > 0 ? (o.count / total) * 100 : 0,
+                        }))
+                }
+
+                // ── 2c. Agrupamentos (TEXTO_LIVRE) ──
+                let agrupamentos: PerguntaRelatorio["agrupamentos"] = pr?.agrupamentos ?? null
+                if (tipo === "TEXTO_LIVRE" && !agrupamentos && p.respostasTexto.length > 0) {
+                    agrupamentos = agruparTextos(p.respostasTexto)
+                }
+
+                return {
+                    id: p.id,
+                    texto: p.texto,
+                    tipo,
+                    ordem: p.ordem,
+                    mediaPorGrupo: p.mediaPorGrupo,
+                    distribuicaoPorGrupo: p.distribuicaoPorGrupo,
+                    distribuicaoOpcoes: p.distribuicaoOpcoes,
+                    respostasTexto: p.respostasTexto,
+                    justificativas: p.justificativas,
+                    insightTexto: pr?.insightTexto ?? null,
+                    agrupamentos,
+                    callouts: pr?.callouts ?? null,
+                    npsData,
+                    donutData,
+                }
+            })
             return {
-                id: p.id,
-                texto: p.texto,
-                tipo: p.tipo as "ESCALA" | "MULTIPLA_ESCOLHA" | "TEXTO_LIVRE",
-                ordem: p.ordem,
-                mediaPorGrupo: p.mediaPorGrupo,
-                distribuicaoPorGrupo: p.distribuicaoPorGrupo,
-                distribuicaoOpcoes: p.distribuicaoOpcoes,
-                respostasTexto: p.respostasTexto,
-                justificativas: p.justificativas,
-                insightTexto: pr?.insightTexto ?? null,
-                agrupamentos: pr?.agrupamentos ?? null,
-                callouts: pr?.callouts ?? null,
+                id: s.id,
+                titulo: s.titulo,
+                descricao: s.descricao ?? null,
+                ordem: s.ordem,
+                perguntas,
+                introducao: sr?.introducao ?? null,
+                conclusao: sr?.conclusao ?? null,
             }
         })
-        return {
-            id: s.id,
-            titulo: s.titulo,
-            descricao: s.descricao ?? null,
-            ordem: s.ordem,
-            perguntas,
-            introducao: sr?.introducao ?? null,
-            conclusao: sr?.conclusao ?? null,
+
+    // ── 3. npsHistorico ──────────────────────────────────────────────────────
+    let npsHistorico: PCOReportData["meta"]["npsHistorico"] = meta?.npsHistorico ?? null
+    if (!npsHistorico) {
+        try {
+            const previousPCOs = await (prisma as any).pCO.findMany({
+                where: {
+                    id: { not: pcoId },
+                    status: { in: ["ENCERRADA", "FINALIZADA"] },
+                },
+                orderBy: { createdAt: "asc" },
+                select: { id: true, nome: true, createdAt: true },
+            })
+
+            // Take the last 2 before current (by createdAt)
+            const current = detalhes.createdAt as Date | undefined
+            const before = current
+                ? previousPCOs.filter((p: any) => p.createdAt < current)
+                : previousPCOs
+            const last2: any[] = before.slice(-2)
+
+            if (last2.length > 0) {
+                const histItems = await Promise.all(
+                    last2.map(async (prevPco: any) => {
+                        // Fetch NPS question responses for this PCO
+                        const npsQuestion = await (prisma as any).perguntaPCO.findFirst({
+                            where: {
+                                secao: { pcoId: prevPco.id },
+                                tipo: "MULTIPLA_ESCOLHA",
+                                OR: [
+                                    { texto: { contains: "recomendaria" } },
+                                    { texto: { contains: "0 a 10" } },
+                                ],
+                            },
+                            include: { opcoes: true },
+                        })
+                        if (!npsQuestion) return null
+
+                        const respostas = await (prisma as any).respostaPCO.findMany({
+                            where: { perguntaId: npsQuestion.id },
+                            select: { opcaoId: true },
+                        })
+
+                        const distribuicaoOpcoes = npsQuestion.opcoes.map((o: any) => ({
+                            texto: o.texto,
+                            count: respostas.filter((r: any) => r.opcaoId === o.id).length,
+                        }))
+
+                        const npsData = extractNPSFromDistribuicao(distribuicaoOpcoes)
+                        return { ciclo: prevPco.nome, nps: npsData.npsPercent }
+                    })
+                )
+                const valid = histItems.filter(Boolean) as { ciclo: string; nps: number }[]
+                if (valid.length > 0) npsHistorico = valid
+            }
+        } catch {
+            // silently ignore — npsHistorico stays null
         }
-    })
+    }
 
     return {
         id: detalhes.id,
@@ -1050,7 +1178,8 @@ export async function getRelatorioPCO(pcoId: number): Promise<PCOReportData | nu
             capaTitulo: meta?.capaTitulo ?? null,
             objetivo: meta?.objetivo ?? null,
             conclusao: meta?.conclusao ?? null,
-            contexto: meta?.contexto ?? null,
+            contexto,
+            npsHistorico,
         },
     }
 }
@@ -1062,10 +1191,14 @@ export async function salvarRelatorioPCO(
     try {
         await (prisma as any).$transaction(async (tx: any) => {
             if (payload.meta) {
+                const metaData = {
+                    ...payload.meta,
+                    npsHistorico: payload.meta.npsHistorico ?? undefined,
+                }
                 await tx.relatorioPCOMeta.upsert({
                     where: { pcoId },
-                    update: { ...payload.meta },
-                    create: { pcoId, ...payload.meta },
+                    update: metaData,
+                    create: { pcoId, ...metaData },
                 })
             }
             if (payload.secoes) {

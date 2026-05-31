@@ -20,12 +20,14 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
         capaTitulo: string;
         objetivo: string;
         conclusao: string;
+        npsHistorico: Array<{ ciclo: string; nps: number }>;
         secoes: Array<{ secaoId: number; titulo: string; introducao: string; conclusao: string }>;
-        perguntas: Array<{ perguntaId: number; texto: string; insightTexto: string; agrupamentos: Array<{ count: number; texto: string }>; hasDesvio: boolean }>;
+        perguntas: Array<{ perguntaId: number; texto: string; tipo: string; insightTexto: string; agrupamentos: Array<{ count: number; texto: string }>; hasDesvio: boolean }>;
     }>({
         capaTitulo: "",
         objetivo: "",
         conclusao: "",
+        npsHistorico: [],
         secoes: [],
         perguntas: [],
     })
@@ -51,11 +53,12 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                 capaTitulo: "",
                 objetivo: "",
                 conclusao: "",
+                npsHistorico: [],
                 secoes: data.secoes.map(s => ({ secaoId: s.id, titulo: s.titulo, introducao: "", conclusao: "" })),
                 perguntas: data.secoes
                     .flatMap(s => s.perguntas)
-                    .filter(p => p.tipo === "ESCALA")
-                    .map(p => ({ perguntaId: p.id, texto: p.texto, insightTexto: "", agrupamentos: [], hasDesvio: false })),
+                    .filter(p => p.tipo === "ESCALA" || p.tipo === "TEXTO_LIVRE")
+                    .map(p => ({ perguntaId: p.id, texto: p.texto, tipo: p.tipo, insightTexto: "", agrupamentos: [], hasDesvio: false })),
             })
         }
     }, [data])
@@ -405,26 +408,55 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                                         placeholder="Texto de conclusão..."
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-text-muted">NPS Histórico (ciclos anteriores)</label>
+                                    {editData.npsHistorico.map((item, i) => (
+                                        <div key={i} className="flex gap-2 items-center">
+                                            <input
+                                                type="text"
+                                                placeholder="Ciclo (ex: 25.1)"
+                                                value={item.ciclo}
+                                                onChange={e => setEditData(prev => ({ ...prev, npsHistorico: prev.npsHistorico.map((h, j) => j === i ? { ...h, ciclo: e.target.value } : h) }))}
+                                                className="flex-1 px-3 py-2 bg-bg-card border border-border rounded text-text-main text-sm"
+                                            />
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="NPS %"
+                                                value={item.nps}
+                                                onChange={e => setEditData(prev => ({ ...prev, npsHistorico: prev.npsHistorico.map((h, j) => j === i ? { ...h, nps: Number(e.target.value) } : h) }))}
+                                                className="w-24 px-3 py-2 bg-bg-card border border-border rounded text-text-main text-sm"
+                                            />
+                                            <button onClick={() => setEditData(prev => ({ ...prev, npsHistorico: prev.npsHistorico.filter((_, j) => j !== i) }))} className="text-text-muted hover:text-red-400 text-sm">✕</button>
+                                        </div>
+                                    ))}
+                                    <button onClick={() => setEditData(prev => ({ ...prev, npsHistorico: [...prev.npsHistorico, { ciclo: "", nps: 0 }] }))} className="text-primary text-sm hover:underline">+ Adicionar ciclo</button>
+                                </div>
                             </section>
 
-                            {/* Perguntas escala */}
+                            {/* Perguntas escala e texto livre */}
                             <section className="flex flex-col gap-4">
-                                <h3 className="font-bold text-text-main">Insights por pergunta (escala)</h3>
+                                <h3 className="font-bold text-text-main">Insights por pergunta</h3>
                                 {editData.perguntas.map((p, pi) => (
                                     <div key={p.perguntaId} className="border border-border rounded-xl p-4 flex flex-col gap-3">
-                                        <p className="text-sm font-medium text-text-main">{p.texto}</p>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs text-gray-500">Frase-insight</label>
-                                            <textarea
-                                                className="border border-border rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none"
-                                                value={p.insightTexto}
-                                                onChange={e => setEditData(d => ({
-                                                    ...d,
-                                                    perguntas: d.perguntas.map((pp, i) => i === pi ? { ...pp, insightTexto: e.target.value } : pp)
-                                                }))}
-                                                placeholder="Em sua maioria, os membros..."
-                                            />
-                                        </div>
+                                        <p className="text-sm font-medium text-text-main">
+                                            {p.texto}
+                                            {p.tipo === "TEXTO_LIVRE" && <span className="ml-2 text-xs text-gray-400">(texto livre)</span>}
+                                        </p>
+                                        {p.tipo !== "TEXTO_LIVRE" && (
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-xs text-gray-500">Frase-insight</label>
+                                                <textarea
+                                                    className="border border-border rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none"
+                                                    value={p.insightTexto}
+                                                    onChange={e => setEditData(d => ({
+                                                        ...d,
+                                                        perguntas: d.perguntas.map((pp, i) => i === pi ? { ...pp, insightTexto: e.target.value } : pp)
+                                                    }))}
+                                                    placeholder="Em sua maioria, os membros..."
+                                                />
+                                            </div>
+                                        )}
                                         <div className="flex flex-col gap-2">
                                             <label className="text-xs text-gray-500">Agrupamentos (badges Nx)</label>
                                             {p.agrupamentos.map((ag, ai) => (
@@ -476,20 +508,22 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                                                 }))}
                                             >+ Adicionar badge</button>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                id={`desvio-${pi}`}
-                                                checked={p.hasDesvio}
-                                                onChange={e => setEditData(d => ({
-                                                    ...d,
-                                                    perguntas: d.perguntas.map((pp, i) => i === pi ? { ...pp, hasDesvio: e.target.checked } : pp)
-                                                }))}
-                                            />
-                                            <label htmlFor={`desvio-${pi}`} className="text-xs text-gray-500 cursor-pointer">
-                                                Marcar "Alto desvio padrão"
-                                            </label>
-                                        </div>
+                                        {p.tipo !== "TEXTO_LIVRE" && (
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`desvio-${pi}`}
+                                                    checked={p.hasDesvio}
+                                                    onChange={e => setEditData(d => ({
+                                                        ...d,
+                                                        perguntas: d.perguntas.map((pp, i) => i === pi ? { ...pp, hasDesvio: e.target.checked } : pp)
+                                                    }))}
+                                                />
+                                                <label htmlFor={`desvio-${pi}`} className="text-xs text-gray-500 cursor-pointer">
+                                                    Marcar "Alto desvio padrão"
+                                                </label>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </section>
@@ -508,12 +542,15 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                                                 capaTitulo: editData.capaTitulo || undefined,
                                                 objetivo: editData.objetivo || undefined,
                                                 conclusao: editData.conclusao || undefined,
+                                                npsHistorico: editData.npsHistorico.filter(h => h.ciclo && h.nps > 0).length > 0
+                                                    ? editData.npsHistorico.filter(h => h.ciclo && h.nps > 0)
+                                                    : undefined,
                                             },
                                             perguntas: editData.perguntas.map(p => ({
                                                 perguntaId: p.perguntaId,
-                                                insightTexto: p.insightTexto || undefined,
+                                                insightTexto: p.tipo !== "TEXTO_LIVRE" ? (p.insightTexto || undefined) : undefined,
                                                 agrupamentos: p.agrupamentos.length > 0 ? p.agrupamentos : undefined,
-                                                callouts: p.hasDesvio ? [{ tipo: "DESVIO" as const, texto: "Alto desvio padrão" }] : undefined,
+                                                callouts: p.tipo !== "TEXTO_LIVRE" && p.hasDesvio ? [{ tipo: "DESVIO" as const, texto: "Alto desvio padrão" }] : undefined,
                                             })),
                                         })
                                         if (result.success) {

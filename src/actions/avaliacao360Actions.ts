@@ -1206,3 +1206,220 @@ export async function getRelatorio360Geral(avaliacaoId: number) {
     }
 }
 
+// ─── AV360 XLSX Export ────────────────────────────────────────────────────────
+
+function stdDev(values: number[]): number {
+    if (values.length < 2) return 0;
+    const mean = values.reduce((s, v) => s + v, 0) / values.length;
+    const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
+    return Math.sqrt(variance);
+}
+
+export interface AV360XlsxMembro {
+    membroId: number;
+    nome: string;
+    area: string;
+    isCoordenador: boolean;
+    scoreGeral: number;
+    numRespondentes: number;
+    dimensoes: Array<{
+        titulo: string;
+        media: number;
+        desvio: number;
+        criterios: Array<{
+            texto: string;
+            media: number;
+            desvio: number;
+            discrepancia: number;
+        }>;
+    }>;
+    pontosFortes: string[];
+    pontosDesenvolver: string[];
+}
+
+export interface AV360XlsxData {
+    avaliacaoId: number;
+    nome: string;
+    dimensoesTitulos: string[];
+    membros: AV360XlsxMembro[];
+    destaque?: string;
+}
+
+export async function getRelatorioAV360XlsxData(avaliacaoId: number): Promise<AV360XlsxData | null> {
+    try {
+        const avaliacao = await prisma.avaliacao360.findUnique({
+            where: { id: avaliacaoId },
+            include: {
+                dimensoes: {
+                    orderBy: { ordem: "asc" },
+                    include: {
+                        perguntas: {
+                            orderBy: { ordem: "asc" }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!avaliacao) return null;
+
+        const feedbacks = await prisma.feedback360.findMany({
+            where: { avaliacaoId, finalizado: true },
+            include: {
+                respostas: true,
+                avaliado: {
+                    include: { area: true }
+                }
+            }
+        });
+
+        // Collect TEXTO_ABERTO pergunta ids in order (across all dimensions)
+        const textoAbertoIds: number[] = [];
+        for (const dim of avaliacao.dimensoes) {
+            for (const perg of dim.perguntas) {
+                if (perg.tipo === TipoPergunta360.TEXTO_ABERTO) {
+                    textoAbertoIds.push(perg.id);
+                }
+            }
+        }
+
+        const avaliadosSet = new Set(feedbacks.map(f => f.avaliadoId));
+        const membros: AV360XlsxMembro[] = [];
+
+        for (const avaliadoId of avaliadosSet) {
+            const fbAvaliado = feedbacks.filter(f => f.avaliadoId === avaliadoId);
+            const membroInfo = fbAvaliado[0].avaliado;
+
+            // Separate self-assessment from peer feedbacks
+            const selfFb = fbAvaliado.find(f => f.avaliadorId === avaliadoId);
+            const peerFbs = fbAvaliado.filter(f => f.avaliadorId !== avaliadoId);
+            const numRespondentes = peerFbs.length;
+
+            // Build peer map: perguntaId -> peer notas
+            const peerNotasPorPergunta = new Map<number, number[]>();
+            const textosPorPergunta = new Map<number, { nota: number | null; texto: string | null }[]>();
+            for (const f of peerFbs) {
+                for (const r of f.respostas) {
+                    if (r.nota !== null) {
+                        if (!peerNotasPorPergunta.has(r.perguntaId)) peerNotasPorPergunta.set(r.perguntaId, []);
+                        peerNotasPorPergunta.get(r.perguntaId)!.push(r.nota);
+                    }
+                    if (!textosPorPergunta.has(r.perguntaId)) textosPorPergunta.set(r.perguntaId, []);
+                    textosPorPergunta.get(r.perguntaId)!.push({ nota: r.nota, texto: r.texto });
+                }
+            }
+
+            // Build self map: perguntaId -> self nota
+            const selfNotasPorPergunta = new Map<number, number>();
+            if (selfFb) {
+                for (const r of selfFb.respostas) {
+                    if (r.nota !== null) selfNotasPorPergunta.set(r.perguntaId, r.nota);
+                }
+            }
+
+            // Compute dimension + per-criterion stats
+            const dimensoes: AV360XlsxMembro["dimensoes"] = [];
+            let somaScoreGeral = 0;
+
+            for (const dim of avaliacao.dimensoes) {
+                const criterios: AV360XlsxMembro["dimensoes"][0]["criterios"] = [];
+                const notasDim: number[] = [];
+
+                for (const perg of dim.perguntas) {
+                    if (perg.tipo === TipoPergunta360.ESCALA) {
+                        const peerNotas = peerNotasPorPergunta.get(perg.id) ?? [];
+                        const peerMedia = peerNotas.length > 0
+                            ? peerNotas.reduce((s, v) => s + v, 0) / peerNotas.length
+                            : 0;
+                        const peerDesvio = stdDev(peerNotas);
+                        const selfNota = selfNotasPorPergunta.get(perg.id);
+                        const discrepancia = selfNota !== undefined ? selfNota - peerMedia : 0;
+                        notasDim.push(...peerNotas);
+                        criterios.push({
+                            texto: perg.texto,
+                            media: Number(peerMedia.toFixed(2)),
+                            desvio: Number(peerDesvio.toFixed(2)),
+                            discrepancia: Number(discrepancia.toFixed(2)),
+                        });
+                    }
+                }
+
+                const media = criterios.length > 0
+                    ? criterios.reduce((s, c) => s + c.media, 0) / criterios.length
+                    : 0;
+                const desvio = stdDev(notasDim);
+                somaScoreGeral += media;
+                dimensoes.push({
+                    titulo: dim.titulo,
+                    media: Number(media.toFixed(2)),
+                    desvio: Number(desvio.toFixed(2)),
+                    criterios,
+                });
+            }
+
+            const scoreGeral = avaliacao.dimensoes.length > 0
+                ? Number((somaScoreGeral / avaliacao.dimensoes.length).toFixed(2))
+                : 0;
+
+            // Collect text responses
+            const pontosFortes: string[] = [];
+            const pontosDesenvolver: string[] = [];
+
+            if (textoAbertoIds.length >= 2) {
+                const firstId = textoAbertoIds[0];
+                const secondId = textoAbertoIds[1];
+                const respostasFortes = textosPorPergunta.get(firstId) || [];
+                for (const r of respostasFortes) {
+                    if (r.texto && r.texto.trim()) pontosFortes.push(r.texto.trim());
+                }
+                const respostasDesenvolver = textosPorPergunta.get(secondId) || [];
+                for (const r of respostasDesenvolver) {
+                    if (r.texto && r.texto.trim()) pontosDesenvolver.push(r.texto.trim());
+                }
+            } else if (textoAbertoIds.length === 1) {
+                const respostas = textosPorPergunta.get(textoAbertoIds[0]) || [];
+                for (const r of respostas) {
+                    if (r.texto && r.texto.trim()) pontosFortes.push(r.texto.trim());
+                }
+            }
+
+            membros.push({
+                membroId: membroInfo.id,
+                nome: membroInfo.nome,
+                area: membroInfo.area.nome,
+                isCoordenador: membroInfo.isCoordenador,
+                scoreGeral,
+                numRespondentes,
+                dimensoes,
+                pontosFortes,
+                pontosDesenvolver
+            });
+        }
+
+        // Sort: area asc, then isCoordenador desc, then nome asc
+        membros.sort((a, b) => {
+            const areaCmp = a.area.localeCompare(b.area);
+            if (areaCmp !== 0) return areaCmp;
+            if (a.isCoordenador !== b.isCoordenador) return a.isCoordenador ? -1 : 1;
+            return a.nome.localeCompare(b.nome);
+        });
+
+        return {
+            avaliacaoId,
+            nome: avaliacao.nome,
+            dimensoesTitulos: avaliacao.dimensoes.map(d => d.titulo),
+            membros
+        };
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+}
+
+export async function gerarRelatorioAV360Xlsx(avaliacaoId: number): Promise<{ bytes: number[]; nome: string } | null> {
+    const data = await getRelatorioAV360XlsxData(avaliacaoId);
+    if (!data) return null;
+    const { generateAV360Xlsx } = await import("@/src/lib/reports/av360/generateAV360Xlsx");
+    const buffer = await generateAV360Xlsx(data);
+    return { bytes: Array.from(buffer), nome: data.nome };
+}

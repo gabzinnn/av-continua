@@ -7,19 +7,19 @@ interface SectionTitleProps {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   titleText: {
     fontFamily: FONT.display,
-    fontSize: 28,
-    color: COLORS.accent,
+    fontSize: 34,
+    color: COLORS.text,
     lineHeight: 1.1,
   },
   underline: {
-    height: 3,
+    height: 4,
     backgroundColor: COLORS.accent,
     marginTop: 6,
-    width: 48,
+    width: 60,
   },
 });
 

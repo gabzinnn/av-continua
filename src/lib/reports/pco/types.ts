@@ -10,6 +10,20 @@ export interface CalloutItem {
   texto: string;
 }
 
+export interface NPSData {
+  promotores: number;
+  neutros: number;
+  detratores: number;
+  npsPercent: number;
+  distribuicao: Record<number, number>;
+}
+
+export interface DonutItem {
+  texto: string;
+  count: number;
+  percent: number;
+}
+
 export interface PerguntaRelatorio {
   id: number;
   texto: string;
@@ -24,6 +38,8 @@ export interface PerguntaRelatorio {
   insightTexto?: string | null;
   agrupamentos?: AgrupamentoInsight[] | null;
   callouts?: CalloutItem[] | null;
+  npsData?: NPSData | null;
+  donutData?: DonutItem[] | null;
 }
 
 export interface SecaoRelatorio {
@@ -65,5 +81,6 @@ export interface PCOReportData {
       breakdownAreas?: ContextoArea[];
       faixas?: ContextoFaixa[];
     } | null;
+    npsHistorico?: Array<{ ciclo: string; nps: number }> | null;
   };
 }

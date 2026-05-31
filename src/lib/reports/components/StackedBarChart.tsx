@@ -7,14 +7,21 @@ interface StackedBarChartProps {
   dist: DistribuicaoGrupo;
 }
 
-const BAR_HEIGHT = 14;
-const LABEL_WIDTH = 80;
+const BAR_HEIGHT = 24;
+const LABEL_WIDTH = 90;
+const TICK_HEIGHT = 4;
+const AXIS_LABEL_FONT = 7;
+
+const TICKS = [0, 25, 50, 75, 100];
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flexDirection: "column",
+    marginBottom: 8,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 5,
   },
   label: {
     width: LABEL_WIDTH,
@@ -31,6 +38,34 @@ const styles = StyleSheet.create({
   },
   segment: {
     height: BAR_HEIGHT,
+  },
+  axisRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: 1,
+  },
+  axisLabelSpacer: {
+    width: LABEL_WIDTH,
+  },
+  axisTrack: {
+    flex: 1,
+    flexDirection: "row",
+    position: "relative",
+  },
+  tickContainer: {
+    position: "absolute",
+    alignItems: "center",
+  },
+  tickLine: {
+    width: 1,
+    height: TICK_HEIGHT,
+    backgroundColor: "#333333",
+  },
+  tickLabel: {
+    fontFamily: FONT.body,
+    fontSize: AXIS_LABEL_FONT,
+    color: "#444444",
+    marginTop: 1,
   },
 });
 
@@ -54,23 +89,45 @@ export function StackedBarChart({ label, dist }: StackedBarChartProps) {
   ];
 
   return (
-    <View style={styles.row}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.barContainer}>
-        {segments.map(({ key, pct }) =>
-          pct > 0 ? (
+    <View style={styles.wrapper}>
+      {/* Bar row */}
+      <View style={styles.row}>
+        <Text style={styles.label}>{label}</Text>
+        <View style={styles.barContainer}>
+          {segments.map(({ key, pct }) =>
+            pct > 0 ? (
+              <View
+                key={key}
+                style={[
+                  styles.segment,
+                  {
+                    width: `${pct}%`,
+                    backgroundColor: SEGMENT_COLORS[key],
+                  },
+                ]}
+              />
+            ) : null
+          )}
+        </View>
+      </View>
+
+      {/* X-axis with tick marks */}
+      <View style={styles.axisRow}>
+        <View style={styles.axisLabelSpacer} />
+        <View style={styles.axisTrack}>
+          {TICKS.map((tick) => (
             <View
-              key={key}
+              key={tick}
               style={[
-                styles.segment,
-                {
-                  width: `${pct}%`,
-                  backgroundColor: SEGMENT_COLORS[key],
-                },
+                styles.tickContainer,
+                { left: `${tick}%` },
               ]}
-            />
-          ) : null
-        )}
+            >
+              <View style={styles.tickLine} />
+              <Text style={styles.tickLabel}>{tick === 100 ? "" : String(tick)}</Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );

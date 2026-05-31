@@ -7,15 +7,16 @@ interface InsightSentenceProps {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
-    marginTop: 6,
+    marginBottom: 16,
+    marginTop: 12,
   },
   text: {
     fontFamily: FONT.body,
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: 700,
     color: COLORS.text,
     lineHeight: 1.5,
+    textAlign: "justify",
   },
 });
 
