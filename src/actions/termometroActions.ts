@@ -197,6 +197,15 @@ export async function encerrarTermometro(id: number): Promise<void> {
     })
 }
 
+export async function deletarTermometro(id: number): Promise<{ success: boolean; error?: string }> {
+    try {
+        await prisma.termometro.delete({ where: { id } })
+        return { success: true }
+    } catch (err: any) {
+        return { success: false, error: err?.message ?? "Erro ao apagar termômetro" }
+    }
+}
+
 export interface CreateTermometroInput {
     nome: string
     perguntas: string[]

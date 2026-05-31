@@ -111,7 +111,7 @@ export function PCOContent() {
     }
 
     const handleDeletar = async (id: number) => {
-        if (!confirm("Tem certeza que deseja excluir este rascunho?")) return
+        if (!confirm("Tem certeza que deseja excluir esta PCO? Esta ação não pode ser desfeita.")) return
         setActionLoading(id)
         try {
             const result = await deletarPCO(id)
@@ -345,6 +345,14 @@ export function PCOContent() {
                                     title="Duplicar"
                                 >
                                     <Copy size={16} />
+                                </button>
+                                <button
+                                    onClick={() => handleDeletar(row.id)}
+                                    disabled={isDisabled}
+                                    className="text-gray-500 hover:text-red-500 font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                                    title="Apagar"
+                                >
+                                    <Trash2 size={16} />
                                 </button>
                             </div>
                         )

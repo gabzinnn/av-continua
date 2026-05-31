@@ -3,19 +3,22 @@
 import { useState, useEffect } from "react"
 import { X, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
-import { editarTermometro, TermometroDetalhes } from "@/src/actions/termometroActions"
+import { editarTermometro, deletarTermometro, TermometroDetalhes } from "@/src/actions/termometroActions"
 import { Ciclo } from "@/src/actions/cicloActions"
 
 interface EditarTermometroModalProps {
     isOpen: boolean
     onClose: () => void
     onSuccess: () => void
+    onDelete?: () => void
     termometro: TermometroDetalhes
     ciclos: Ciclo[]
 }
 
-export function EditarTermometroModal({ isOpen, onClose, onSuccess, termometro, ciclos }: EditarTermometroModalProps) {
+export function EditarTermometroModal({ isOpen, onClose, onSuccess, onDelete, termometro, ciclos }: EditarTermometroModalProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [confirmDelete, setConfirmDelete] = useState(false)
     const [error, setError] = useState("")
     const [nome, setNome] = useState(termometro.nome)
     const [perguntas, setPerguntas] = useState<string[]>(termometro.perguntas.map(p => p.texto))
@@ -27,8 +30,22 @@ export function EditarTermometroModal({ isOpen, onClose, onSuccess, termometro, 
             setPerguntas(termometro.perguntas.map(p => p.texto))
             setIdCiclo(termometro.ciclo?.id || null)
             setError("")
+            setConfirmDelete(false)
         }
     }, [isOpen, termometro])
+
+    const handleDelete = async () => {
+        setIsDeleting(true)
+        const result = await deletarTermometro(termometro.id)
+        if (result.success) {
+            onClose()
+            onDelete?.()
+        } else {
+            setError(result.error || "Erro ao apagar termômetro")
+            setConfirmDelete(false)
+        }
+        setIsDeleting(false)
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -165,23 +182,56 @@ export function EditarTermometroModal({ isOpen, onClose, onSuccess, termometro, 
                         <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{error}</div>
                     )}
 
-                    <div className="flex gap-3 mt-2">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            className="flex-1"
-                            onClick={onClose}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            type="submit"
-                            className="flex-1"
-                            isLoading={isLoading}
-                        >
-                            Salvar Alterações
-                        </Button>
-                    </div>
+                    {confirmDelete ? (
+                        <div className="flex flex-col gap-2 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-sm font-medium text-red-700">Tem certeza? Esta ação não pode ser desfeita.</p>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="flex-1"
+                                    onClick={() => setConfirmDelete(false)}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="button"
+                                    className="flex-1 !bg-red-600 hover:!bg-red-700"
+                                    isLoading={isDeleting}
+                                    onClick={handleDelete}
+                                >
+                                    Apagar definitivamente
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-3 mt-2">
+                            <div className="flex gap-3">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="flex-1"
+                                    onClick={onClose}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    className="flex-1"
+                                    isLoading={isLoading}
+                                >
+                                    Salvar Alterações
+                                </Button>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setConfirmDelete(true)}
+                                className="text-sm text-red-500 hover:text-red-700 hover:underline cursor-pointer text-center"
+                            >
+                                Apagar termômetro
+                            </button>
+                        </div>
+                    )}
                 </form>
             </div>
         </div>
