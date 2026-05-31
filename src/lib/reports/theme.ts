@@ -1,25 +1,34 @@
+
 import { Font, StyleSheet } from "@react-pdf/renderer";
 
 Font.register({
-  family: "Anton",
-  src: "/fonts/Anton-Regular.ttf",
+  family: "Hammersmith One",
+  src: "/fonts/HammersmithOne-Regular.ttf",
 });
 
 Font.register({
-  family: "Inter",
+  family: "Montserrat",
   fonts: [
-    { src: "/fonts/Inter-Regular.ttf", fontWeight: 400 },
-    { src: "/fonts/Inter-Regular.ttf", fontWeight: 400, fontStyle: "italic" },
-    { src: "/fonts/Inter-Bold.ttf", fontWeight: 700 },
-    { src: "/fonts/Inter-Bold.ttf", fontWeight: 700, fontStyle: "italic" },
+    { src: "/fonts/Montserrat-Regular.ttf", fontWeight: 400 },
+    { src: "/fonts/Montserrat-Medium.ttf", fontWeight: 500 },
+    { src: "/fonts/Montserrat-Bold.ttf", fontWeight: 700 },
+  ],
+});
+
+Font.register({
+  family: "Raleway",
+  fonts: [
+    { src: "/fonts/Raleway-Regular.ttf", fontWeight: 400 },
+    { src: "/fonts/Raleway-Bold.ttf", fontWeight: 700 },
+    { src: "/fonts/Raleway-ExtraBold.ttf", fontWeight: 800 },
   ],
 });
 
 export const COLORS = {
-  bg: "#000000",
+  bg: "#0D0D0D", // Updated from #000000
   surface: "#1a1a1a",
   surfaceAlt: "#242424",
-  accent: "#fad419",
+  accent: "#FAD419", // Updated to match exact hex
   text: "#ffffff",
   muted: "#9ca3af",
   border: "#2a2a2a",
@@ -27,12 +36,13 @@ export const COLORS = {
   agreePartial: "#16a34a",
   disagreePartial: "#b91c1c",
   disagree: "#ef4444",
-  yellow: "#fad419",
+  yellow: "#FAD419",
 };
 
 export const FONT = {
-  display: "Anton",
-  body: "Inter",
+  display: "Hammersmith One",
+  body: "Montserrat",
+  heading: "Raleway",
 };
 
 export const PAGE_PADDING = 40;

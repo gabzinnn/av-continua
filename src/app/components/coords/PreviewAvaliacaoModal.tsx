@@ -32,6 +32,8 @@ interface PreviewAvaliacaoModalProps {
     membrosAtivos?: MembroBasico[]
 }
 
+const EMPTY_MEMBROS: MembroBasico[] = []
+
 export function PreviewAvaliacaoModal({
     isOpen,
     onClose,
@@ -39,7 +41,7 @@ export function PreviewAvaliacaoModal({
     isCreating,
     previewData,
     nomeAvaliacao,
-    membrosAtivos = [],
+    membrosAtivos = EMPTY_MEMBROS,
 }: PreviewAvaliacaoModalProps) {
     const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
     const [paresEditaveis, setParesEditaveis] = useState<PreviewMembro[]>([])
@@ -47,22 +49,25 @@ export function PreviewAvaliacaoModal({
     const [busca, setBusca] = useState("")
     const searchRef = useRef<HTMLInputElement>(null)
 
-    // Inicializa pares editáveis com todos os membros ativos (mesmo os com 0 pares)
     useEffect(() => {
         if (!isOpen) return
-        const previewMap = new Map(previewData.map(m => [m.id, m]))
-        const todos = membrosAtivos.map(m => {
-            const existente = previewMap.get(m.id)
-            return existente ?? {
-                id: m.id,
-                nome: m.nome,
-                area: m.area,
-                fotoUrl: m.fotoUrl,
-                isCoordenador: false,
-                avaliaQuem: []
-            }
-        })
-        setParesEditaveis(todos)
+        if (membrosAtivos.length > 0) {
+            const previewMap = new Map(previewData.map(m => [m.id, m]))
+            const todos = membrosAtivos.map(m => {
+                const existente = previewMap.get(m.id)
+                return existente ?? {
+                    id: m.id,
+                    nome: m.nome,
+                    area: m.area,
+                    fotoUrl: m.fotoUrl,
+                    isCoordenador: false,
+                    avaliaQuem: []
+                }
+            })
+            setParesEditaveis(todos)
+        } else {
+            setParesEditaveis(previewData)
+        }
     }, [isOpen, previewData, membrosAtivos])
 
     useEffect(() => {
