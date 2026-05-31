@@ -15,6 +15,7 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
     const [isLoading, setIsLoading] = useState(true)
     const [isGenerating, setIsGenerating] = useState(false)
     const [editModalOpen, setEditModalOpen] = useState(false)
+    const [isLoadingEdit, setIsLoadingEdit] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [editData, setEditData] = useState<{
         capaTitulo: string;
@@ -77,6 +78,44 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
         URL.revokeObjectURL(url)
     }
 
+    const handleOpenEditModal = async () => {
+        setEditModalOpen(true)
+        setIsLoadingEdit(true)
+        const relatorio = await getRelatorioPCO(pcoId)
+
+        const perguntaRelMap = new Map<number, any>()
+        relatorio?.secoes.forEach(s => s.perguntas.forEach(p => perguntaRelMap.set(p.id, p)))
+
+        const secaoRelMap = new Map<number, any>()
+        relatorio?.secoes.forEach(s => secaoRelMap.set(s.id, s))
+
+        setEditData({
+            capaTitulo: relatorio?.meta.capaTitulo ?? "",
+            objetivo: relatorio?.meta.objetivo ?? "",
+            conclusao: relatorio?.meta.conclusao ?? "",
+            npsHistorico: relatorio?.meta.npsHistorico ?? [],
+            secoes: data!.secoes.map(s => {
+                const sr = secaoRelMap.get(s.id)
+                return { secaoId: s.id, titulo: s.titulo, introducao: sr?.introducao ?? "", conclusao: sr?.conclusao ?? "" }
+            }),
+            perguntas: data!.secoes
+                .flatMap(s => s.perguntas)
+                .filter(p => p.tipo === "ESCALA" || p.tipo === "TEXTO_LIVRE")
+                .map(p => {
+                    const pr = perguntaRelMap.get(p.id)
+                    return {
+                        perguntaId: p.id,
+                        texto: p.texto,
+                        tipo: p.tipo,
+                        insightTexto: pr?.insightTexto ?? "",
+                        agrupamentos: pr?.agrupamentos ?? [],
+                        hasDesvio: pr?.callouts?.some((c: any) => c.tipo === "DESVIO") ?? false,
+                    }
+                }),
+        })
+        setIsLoadingEdit(false)
+    }
+
     const handleDownloadPDF = async () => {
         if (isGenerating) return
         setIsGenerating(true)
@@ -85,7 +124,14 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
             const { PCOReport } = await import("@/src/lib/reports/pco/PCOReport")
             const dados = await getRelatorioPCO(pcoId)
             if (!dados) throw new Error("PCO não encontrada. Verifique se a pesquisa existe e tente novamente.")
-            const blob = await pdf(<PCOReport data={dados} />).toBlob()
+            const logoRes = await fetch("/assets/images/logoCompletaFundoPreto.png")
+            const logoBlob = await logoRes.blob()
+            const logoBase64 = await new Promise<string>((resolve) => {
+                const reader = new FileReader()
+                reader.onloadend = () => resolve(reader.result as string)
+                reader.readAsDataURL(logoBlob)
+            })
+            const blob = await pdf(<PCOReport data={dados} logoBase64={logoBase64} />).toBlob()
             const url = URL.createObjectURL(blob)
             const a = document.createElement("a")
             a.href = url
@@ -184,7 +230,7 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                                 size="sm"
                                 icon={<Edit3 size={18} />}
                                 iconPosition="left"
-                                onClick={() => setEditModalOpen(true)}
+                                onClick={handleOpenEditModal}
                             >
                                 Editar relatório
                             </Button>
@@ -378,6 +424,12 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                         </div>
                         {/* Scrollable body */}
                         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+                        {isLoadingEdit ? (
+                            <div className="flex flex-col items-center justify-center py-20 gap-4">
+                                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                                <span className="text-sm text-gray-500">Carregando dados do relatório...</span>
+                            </div>
+                        ) : (<>
                             {/* Capa */}
                             <section className="flex flex-col gap-3">
                                 <h3 className="font-bold text-text-main">Capa</h3>
@@ -527,6 +579,7 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                                     </div>
                                 ))}
                             </section>
+                        </>)}
                         </div>
                         {/* Footer */}
                         <div className="p-6 border-t border-border flex justify-end gap-2">

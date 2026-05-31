@@ -11,8 +11,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   text: {
-    fontFamily: FONT.body,
-    fontSize: 16,
+    fontFamily: FONT.heading,
+    fontSize: 26,
     fontWeight: 700,
     color: COLORS.text,
     lineHeight: 1.5,

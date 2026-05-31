@@ -1189,30 +1189,38 @@ export async function salvarRelatorioPCO(
     payload: SalvarRelatorioPayload
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        await (prisma as any).$transaction(async (tx: any) => {
-            if (payload.meta) {
-                const metaData = {
-                    ...payload.meta,
-                    npsHistorico: payload.meta.npsHistorico ?? undefined,
-                }
-                await tx.relatorioPCOMeta.upsert({
+        const ops: Promise<any>[] = []
+
+        if (payload.meta) {
+            const metaData = {
+                ...payload.meta,
+                npsHistorico: payload.meta.npsHistorico ?? undefined,
+            }
+            ops.push(
+                (prisma as any).relatorioPCOMeta.upsert({
                     where: { pcoId },
                     update: metaData,
                     create: { pcoId, ...metaData },
                 })
-            }
-            if (payload.secoes) {
-                for (const secao of payload.secoes) {
-                    await tx.relatorioSecaoPCO.upsert({
+            )
+        }
+
+        if (payload.secoes) {
+            for (const secao of payload.secoes) {
+                ops.push(
+                    (prisma as any).relatorioSecaoPCO.upsert({
                         where: { secaoId: secao.secaoId },
                         update: { introducao: secao.introducao, conclusao: secao.conclusao },
                         create: { secaoId: secao.secaoId, introducao: secao.introducao, conclusao: secao.conclusao },
                     })
-                }
+                )
             }
-            if (payload.perguntas) {
-                for (const pergunta of payload.perguntas) {
-                    await tx.relatorioPerguntaPCO.upsert({
+        }
+
+        if (payload.perguntas) {
+            for (const pergunta of payload.perguntas) {
+                ops.push(
+                    (prisma as any).relatorioPerguntaPCO.upsert({
                         where: { perguntaId: pergunta.perguntaId },
                         update: {
                             insightTexto: pergunta.insightTexto,
@@ -1226,9 +1234,11 @@ export async function salvarRelatorioPCO(
                             callouts: pergunta.callouts ?? undefined,
                         },
                     })
-                }
+                )
             }
-        })
+        }
+
+        await Promise.all(ops)
         return { success: true }
     } catch (err: any) {
         console.error("salvarRelatorioPCO error:", err)

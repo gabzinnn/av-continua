@@ -7,7 +7,7 @@ interface StackedBarChartProps {
   dist: DistribuicaoGrupo;
 }
 
-const BAR_HEIGHT = 24;
+const BAR_HEIGHT = 36;
 const LABEL_WIDTH = 90;
 const TICK_HEIGHT = 4;
 const AXIS_LABEL_FONT = 7;
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
   label: {
     width: LABEL_WIDTH,
     fontFamily: FONT.body,
-    fontSize: 9,
+    fontSize: 13,
     color: COLORS.text,
     textAlign: "right",
     paddingRight: 8,
@@ -70,11 +70,11 @@ const styles = StyleSheet.create({
 });
 
 const SEGMENT_COLORS = {
-  concordo: "#22c55e",
-  concordoParcial: "#16a34a",
+  concordo: "#00FF00",
+  concordoParcial: "#5DC65D",
   naoConsigo: "#888888",
-  discordoParcial: "#b91c1c",
-  discordo: "#ef4444",
+  discordoParcial: "#CC2222",
+  discordo: "#FF3333",
 };
 
 export function StackedBarChart({ label, dist }: StackedBarChartProps) {

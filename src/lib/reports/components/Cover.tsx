@@ -1,10 +1,10 @@
-import { Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { COLORS, FONT, baseStyles } from "../theme";
-import { Logo } from "./Logo";
 
 interface CoverProps {
   titulo: string;
-  subtitulo: string;
+  subtitulo?: string;
+  logoBase64?: string;
 }
 
 const styles = StyleSheet.create({
@@ -19,8 +19,9 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   titleText: {
-    fontFamily: FONT.display,
-    fontSize: 120,
+    fontFamily: FONT.heading,
+    fontSize: 160,
+    fontWeight: 800,
     color: COLORS.text,
     lineHeight: 1,
   },
@@ -32,8 +33,9 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   subtitle: {
-    fontFamily: FONT.display,
-    fontSize: 55,
+    fontFamily: FONT.heading,
+    fontSize: 72,
+    fontWeight: 700,
     color: "#888888",
     marginTop: 20,
   },
@@ -41,23 +43,26 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 40,
     right: 40,
-    flexDirection: "row",
-    alignItems: "center",
+  },
+  logo: {
+    height: 80,
   },
 });
 
-export function Cover({ titulo, subtitulo }: CoverProps) {
+export function Cover({ titulo, subtitulo, logoBase64 }: CoverProps) {
   return (
     <Page size="A4" style={styles.page}>
       <View style={styles.titleRow}>
-        <Text style={styles.titleText}>{titulo}.</Text>
+        <Text style={styles.titleText}>{titulo}</Text>
         <View style={styles.yellowSquare} />
       </View>
-      <Text style={styles.subtitle}>{subtitulo}</Text>
+      {subtitulo ? <Text style={styles.subtitle}>{subtitulo}</Text> : null}
 
-      <View style={styles.bottomRight}>
-        <Logo size={40} />
-      </View>
+      {logoBase64 ? (
+        <View style={styles.bottomRight}>
+          <Image src={logoBase64} style={styles.logo} />
+        </View>
+      ) : null}
     </Page>
   );
 }

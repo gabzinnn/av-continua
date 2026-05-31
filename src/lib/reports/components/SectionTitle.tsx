@@ -10,8 +10,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   titleText: {
-    fontFamily: FONT.display,
-    fontSize: 34,
+    fontFamily: FONT.heading,
+    fontSize: 32,
+    fontWeight: 800,
     color: COLORS.text,
     lineHeight: 1.1,
   },

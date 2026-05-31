@@ -1,6 +1,10 @@
-import { Page, View, StyleSheet } from "@react-pdf/renderer";
+import { Page, View, Image, StyleSheet } from "@react-pdf/renderer";
 import { baseStyles } from "../theme";
 import { Logo } from "./Logo";
+
+interface LogoPageProps {
+  logoBase64?: string;
+}
 
 const styles = StyleSheet.create({
   page: {
@@ -8,13 +12,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  logoImage: {
+    height: 240,
+  },
 });
 
-export function LogoPage() {
+export function LogoPage({ logoBase64 }: LogoPageProps) {
   return (
     <Page size="A4" style={styles.page}>
       <View>
-        <Logo size={140} />
+        {logoBase64 ? (
+          <Image src={logoBase64} style={styles.logoImage} />
+        ) : (
+          <Logo size={140} />
+        )}
       </View>
     </Page>
   );

@@ -25,8 +25,8 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   text: {
-    fontFamily: FONT.body,
-    fontSize: 13,
+    fontFamily: FONT.heading,
+    fontSize: 20,
     fontWeight: 700,
     color: COLORS.accent,
     flex: 1,

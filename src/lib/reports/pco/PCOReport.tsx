@@ -27,8 +27,9 @@ const styles = StyleSheet.create({
   },
   // ResumoPage
   resumoHeading: {
-    fontFamily: FONT.display,
-    fontSize: 48,
+    fontFamily: FONT.heading,
+    fontSize: 44,
+    fontWeight: 800,
     color: COLORS.accent,
     textAlign: "center",
     marginBottom: 20,
@@ -43,13 +44,14 @@ const styles = StyleSheet.create({
   // PerguntaDetailPage
   breadcrumb: {
     fontFamily: FONT.body,
-    fontSize: 12,
-    color: COLORS.muted,
+    fontSize: 14,
+    color: "#888888",
     marginBottom: 12,
   },
   questionText: {
-    fontFamily: FONT.display,
-    fontSize: 18,
+    fontFamily: FONT.heading,
+    fontSize: 26,
+    fontWeight: 700,
     color: COLORS.text,
     lineHeight: 1.4,
     textAlign: "justify",
@@ -67,14 +69,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   legendSquare: {
-    width: 10,
-    height: 10,
+    width: 16,
+    height: 16,
     marginRight: 5,
   },
   legendLabel: {
     fontFamily: FONT.body,
-    fontSize: 9,
-    color: COLORS.muted,
+    fontSize: 12,
+    color: COLORS.text,
   },
   barsSection: {
     marginBottom: 12,
@@ -103,10 +105,10 @@ const styles = StyleSheet.create({
 // ─── Legend constants ─────────────────────────────────────────────────────────
 
 const LEGEND_ITEMS = [
-  { color: COLORS.agree, label: "Concordo" },
-  { color: COLORS.agreePartial, label: "Concordo parcialmente" },
-  { color: COLORS.disagreePartial, label: "Discordo parcialmente" },
-  { color: COLORS.disagree, label: "Discordo" },
+  { color: "#00FF00", label: "Concordo" },
+  { color: "#5DC65D", label: "Concordo parcialmente" },
+  { color: "#CC2222", label: "Discordo parcialmente" },
+  { color: "#FF3333", label: "Discordo" },
 ];
 
 // ─── Donut colors ─────────────────────────────────────────────────────────────
@@ -267,33 +269,32 @@ function buildIndiceItems(secoes: SecaoRelatorio[]): IndiceItem[] {
   // Fixed pages: Cover=1, Indice=2, Contexto=3, Metodologia=4
   let nextPage = 5;
 
-  return secoes.map((secao) => {
-    const perguntasEscala = secao.perguntas.filter((p) => p.tipo === "ESCALA");
+  const secaoSubitems = secoes.map((secao) => {
     const resumoPage = nextPage;
-
-    // ResumoPage + one page per ESCALA question
-    nextPage += 1 + perguntasEscala.length;
-
-    const subitems = perguntasEscala.map((p, i) => ({
-      titulo: p.texto.slice(0, 50),
-      paginaInicio: resumoPage + 1 + i,
-    }));
-
-    return {
-      titulo: secao.titulo,
-      paginaInicio: resumoPage,
-      subitems: subitems.length > 0 ? subitems : undefined,
-    };
+    const perguntasEscala = secao.perguntas.filter((p) => p.tipo === "ESCALA");
+    const perguntasMultipla = secao.perguntas.filter((p) => p.tipo === "MULTIPLA_ESCOLHA");
+    const perguntasTexto = secao.perguntas.filter((p) => p.tipo === "TEXTO_LIVRE");
+    // ResumoPage + ESCALA detail pages + MULTIPLA_ESCOLHA pages + TEXTO_LIVRE pages
+    nextPage += 1 + perguntasEscala.length + perguntasMultipla.length + perguntasTexto.length;
+    return { titulo: secao.titulo, paginaInicio: resumoPage };
   });
+
+  return [
+    { titulo: "Objetivo", paginaInicio: 3 },
+    { titulo: "Contexto", paginaInicio: 3 },
+    { titulo: "Metodologia", paginaInicio: 4 },
+    { titulo: "Resumo", paginaInicio: 5, subitems: secaoSubitems },
+  ];
 }
 
 // ─── Main Document ────────────────────────────────────────────────────────────
 
 interface PCOReportProps {
   data: PCOReportData;
+  logoBase64?: string;
 }
 
-export function PCOReport({ data }: PCOReportProps) {
+export function PCOReport({ data, logoBase64 }: PCOReportProps) {
   // All sections except "Identificação" (which becomes Contexto)
   const secoesConteudo = data.secoes.filter(
     (s) => s.titulo !== "Identificação"
@@ -304,7 +305,7 @@ export function PCOReport({ data }: PCOReportProps) {
   return (
     <Document>
       {/* 1. Cover */}
-      <Cover titulo="PCO" subtitulo={data.meta.capaTitulo ?? data.nome} />
+      <Cover titulo="PCO" logoBase64={logoBase64} />
 
       {/* 2. Index */}
       <IndicePage items={indiceItems} />
@@ -385,7 +386,7 @@ export function PCOReport({ data }: PCOReportProps) {
       })}
 
       {/* 6. LogoPage */}
-      <LogoPage />
+      <LogoPage logoBase64={logoBase64} />
     </Document>
   );
 }
