@@ -9,10 +9,15 @@ import { ClipboardCheck, CheckCircle, Eye, ArrowLeft, ChevronRight, User } from 
 
 const ESCALA_LABELS: Record<number, string> = {
     1: "Insuficiente",
-    2: "Abaixo do esperado",
-    3: "Adequado",
-    4: "Acima do esperado",
-    5: "Excepcional",
+    2: "Muito abaixo",
+    3: "Abaixo do esperado",
+    4: "Pouco abaixo",
+    5: "Regular",
+    6: "Adequado",
+    7: "Acima do esperado",
+    8: "Bom",
+    9: "Muito bom",
+    10: "Excepcional",
 }
 
 export function Avaliacoes360PendentesContent() {
@@ -109,16 +114,16 @@ export function Avaliacoes360PendentesContent() {
                                         </p>
                                         <p className="text-base font-medium text-text-main mb-4">{pergunta.texto}</p>
 
-                                        {/* ESCALA 1-5 */}
+                                        {/* ESCALA 1-10 */}
                                         {pergunta.tipo === "ESCALA" && (
                                             <div className="space-y-3">
-                                                <div className="flex items-center gap-2">
-                                                    {[1, 2, 3, 4, 5].map((n) => {
+                                                <div className="flex items-center gap-1.5">
+                                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
                                                         const selected = pergunta.resposta?.nota === n
                                                         return (
                                                             <div
                                                                 key={n}
-                                                                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold select-none transition-none ${
+                                                                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold select-none transition-none ${
                                                                     selected
                                                                         ? "bg-primary text-text-main shadow-sm"
                                                                         : "bg-gray-100 text-gray-400"
