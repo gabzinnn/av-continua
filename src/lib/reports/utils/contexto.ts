@@ -15,10 +15,17 @@ export function computeBreakdownAreas(
   for (const { texto, count } of distribuicaoOpcoes) {
     map.set(texto, (map.get(texto) ?? 0) + count);
   }
-  return AREA_ORDER.flatMap((nome) => {
+  // Areas that appear in AREA_ORDER come first in that order; remaining come after
+  const ordered: ContextoArea[] = [];
+  const seen = new Set<string>();
+  for (const nome of AREA_ORDER) {
     const count = map.get(nome) ?? 0;
-    return count > 0 ? [{ nome, count }] : [];
-  });
+    if (count > 0) { ordered.push({ nome, count }); seen.add(nome); }
+  }
+  for (const [nome, count] of map) {
+    if (!seen.has(nome) && count > 0) ordered.push({ nome, count });
+  }
+  return ordered;
 }
 
 export function computeFaixasPeriodo(
@@ -31,11 +38,9 @@ export function computeFaixasPeriodo(
     const raw = texto.trim();
     let periodo: number | null = null;
 
-    if (/^\d+$/.test(raw)) {
-      periodo = parseInt(raw, 10);
-    } else {
-      // Semestre format like "2025.1" — not directly a period number; skip mapping by semestre
-      // The spec only mentions period numbers 1-7+ for grouping
+    const numMatch = raw.match(/^(\d+)/);
+    if (numMatch) {
+      periodo = parseInt(numMatch[1], 10);
     }
 
     if (periodo !== null) {

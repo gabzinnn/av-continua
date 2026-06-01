@@ -12,14 +12,27 @@ interface ScaleTableProps {
 const COL_WIDTH = 42;
 const QUESTION_COL_FLEX = 1;
 
-function filterGrupos(grupos: string[]): string[] {
-  return grupos.filter((g) =>
-    /geral/i.test(g) ||
-    /coord/i.test(g) ||
-    /f[aá]brica/i.test(g) ||
-    /escola/i.test(g) ||
-    /academia/i.test(g)
-  );
+const EXCLUDED: RegExp[] = [
+  /coordena[çc][aã]o\s*geral/i,
+  /organiza[çc][aã]o\s*interna/i,
+];
+
+const SLOTS: { label: string; regex: RegExp }[] = [
+  { label: "Geral",    regex: /geral/i },
+  { label: "Coord",    regex: /coord/i },
+  { label: "Academia", regex: /academia/i },
+  { label: "Escola",   regex: /escola/i },
+  { label: "Fábrica",  regex: /f[aá]brica/i },
+];
+
+interface ResolvedCol { label: string; originalKey: string }
+
+function resolveColumns(grupos: string[]): ResolvedCol[] {
+  const allowed = grupos.filter((g) => !EXCLUDED.some((rx) => rx.test(g)));
+  return SLOTS.flatMap(({ label, regex }) => {
+    const match = allowed.find((g) => regex.test(g));
+    return match ? [{ label, originalKey: match }] : [];
+  });
 }
 
 function valueColor(val: number): string {
@@ -108,16 +121,16 @@ const styles = StyleSheet.create({
 });
 
 export function ScaleTable({ grupos, rows }: ScaleTableProps) {
-  const visibleGrupos = filterGrupos(grupos);
+  const cols = resolveColumns(grupos);
 
   return (
     <View style={styles.table}>
       {/* Header */}
       <View style={styles.headerRow} wrap={false}>
         <Text style={styles.headerQuestionCell}>Perguntas</Text>
-        {visibleGrupos.map((g) => (
-          <Text key={g} style={styles.headerGroupCell}>
-            {g}
+        {cols.map((col) => (
+          <Text key={col.label} style={styles.headerGroupCell}>
+            {col.label}
           </Text>
         ))}
       </View>
@@ -126,10 +139,10 @@ export function ScaleTable({ grupos, rows }: ScaleTableProps) {
       {rows.map((row, i) => (
         <View key={i} style={[styles.row, i % 2 === 1 ? styles.rowAlt : {}]} wrap={false}>
           <Text style={styles.questionCell}>{row.texto}</Text>
-          {visibleGrupos.map((g) => {
-            const val = row.mediaPorGrupo[g];
+          {cols.map((col) => {
+            const val = row.mediaPorGrupo[col.originalKey];
             return (
-              <View key={g} style={styles.groupCell}>
+              <View key={col.label} style={styles.groupCell}>
                 {val !== undefined ? (
                   <Text style={[styles.mediaText, { color: valueColor(val) }]}>
                     {formatValue(val)}

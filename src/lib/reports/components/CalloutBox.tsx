@@ -12,21 +12,18 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.accent,
     borderRadius: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     marginBottom: 8,
     alignItems: "center",
   },
-  iconSquare: {
-    width: 16,
-    height: 16,
-    backgroundColor: COLORS.accent,
-    borderRadius: 2,
-    marginRight: 12,
+  icon: {
+    fontSize: 22,
+    marginRight: 14,
   },
   text: {
-    fontFamily: FONT.heading,
-    fontSize: 20,
+    fontFamily: FONT.body,
+    fontSize: 18,
     fontWeight: 700,
     color: COLORS.accent,
     flex: 1,
@@ -36,7 +33,7 @@ const styles = StyleSheet.create({
 export function CalloutBox({ texto }: CalloutBoxProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.iconSquare} />
+      <Text style={styles.icon}>📢</Text>
       <Text style={styles.text}>{texto}</Text>
     </View>
   );

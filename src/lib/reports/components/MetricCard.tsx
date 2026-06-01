@@ -16,8 +16,9 @@ const styles = StyleSheet.create({
     minWidth: 90,
   },
   value: {
-    fontFamily: FONT.display,
+    fontFamily: FONT.body,
     fontSize: 36,
+    fontWeight: 700,
     lineHeight: 1.1,
   },
   label: {

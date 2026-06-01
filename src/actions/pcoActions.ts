@@ -1026,8 +1026,14 @@ export async function getRelatorioPCO(pcoId: number): Promise<PCOReportData | nu
     // Compute contexto from Identificação section (unless coord override exists)
     let contexto: PCOReportData["meta"]["contexto"] = meta?.contexto ?? null
     if (!contexto && identificacaoSecao) {
-        const areaPergunta = findIdentPergunta("área de alocação") ?? findIdentPergunta("area de alocacao")
-        const periodoPergunta = findIdentPergunta("período atual") ?? findIdentPergunta("periodo atual")
+        const areaPergunta = findIdentPergunta("área de alocação")
+            ?? findIdentPergunta("area de alocacao")
+            ?? findIdentPergunta("área")
+            ?? findIdentPergunta("alocação")
+        const periodoPergunta = findIdentPergunta("período atual")
+            ?? findIdentPergunta("periodo atual")
+            ?? findIdentPergunta("período")
+            ?? findIdentPergunta("semestre")
 
         if (areaPergunta) {
             contexto = {

@@ -8,7 +8,7 @@ interface StackedBarChartProps {
 }
 
 const BAR_HEIGHT = 36;
-const LABEL_WIDTH = 90;
+const LABEL_WIDTH = 110;
 const TICK_HEIGHT = 4;
 const AXIS_LABEL_FONT = 7;
 

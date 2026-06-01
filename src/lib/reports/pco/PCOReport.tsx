@@ -305,7 +305,7 @@ export function PCOReport({ data, logoBase64 }: PCOReportProps) {
   return (
     <Document>
       {/* 1. Cover */}
-      <Cover titulo="PCO" logoBase64={logoBase64} />
+      <Cover titulo="PCO" subtitulo={data.nome.replace(/^pco[\s.:-]*/i, "").trim()} logoBase64={logoBase64} />
 
       {/* 2. Index */}
       <IndicePage items={indiceItems} />

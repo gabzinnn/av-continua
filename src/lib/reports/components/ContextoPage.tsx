@@ -1,6 +1,23 @@
 import { Page, View, Text, Svg, Circle, StyleSheet } from "@react-pdf/renderer";
+import type { Style } from "@react-pdf/types";
 import { COLORS, FONT, baseStyles } from "../theme";
 import { MetricCard } from "./MetricCard";
+
+// Renders inline **bold** markdown inside a <Text> block
+function RichText({ text, style, boldStyle }: { text: string; style: Style; boldStyle: Style }) {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return (
+    <Text style={style}>
+      {parts.map((part, i) =>
+        part.startsWith("**") && part.endsWith("**") ? (
+          <Text key={i} style={boldStyle}>{part.slice(2, -2)}</Text>
+        ) : (
+          <Text key={i}>{part}</Text>
+        )
+      )}
+    </Text>
+  );
+}
 
 interface ContextoPageProps {
   objetivo?: string | null;
@@ -25,10 +42,18 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     fontFamily: FONT.body,
-    fontSize: 12,
+    fontSize: 13,
     color: COLORS.text,
-    lineHeight: 1.5,
+    lineHeight: 1.7,
     textAlign: "justify",
+    width: "100%",
+  },
+  bodyTextBold: {
+    fontFamily: FONT.body,
+    fontSize: 13,
+    color: COLORS.text,
+    fontWeight: 700,
+    lineHeight: 1.7,
   },
   divider: {
     height: 1,
@@ -104,12 +129,13 @@ export function ContextoPage({ objetivo, contexto }: ContextoPageProps) {
   return (
     <Page size="A4" style={styles.page}>
       {/* OBJETIVO section */}
-      <Text style={styles.sectionTitle}>OBJETIVO</Text>
       {objetivo ? (
-        <Text style={styles.bodyText}>{objetivo}</Text>
+        <>
+          <Text style={styles.sectionTitle}>OBJETIVO</Text>
+          <RichText text={objetivo} style={styles.bodyText} boldStyle={styles.bodyTextBold} />
+          <View style={styles.divider} />
+        </>
       ) : null}
-
-      <View style={styles.divider} />
 
       {/* CONTEXTO section */}
       <Text style={styles.sectionTitle}>CONTEXTO</Text>
