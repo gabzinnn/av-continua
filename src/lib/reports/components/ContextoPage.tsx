@@ -60,33 +60,42 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
     marginVertical: 24,
   },
+  contentCenter: {
+    alignItems: "center",
+  },
   contextoRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 24,
+    justifyContent: "center",
+    marginBottom: 48,
     marginTop: 8,
   },
   leftCircle: {
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 32,
+    marginRight: 48,
+    flexShrink: 0,
   },
   circleLabel: {
     fontFamily: FONT.body,
     fontSize: 9,
-    color: COLORS.text,
+    fontWeight: 700,
+    color: COLORS.accent,
     textTransform: "uppercase",
     textAlign: "center",
-    marginTop: 4,
+    marginTop: 2,
   },
   circleNumber: {
-    fontFamily: FONT.display,
-    fontSize: 42,
+    fontFamily: FONT.body,
+    fontSize: 52,
     color: COLORS.accent,
+    lineHeight: 1,
     textAlign: "center",
+    fontWeight: 700,
   },
   areasList: {
-    flex: 1,
+    justifyContent: "center",
+    minWidth: 220,
   },
   areaRow: {
     flexDirection: "row",
@@ -94,32 +103,37 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   areaCount: {
-    fontFamily: FONT.display,
-    fontSize: 20,
+    fontFamily: FONT.body,
+    fontSize: 18,
     color: COLORS.accent,
-    marginRight: 12,
-    width: 28,
+    width: 36,
+    fontWeight: 700,
   },
   areaName: {
     fontFamily: FONT.body,
     fontSize: 13,
     color: COLORS.text,
   },
+  faixasContainer: {
+    alignItems: "center",
+    width: "100%",
+  },
   faixaItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 24,
+    width: 380,
   },
   faixaDesc: {
     fontFamily: FONT.body,
-    fontSize: 13,
+    fontSize: 14,
     color: COLORS.text,
-    marginLeft: 16,
+    marginLeft: 20,
     flex: 1,
   },
 });
 
-const CIRCLE_SIZE = 110;
+const CIRCLE_SIZE = 140;
 
 export function ContextoPage({ objetivo, contexto }: ContextoPageProps) {
   const cx = CIRCLE_SIZE / 2;
@@ -140,7 +154,7 @@ export function ContextoPage({ objetivo, contexto }: ContextoPageProps) {
       {/* CONTEXTO section */}
       <Text style={styles.sectionTitle}>CONTEXTO</Text>
       {contexto ? (
-        <>
+        <View style={styles.contentCenter}>
           <View style={styles.contextoRow}>
             {/* Left: total membros circle */}
             {contexto.totalMembros !== undefined && contexto.totalMembros !== null ? (
@@ -158,12 +172,13 @@ export function ContextoPage({ objetivo, contexto }: ContextoPageProps) {
                       height: CIRCLE_SIZE,
                       alignItems: "center",
                       justifyContent: "center",
+                      flexDirection: "column",
                     }}
                   >
                     <Text style={styles.circleNumber}>{contexto.totalMembros}</Text>
+                    <Text style={styles.circleLabel}>MEMBROS</Text>
                   </View>
                 </View>
-                <Text style={styles.circleLabel}>MEMBROS</Text>
               </View>
             ) : null}
 
@@ -182,7 +197,7 @@ export function ContextoPage({ objetivo, contexto }: ContextoPageProps) {
 
           {/* Faixas */}
           {contexto.faixas && contexto.faixas.length > 0 ? (
-            <View>
+            <View style={styles.faixasContainer}>
               {contexto.faixas.map((faixa, i) => (
                 <View key={i} style={styles.faixaItem}>
                   <MetricCard value={faixa.count} label="MEMBROS" variant="yellow" />
@@ -191,7 +206,7 @@ export function ContextoPage({ objetivo, contexto }: ContextoPageProps) {
               ))}
             </View>
           ) : null}
-        </>
+        </View>
       ) : null}
     </Page>
   );

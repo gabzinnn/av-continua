@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from "@react-pdf/renderer";
+import { View, Text, StyleSheet, Svg, Path, Polygon, G } from "@react-pdf/renderer";
 import { COLORS, FONT } from "../theme";
 
 interface CalloutBoxProps {
@@ -9,31 +9,80 @@ interface CalloutBoxProps {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1.5,
     borderColor: COLORS.accent,
-    borderRadius: 6,
+    borderRadius: 8,
     paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    alignItems: "center",
+    paddingHorizontal: 20,
+    marginTop: 8,
   },
-  icon: {
-    fontSize: 22,
-    marginRight: 14,
+  iconWrapper: {
+    marginRight: 16,
+    flexShrink: 0,
   },
   text: {
     fontFamily: FONT.body,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 700,
-    color: COLORS.accent,
+    color: COLORS.text,
     flex: 1,
   },
 });
 
+// MegaphoneIcon convertido a partir do SVG complexo de preenchimento (Fill-based)
+function MegaphoneIcon() {
+  return (
+    <Svg viewBox="0 0 512 512" width={48} height={48}>
+      <G fill={COLORS.accent}>
+        {/* Corpo principal do Megafone */}
+        <Path d="M3895 4971 c-37 -17 -51 -38 -184 -267 -152 -262 -163 -293 -132
+        -352 29 -55 116 -78 170 -46 33 20 23 4 188 289 143 248 151 270 113 332 -34
+        56 -93 73 -155 44z"/>
+        <Path d="M2380 4724 c-74 -20 -126 -52 -184 -114 -39 -42 -77 -110 -196 -353
+        -162 -333 -251 -494 -351 -637 -130 -186 -289 -347 -449 -454 -36 -24 -219
+        -133 -407 -241 -189 -109 -373 -222 -410 -250 -165 -125 -294 -342 -333 -556
+        -6 -33 -11 -111 -11 -173 1 -226 82 -432 237 -606 126 -139 332 -249 528 -281
+        115 -18 291 -7 400 25 49 15 90 25 91 24 1 -2 103 -178 226 -391 251 -434 280
+        -472 404 -532 185 -89 382 -60 533 79 64 60 111 138 137 230 22 75 16 208 -12
+        281 -11 28 -112 210 -225 405 -112 195 -210 365 -217 377 -11 22 -8 24 44 48
+        162 71 367 117 600 135 160 12 312 8 640 -16 313 -24 429 -23 494 3 79 32 129
+        71 178 137 73 99 97 240 60 351 -9 28 -97 189 -195 359 l-179 308 82 82 c63
+        62 91 98 118 156 107 224 84 461 -64 658 -148 196 -440 281 -680 198 -40 -14
+        -74 -24 -74 -23 -1 1 -80 139 -176 307 -135 235 -186 317 -229 360 -104 105
+        -238 142 -380 104z m187 -262 c19 -14 236 -381 686 -1160 361 -626 662 -1153
+        668 -1170 22 -63 -24 -145 -96 -172 -19 -7 -60 -9 -110 -5 -44 3 -174 13 -290
+        22 -253 19 -644 22 -775 5 -205 -27 -374 -69 -530 -134 -52 -22 -101 -41 -108
+        -41 -13 -2 -675 1130 -670 1144 2 3 48 42 103 86 127 101 271 250 365 378 117
+        157 218 335 391 685 89 179 168 333 177 344 43 48 134 57 189 18z m1020 -736
+        c74 -33 152 -111 185 -183 18 -38 22 -67 23 -143 0 -82 -4 -103 -26 -151 -25
+        -54 -92 -139 -109 -139 -9 0 -360 603 -360 618 0 18 73 31 150 28 56 -2 90 -9
+        137 -30z m-2133 -1478 c258 -447 326 -572 315 -579 -199 -122 -568 -324 -624
+        -342 -95 -30 -301 -32 -385 -3 -234 79 -397 249 -455 476 -13 50 -16 93 -13
+        185 4 103 9 132 36 202 63 171 161 274 377 398 76 44 197 115 269 157 72 42
+        136 77 141 77 6 0 158 -257 339 -571z m677 -1174 c188 -327 223 -393 227 -435
+        7 -74 -15 -136 -64 -186 -92 -92 -238 -90 -325 4 -26 27 -449 754 -449 770 0
+        6 368 227 387 233 0 0 101 -174 224 -386z" transform="translate(0.000000,512.000000) scale(0.100000,-0.100000)"/>
+        
+        {/* Ondas sonoras superiores */}
+        <Path d="M4620 4222 c-132 -68 -470 -270 -492 -293 -39 -40 -40 -114 -3 -158
+        33 -38 85 -56 125 -43 28 10 385 213 481 273 52 33 69 62 69 118 0 46 -30 88
+        -76 107 -44 18 -63 18 -104 -4z" transform="translate(0.000000,512.000000) scale(0.100000,-0.100000)"/>
+        
+        {/* Ondas sonoras inferiores */}
+        <Path d="M4395 3220 c-90 -37 -97 -168 -12 -220 30 -19 52 -20 315 -20 312 0
+        332 3 365 59 21 36 22 93 2 131 -30 58 -45 60 -362 59 -158 0 -297 -4 -308 -9z" transform="translate(0.000000,512.000000) scale(0.100000,-0.100000)"/>
+      </G>
+    </Svg>
+  );
+}
+
 export function CalloutBox({ texto }: CalloutBoxProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>📢</Text>
+      <View style={styles.iconWrapper}>
+        <MegaphoneIcon />
+      </View>
       <Text style={styles.text}>{texto}</Text>
     </View>
   );

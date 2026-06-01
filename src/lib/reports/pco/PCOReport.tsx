@@ -89,17 +89,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
   },
-  justificativasSection: {
-    marginTop: 8,
-  },
-  justificativaItem: {
-    fontFamily: FONT.body,
-    fontSize: 9,
-    color: COLORS.muted,
-    fontStyle: "italic",
-    lineHeight: 1.5,
-    marginBottom: 4,
-  },
 });
 
 // ─── Legend constants ─────────────────────────────────────────────────────────
@@ -243,16 +232,6 @@ function PerguntaDetailPage({
         </View>
       ) : null}
 
-      {/* Justificativas — sempre exibidas quando existem */}
-      {pergunta.justificativas.length > 0 ? (
-        <View style={styles.justificativasSection}>
-          {pergunta.justificativas.map((j, i) => (
-            <Text key={i} style={styles.justificativaItem}>
-              {"“"}{j}{"”"}
-            </Text>
-          ))}
-        </View>
-      ) : null}
     </Page>
   );
 }
