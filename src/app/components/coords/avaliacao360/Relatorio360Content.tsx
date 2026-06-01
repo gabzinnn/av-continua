@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getRelatorio360Geral, getRelatorio360PorAvaliado, salvarRelatorioAV360, getRelatorioAV360, gerarRelatorioAV360Xlsx } from "@/src/actions/avaliacao360Actions"
+import { getRelatorio360Geral, getRelatorio360PorAvaliado, salvarRelatorioAV360, getRelatorioAV360, gerarRelatorioAV360Xlsx, getAvaliadores360Status, type Avaliador360Status } from "@/src/actions/avaliacao360Actions"
 import { Card } from "../../Card"
 import { Button } from "../../Button"
-import { ArrowLeft, Download, Users, BarChart3, TrendingUp, Star, Edit3, X, Save } from "lucide-react"
+import { ArrowLeft, Download, Users, BarChart3, TrendingUp, Star, Edit3, X, Save, CheckCircle, XCircle } from "lucide-react"
 import Image from "next/image"
 import dynamic from "next/dynamic"
 
@@ -20,6 +20,7 @@ export function Relatorio360Content({ id }: { id: number }) {
     const [isLoading, setIsLoading] = useState(true)
     const [isGenerating, setIsGenerating] = useState(false)
     const [isGeneratingXlsx, setIsGeneratingXlsx] = useState(false)
+    const [avaliadores, setAvaliadores] = useState<Avaliador360Status[]>([])
 
     // Edit modal state
     const [editModalOpen, setEditModalOpen] = useState(false)
@@ -31,11 +32,15 @@ export function Relatorio360Content({ id }: { id: number }) {
     })
 
     useEffect(() => {
-        getRelatorio360Geral(id).then(data => {
+        Promise.all([
+            getRelatorio360Geral(id),
+            getAvaliadores360Status(id)
+        ]).then(([data, avs]) => {
             setRelatorioGeral(data)
             if (data && data.ranking && data.ranking.length > 0) {
                 setMembroSelecionado(data.ranking[0].membroId)
             }
+            setAvaliadores(avs)
             setIsLoading(false)
         })
     }, [id])
@@ -119,14 +124,18 @@ export function Relatorio360Content({ id }: { id: number }) {
 
     if (isLoading || !relatorioGeral) return <div className="p-8 text-center">Carregando relatório...</div>
 
-    // Radar Chart Data
+    // Radar Chart Data — exclude dimensions with no numeric scores (qualitative-only)
+    const dimensoesNumericas = (relatorioIndividual?.dimensoes ?? []).filter(
+        (d: any) => Object.values(d.distribuicao as Record<string, number>).some(v => v > 0)
+    )
+
     const radarOptions: ApexCharts.ApexOptions = {
         chart: {
             type: "radar",
             toolbar: { show: false },
             fontFamily: "inherit",
         },
-        labels: relatorioIndividual?.dimensoes?.map((d: any) => d.dimensao) || [],
+        labels: dimensoesNumericas.map((d: any) => d.dimensao),
         yaxis: {
             min: 0,
             max: 10,
@@ -151,7 +160,7 @@ export function Relatorio360Content({ id }: { id: number }) {
 
     const radarSeries = [{
         name: "Média",
-        data: relatorioIndividual?.dimensoes?.map((d: any) => d.mediaSimples) || []
+        data: dimensoesNumericas.map((d: any) => d.mediaSimples)
     }]
 
     // Bar Chart Data (Visão Geral)
@@ -361,6 +370,39 @@ export function Relatorio360Content({ id }: { id: number }) {
                         </div>
                     )}
                 </div>
+
+                {/* Avaliadores - Quem Preencheu */}
+                {avaliadores.length > 0 && (
+                    <div className="mt-8 pt-8 border-t border-gray-200 flex flex-col gap-4">
+                        <h2 className="text-xl font-bold text-gray-900">Lista de Avaliadores</h2>
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
+                                {avaliadores.map((a) => (
+                                    <div
+                                        key={a.membroId}
+                                        className="flex items-center justify-between px-5 py-3 border-b border-r border-gray-100 last:border-b-0"
+                                    >
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-900">{a.nome}</span>
+                                            <span className="text-xs text-gray-400 ml-2">{a.area}</span>
+                                        </div>
+                                        {a.concluiu ? (
+                                            <span className="flex items-center gap-1 text-xs font-semibold text-green-600">
+                                                <CheckCircle size={14} />
+                                                Concluiu
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1 text-xs font-semibold text-gray-400">
+                                                <XCircle size={14} />
+                                                {a.paresFinalizados}/{a.totalPares}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Edit Modal */}

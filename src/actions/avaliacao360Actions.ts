@@ -1480,3 +1480,55 @@ export async function gerarRelatorioAV360Xlsx(avaliacaoId: number): Promise<{ by
     const buffer = await generateAV360Xlsx(data);
     return { bytes: Array.from(buffer), nome: data.nome };
 }
+
+export type Avaliador360Status = {
+    membroId: number
+    nome: string
+    area: string
+    totalPares: number
+    paresFinalizados: number
+    concluiu: boolean
+}
+
+export async function getAvaliadores360Status(avaliacaoId: number): Promise<Avaliador360Status[]> {
+    try {
+        const feedbacks = await prisma.feedback360.findMany({
+            where: { avaliacaoId },
+            include: {
+                avaliador: {
+                    include: { area: true }
+                }
+            }
+        })
+
+        const porAvaliador = new Map<number, Avaliador360Status>()
+
+        for (const f of feedbacks) {
+            if (!porAvaliador.has(f.avaliadorId)) {
+                porAvaliador.set(f.avaliadorId, {
+                    membroId: f.avaliadorId,
+                    nome: f.avaliador.nome,
+                    area: f.avaliador.area.nome,
+                    totalPares: 0,
+                    paresFinalizados: 0,
+                    concluiu: false
+                })
+            }
+            const entry = porAvaliador.get(f.avaliadorId)!
+            entry.totalPares++
+            if (f.finalizado) entry.paresFinalizados++
+        }
+
+        for (const entry of porAvaliador.values()) {
+            entry.concluiu = entry.totalPares > 0 && entry.paresFinalizados === entry.totalPares
+        }
+
+        return Array.from(porAvaliador.values()).sort((a, b) => {
+            if (a.area !== b.area) return a.area.localeCompare(b.area)
+            return a.nome.localeCompare(b.nome)
+        })
+    } catch (error) {
+        console.error(error)
+        return []
+    }
+}
