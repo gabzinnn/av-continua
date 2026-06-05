@@ -1,6 +1,7 @@
 "use server"
 
 import prisma from "@/src/lib/prisma"
+import { Prisma } from "../generated/prisma/client"
 import { revalidatePath } from "next/cache"
 import { PCO, PerguntaPCO, TipoPerguntaPCO } from "../generated/prisma/client"
 import type { PCOReportData, SecaoRelatorio, PerguntaRelatorio, DonutItem } from "@/src/lib/reports/pco/types"
@@ -414,13 +415,13 @@ export async function enviarRespostasPCO(
                 })),
             })
 
-            // Marcar participação como respondida
+            // Marcar participação como respondida e limpar rascunho
             await tx.participacaoPCO.updateMany({
                 where: {
                     pcoId: input.pcoId,
                     membroId: input.membroId,
                 },
-                data: { respondeu: true },
+                data: { respondeu: true, rascunhoRespostas: Prisma.DbNull },
             })
         }, { timeout: 30000 })
 
@@ -428,6 +429,52 @@ export async function enviarRespostasPCO(
     } catch (error) {
         console.error("Erro ao enviar respostas PCO:", error)
         return { success: false, error: "Erro ao enviar respostas." }
+    }
+}
+
+// ==========================================
+// MEMBER-SIDE: RASCUNHO SERVER-SIDE
+// ==========================================
+
+type RespostaRascunho = Record<number, { nota?: number; opcaoId?: number; texto?: string; justificativa?: string }>
+
+export async function salvarRascunhoPCO(
+    membroId: number,
+    pcoId: number,
+    respostas: RespostaRascunho
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const participacao = await prisma.participacaoPCO.findUnique({
+            where: { pcoId_membroId: { pcoId, membroId } },
+            include: { pco: { select: { status: true } } },
+        })
+        if (!participacao) return { success: false, error: "Participação não encontrada." }
+        if (participacao.respondeu) return { success: false, error: "PCO já respondida." }
+        if ((participacao.pco as any).status !== "ATIVA") return { success: false, error: "PCO não está ativa." }
+
+        await prisma.participacaoPCO.update({
+            where: { pcoId_membroId: { pcoId, membroId } },
+            data: { rascunhoRespostas: respostas as any },
+        })
+        return { success: true }
+    } catch (error) {
+        console.error("Erro ao salvar rascunho PCO:", error)
+        return { success: false, error: "Erro ao salvar rascunho." }
+    }
+}
+
+export async function carregarRascunhoPCO(
+    membroId: number,
+    pcoId: number
+): Promise<RespostaRascunho | null> {
+    try {
+        const participacao = await prisma.participacaoPCO.findUnique({
+            where: { pcoId_membroId: { pcoId, membroId } },
+        })
+        if (!participacao || participacao.respondeu) return null
+        return (participacao as any).rascunhoRespostas as RespostaRascunho ?? null
+    } catch {
+        return null
     }
 }
 

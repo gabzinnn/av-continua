@@ -490,10 +490,11 @@ model OpcaoPerguntaPCO {
 }
 
 model ParticipacaoPCO {
-  id        Int     @id @default(autoincrement())
-  pcoId     Int
-  membroId  Int
-  respondeu Boolean @default(false)
+  id                Int     @id @default(autoincrement())
+  pcoId             Int
+  membroId          Int
+  respondeu         Boolean @default(false)
+  rascunhoRespostas Json?
 
   pco    PCO    @relation(fields: [pcoId], references: [id], onDelete: Cascade)
   membro Membro @relation(fields: [membroId], references: [id])

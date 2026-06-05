@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { CheckCircle, ChevronRight, ChevronLeft, ClipboardList, FileText } from "lucide-react"
 import { useMember } from "@/src/context/memberContext"
 import { Button } from "@/src/app/components/Button"
-import { getPCOsAtivasParaMembro, enviarRespostasPCO, getPCOsHistoricoMembro, getRelatorioPCO, PCOParaResponder, PCOHistoricoItem } from "@/src/actions/pcoActions"
+import { getPCOsAtivasParaMembro, enviarRespostasPCO, getPCOsHistoricoMembro, getRelatorioPCO, salvarRascunhoPCO, carregarRascunhoPCO, PCOParaResponder, PCOHistoricoItem } from "@/src/actions/pcoActions"
 
 type RespostaMap = Record<number, { nota?: number; opcaoId?: number; texto?: string; justificativa?: string }>
 
@@ -40,7 +40,9 @@ export function MembroPCOContent() {
     const [submitted, setSubmitted] = useState(false)
     const [currentSectionIndex, setCurrentSectionIndex] = useState(0)
     const [generatingPdf, setGeneratingPdf] = useState<number | null>(null)
+    const [draftSaved, setDraftSaved] = useState(false)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
+    const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const fetchData = async () => {
         if (!selectedMember) return
@@ -62,18 +64,40 @@ export function MembroPCOContent() {
         fetchData()
     }, [selectedMember])
 
-    const handleSelectPCO = (pco: PCOParaResponder) => {
+    const handleSelectPCO = async (pco: PCOParaResponder) => {
         setSelectedPCO(pco)
-        const draft = selectedMember ? loadDraft(Number(selectedMember.id), pco.id) : null
-        setRespostas(draft ?? {})
         setCurrentSectionIndex(0)
         setSubmitted(false)
+        setDraftSaved(false)
+
+        if (selectedMember) {
+            const serverDraft = await carregarRascunhoPCO(Number(selectedMember.id), pco.id)
+            if (serverDraft && Object.keys(serverDraft).length > 0) {
+                setRespostas(serverDraft)
+                setDraftSaved(true)
+                return
+            }
+        }
+        const localDraft = selectedMember ? loadDraft(Number(selectedMember.id), pco.id) : null
+        setRespostas(localDraft ?? {})
+        if (localDraft) setDraftSaved(true)
+    }
+
+    const scheduleDraftSave = (next: RespostaMap) => {
+        if (!selectedMember || !selectedPCO) return
+        saveDraft(Number(selectedMember.id), selectedPCO.id, next)
+        if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current)
+        draftDebounceRef.current = setTimeout(async () => {
+            if (!selectedMember || !selectedPCO) return
+            const result = await salvarRascunhoPCO(Number(selectedMember.id), selectedPCO.id, next)
+            if (result.success) setDraftSaved(true)
+        }, 1000)
     }
 
     const handleSetNota = (perguntaId: number, nota: number) => {
         setRespostas((prev) => {
             const next = { ...prev, [perguntaId]: { ...prev[perguntaId], nota } }
-            if (selectedMember && selectedPCO) saveDraft(Number(selectedMember.id), selectedPCO.id, next)
+            scheduleDraftSave(next)
             return next
         })
     }
@@ -81,7 +105,7 @@ export function MembroPCOContent() {
     const handleSetOpcao = (perguntaId: number, opcaoId: number) => {
         setRespostas((prev) => {
             const next = { ...prev, [perguntaId]: { ...prev[perguntaId], opcaoId } }
-            if (selectedMember && selectedPCO) saveDraft(Number(selectedMember.id), selectedPCO.id, next)
+            scheduleDraftSave(next)
             return next
         })
     }
@@ -89,7 +113,7 @@ export function MembroPCOContent() {
     const handleSetTexto = (perguntaId: number, texto: string) => {
         setRespostas((prev) => {
             const next = { ...prev, [perguntaId]: { ...prev[perguntaId], texto } }
-            if (selectedMember && selectedPCO) saveDraft(Number(selectedMember.id), selectedPCO.id, next)
+            scheduleDraftSave(next)
             return next
         })
     }
@@ -97,7 +121,7 @@ export function MembroPCOContent() {
     const handleSetJustificativa = (perguntaId: number, justificativa: string) => {
         setRespostas((prev) => {
             const next = { ...prev, [perguntaId]: { ...prev[perguntaId], justificativa } }
-            if (selectedMember && selectedPCO) saveDraft(Number(selectedMember.id), selectedPCO.id, next)
+            scheduleDraftSave(next)
             return next
         })
     }
@@ -256,7 +280,7 @@ export function MembroPCOContent() {
         const totalPerguntas = getTotalPerguntas()
         const answeredCount = getAnsweredCount()
         const progressPct = totalPerguntas > 0 ? Math.round((answeredCount / totalPerguntas) * 100) : 0
-        const hasDraft = selectedMember ? loadDraft(Number(selectedMember.id), selectedPCO.id) !== null : false
+        const hasDraft = draftSaved
 
         return (
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">

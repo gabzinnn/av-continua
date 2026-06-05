@@ -1,6 +1,25 @@
 "use client"
 
 import { useEffect, useState } from "react"
+
+const GRUPOS_EXCLUDED = [
+    /coordena[çc][aã]o\s*geral/i,
+    /organiza[çc][aã]o\s*interna/i,
+]
+const GRUPOS_SLOTS = [
+    { label: "Geral",    regex: /geral/i },
+    { label: "Coord",    regex: /coord/i },
+    { label: "Academia", regex: /academia/i },
+    { label: "Escola",   regex: /escola/i },
+    { label: "Fábrica",  regex: /f[aá]brica/i },
+]
+function resolveGrupos(grupos: string[]): { label: string; originalKey: string }[] {
+    const allowed = grupos.filter(g => !GRUPOS_EXCLUDED.some(rx => rx.test(g)))
+    return GRUPOS_SLOTS.flatMap(({ label, regex }) => {
+        const match = allowed.find(g => regex.test(g))
+        return match ? [{ label, originalKey: match }] : []
+    })
+}
 import Link from "next/link"
 import { Download, ChevronRight, Users, BarChart2, MessageSquare, CheckCircle, XCircle, Edit3 } from "lucide-react"
 import { Button } from "@/src/app/components/Button"
@@ -300,6 +319,7 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                 {data.secoes.map((secao) => {
                     const perguntasEscala = secao.perguntas.filter(p => p.tipo === "ESCALA")
                     const perguntasOutras = secao.perguntas.filter(p => p.tipo !== "ESCALA")
+                    const resolvedCols = resolveGrupos(data.grupos)
 
                     return (
                         <section key={secao.id} className="flex flex-col gap-8 border-t border-border pt-8">
@@ -321,9 +341,9 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                                                     <th className="text-left px-4 py-3 font-semibold text-text-main min-w-[300px] sticky left-0 bg-bg-card z-10 shadow-sm md:shadow-none">
                                                         Perguntas
                                                     </th>
-                                                    {data.grupos.map((grupo) => (
-                                                        <th key={grupo} className="text-center px-3 py-3 font-semibold text-text-main whitespace-nowrap min-w-[80px]">
-                                                            {grupo}
+                                                    {resolvedCols.map((col) => (
+                                                        <th key={col.label} className="text-center px-3 py-3 font-semibold text-text-main whitespace-nowrap min-w-[80px]">
+                                                            {col.label}
                                                         </th>
                                                     ))}
                                                 </tr>
@@ -335,11 +355,11 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                                                             <span className="text-xs font-bold text-primary mr-2">Q{p.ordem}.</span>
                                                             {p.texto}
                                                         </td>
-                                                        {data.grupos.map((grupo) => {
-                                                            const media = p.mediaPorGrupo[grupo] ?? 0
+                                                        {resolvedCols.map((col) => {
+                                                            const media = p.mediaPorGrupo[col.originalKey] ?? 0
                                                             const color = getMediaColor(media)
                                                             return (
-                                                                <td key={grupo} className="text-center px-3 py-3">
+                                                                <td key={col.label} className="text-center px-3 py-3">
                                                                     <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold ${color}`}>
                                                                         {media !== 0 ? media.toFixed(1).replace(".", ",") : "—"}
                                                                     </span>
@@ -360,7 +380,7 @@ export function PCODetalhesContent({ pcoId }: PCODetalhesContentProps) {
                                     <h3 className="text-lg font-bold text-text-main">Detalhes das Perguntas</h3>
                                     <div className="grid grid-cols-1 gap-6">
                                         {perguntasEscala.map((p) => (
-                                            <EscalaPerguntaCard key={p.id} pergunta={p} grupos={data.grupos} />
+                                            <EscalaPerguntaCard key={p.id} pergunta={p} grupos={resolvedCols} />
                                         ))}
                                     </div>
                                 </div>
@@ -642,7 +662,7 @@ function getMediaColor(value: number): string {
 // Card: Pergunta Escala com gráfico por grupo
 // ==========================================
 
-function EscalaPerguntaCard({ pergunta, grupos }: { pergunta: PerguntaDetalhes; grupos: string[] }) {
+function EscalaPerguntaCard({ pergunta, grupos }: { pergunta: PerguntaDetalhes; grupos: { label: string; originalKey: string }[] }) {
     return (
         <div className="bg-bg-card rounded-xl border border-border shadow-sm overflow-hidden break-inside-avoid">
             {/* Header */}
@@ -674,10 +694,10 @@ function EscalaPerguntaCard({ pergunta, grupos }: { pergunta: PerguntaDetalhes; 
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    {grupos.map((grupo) => {
-                        const dist = pergunta.distribuicaoPorGrupo[grupo]
+                    {grupos.map((col) => {
+                        const dist = pergunta.distribuicaoPorGrupo[col.originalKey]
                         if (!dist || dist.total === 0) return null
-                        return <StackedBar key={grupo} label={grupo} dist={dist} />
+                        return <StackedBar key={col.label} label={col.label} dist={dist} />
                     })}
                 </div>
 
