@@ -156,9 +156,8 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
     const dimensoes = avaliacao.dimensoes
 
     return (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="flex flex-col items-center py-10 px-6 max-w-350 mx-auto w-full">
-            <CustomAlert 
+        <div className="flex-1 min-h-0 flex flex-col">
+            <CustomAlert
                 isOpen={alert.isOpen}
                 type={alert.type}
                 title={alert.title}
@@ -166,20 +165,21 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                 onConfirm={() => setAlert(prev => ({...prev, isOpen: false}))}
             />
 
-            {/* Page Heading */}
-            <div className="w-full flex flex-col gap-3 mb-8">
-                <h1 className="text-gray-900 text-3xl font-black leading-tight tracking-[-0.033em]">
-                    Responder Avaliação 360: {avaliacao.nome}
-                </h1>
-                <p className="text-gray-600 text-base font-normal leading-normal max-w-2xl">
-                    Atribua notas de 1 a 10 para cada competência ou escreva seu comentário nas perguntas abertas.
-                    Recomendamos salvar rascunho regularmente.
-                </p>
-            </div>
-
             {/* Main Matrix Card */}
-            <div className="w-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-24">
-                <div className="overflow-x-auto">
+            <div className="flex-1 min-h-0 px-6 pb-24 max-w-350 mx-auto w-full">
+            <div className="h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="overflow-auto h-full">
+
+                    {/* Page Heading — scrollável */}
+                    <div className="flex flex-col gap-3 px-6 pt-10 pb-6">
+                        <h1 className="text-gray-900 text-3xl font-black leading-tight tracking-[-0.033em]">
+                            Responder Avaliação 360: {avaliacao.nome}
+                        </h1>
+                        <p className="text-gray-600 text-base font-normal leading-normal max-w-2xl">
+                            Atribua notas de 1 a 10 para cada competência ou escreva seu comentário nas perguntas abertas.
+                            Recomendamos salvar rascunho regularmente.
+                        </p>
+                    </div>
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200 sticky top-0 z-20">
@@ -255,8 +255,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                     </table>
                 </div>
             </div>
-
-        </div>
+            </div>
 
             {/* Sticky Footer Progress Bar */}
             <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-4 px-10 flex items-center justify-between shadow-2xl z-50">
