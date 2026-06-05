@@ -327,14 +327,19 @@ export function Relatorio360Content({ id }: { id: number }) {
                                                         <span className="font-bold text-sm text-gray-900">{d.mediaSimples}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                                                            <div key={n} className="h-1.5 flex-1 bg-gray-100 rounded-full overflow-hidden">
-                                                                <div
-                                                                    className="h-full bg-[#fad419]"
-                                                                    style={{ width: `${relatorioIndividual.numRespondentes > 0 ? (d.distribuicao[n] / relatorioIndividual.numRespondentes) * 100 : 0}%` }}
-                                                                />
-                                                            </div>
-                                                        ))}
+                                                        {(() => {
+                                                            const totalNotas = Object.values(d.distribuicao as Record<string, number>).reduce((s, v) => s + v, 0)
+                                                            return [1,2,3,4,5,6,7,8,9,10].map(n => {
+                                                                const pct = totalNotas > 0 ? d.distribuicao[n] / totalNotas : 0
+                                                                return (
+                                                                    <div
+                                                                        key={n}
+                                                                        className="h-1.5 flex-1 rounded-full"
+                                                                        style={{ backgroundColor: `rgba(250, 212, 25, ${pct === 0 ? 0 : Math.max(pct, 0.4)})` }}
+                                                                    />
+                                                                )
+                                                            })
+                                                        })()}
                                                     </div>
                                                     <div className="flex justify-between text-[10px] text-gray-400 mt-1">
                                                         <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>

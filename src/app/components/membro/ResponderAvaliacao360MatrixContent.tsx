@@ -182,8 +182,8 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200">
-                                <th className="sticky left-0 bg-gray-50 text-left p-6 min-w-87.5 font-bold text-sm z-10 border-r border-gray-200">
+                            <tr className="bg-gray-50 border-b border-gray-200 sticky top-0 z-20">
+                                <th className="sticky left-0 bg-gray-50 text-left p-6 min-w-87.5 font-bold text-sm z-30 border-r border-gray-200">
                                     Competência / Comportamento
                                 </th>
                                 {feedbacks.map(f => (
