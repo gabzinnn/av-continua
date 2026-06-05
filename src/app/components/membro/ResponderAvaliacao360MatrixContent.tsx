@@ -1,12 +1,27 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useMember } from "@/src/context/memberContext"
 import { getFeedback360MatrixParaResponder, salvarRespostas360, finalizarFeedback360 } from "@/src/actions/avaliacao360Actions"
 const TipoPergunta360 = { ESCALA: "ESCALA", TEXTO_ABERTO: "TEXTO_ABERTO" } as const
 type TipoPergunta360 = typeof TipoPergunta360[keyof typeof TipoPergunta360]
 import { CustomAlert } from "../CustomAlert"
+
+type RespostasMap = Record<number, Record<number, any>>
+
+function getDraftKey(membroId: number, avaliacaoId: number) {
+    return `av360_draft_${membroId}_${avaliacaoId}`
+}
+function saveDraft(membroId: number, avaliacaoId: number, respostas: RespostasMap) {
+    try { localStorage.setItem(getDraftKey(membroId, avaliacaoId), JSON.stringify(respostas)) } catch {}
+}
+function loadDraft(membroId: number, avaliacaoId: number): RespostasMap | null {
+    try { const raw = localStorage.getItem(getDraftKey(membroId, avaliacaoId)); return raw ? JSON.parse(raw) : null } catch { return null }
+}
+function clearDraft(membroId: number, avaliacaoId: number) {
+    try { localStorage.removeItem(getDraftKey(membroId, avaliacaoId)) } catch {}
+}
 
 export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoId: number }) {
     const { selectedMember } = useMember()
@@ -20,16 +35,20 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
     })
     
     // Map of feedbackId -> (perguntaId -> nota/texto)
-    const [respostas, setRespostas] = useState<Record<number, Record<number, any>>>({})
+    const [respostas, setRespostas] = useState<RespostasMap>({})
     const [progresso, setProgresso] = useState(0)
+    const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved">("idle")
+
+    const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const dirtyFeedbacksRef = useRef<Set<number>>(new Set())
 
     useEffect(() => {
         if (selectedMember) {
             getFeedback360MatrixParaResponder(avaliacaoId, Number(selectedMember.id)).then(data => {
                 setFeedbacks(data)
                 
-                // Initialize respostas state
-                const initialRespostas: Record<number, Record<number, any>> = {}
+                // Initialize respostas state from server
+                const initialRespostas: RespostasMap = {}
                 data.forEach(f => {
                     initialRespostas[f.id] = {}
                     f.respostas.forEach((r: any) => {
@@ -39,6 +58,23 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                         }
                     })
                 })
+
+                // Merge com rascunho local (pode conter alterações ainda não sincronizadas)
+                const localDraft = loadDraft(Number(selectedMember.id), avaliacaoId)
+                if (localDraft) {
+                    Object.entries(localDraft).forEach(([fId, perguntas]) => {
+                        const feedbackId = Number(fId)
+                        if (!initialRespostas[feedbackId]) initialRespostas[feedbackId] = {}
+                        Object.entries(perguntas).forEach(([pId, resp]: any) => {
+                            initialRespostas[feedbackId][Number(pId)] = {
+                                ...initialRespostas[feedbackId][Number(pId)],
+                                ...resp,
+                            }
+                        })
+                    })
+                    setDraftStatus("saved")
+                }
+
                 setRespostas(initialRespostas)
                 setLoading(false)
             }).catch(err => {
@@ -47,6 +83,13 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
             })
         }
     }, [selectedMember, avaliacaoId])
+
+    // Cancela debounce pendente ao desmontar (localStorage já foi gravado a cada tecla)
+    useEffect(() => {
+        return () => {
+            if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current)
+        }
+    }, [])
 
     useEffect(() => {
         if (feedbacks.length > 0) {
@@ -76,21 +119,57 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
 
     const handleRespostaChange = (feedbackId: number, perguntaId: number, tipo: TipoPergunta360, valor: any) => {
         setRespostas(prev => {
-            const novo = { ...prev }
-            if (!novo[feedbackId]) novo[feedbackId] = {}
+            const novo = { ...prev, [feedbackId]: { ...prev[feedbackId] } }
             if (!novo[feedbackId][perguntaId]) novo[feedbackId][perguntaId] = {}
-            
+            else novo[feedbackId][perguntaId] = { ...novo[feedbackId][perguntaId] }
+
             if (tipo === TipoPergunta360.ESCALA) {
                 novo[feedbackId][perguntaId].nota = valor
             } else {
                 novo[feedbackId][perguntaId].texto = valor
             }
+            scheduleDraftSave(feedbackId, novo)
             return novo
         })
     }
 
+    // Autosave em background: grava no localStorage imediatamente e sincroniza com o
+    // servidor após um pequeno debounce, salvando apenas os feedbacks que mudaram.
+    const scheduleDraftSave = (feedbackId: number, next: RespostasMap) => {
+        if (!selectedMember) return
+        saveDraft(Number(selectedMember.id), avaliacaoId, next)
+        dirtyFeedbacksRef.current.add(feedbackId)
+        setDraftStatus("saving")
+
+        if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current)
+        draftDebounceRef.current = setTimeout(async () => {
+            if (!selectedMember) return
+            const ids = Array.from(dirtyFeedbacksRef.current)
+            dirtyFeedbacksRef.current.clear()
+            try {
+                for (const fId of ids) {
+                    const toSave = Object.entries(next[fId] || {}).map(([perguntaId, resp]: any) => ({
+                        perguntaId: Number(perguntaId),
+                        nota: resp.nota,
+                        texto: resp.texto,
+                    }))
+                    if (toSave.length > 0) {
+                        await salvarRespostas360(fId, Number(selectedMember.id), toSave)
+                    }
+                }
+                setDraftStatus("saved")
+            } catch {
+                // Falha silenciosa: o localStorage preserva os dados e a próxima alteração reenvia
+                setDraftStatus("idle")
+            }
+        }, 1500)
+    }
+
     const salvarRascunho = async () => {
         if (!selectedMember) return
+        // Cancela qualquer autosave pendente — vamos salvar tudo agora
+        if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current)
+        dirtyFeedbacksRef.current.clear()
         setSaving(true)
         try {
             for (const f of feedbacks) {
@@ -103,6 +182,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                     await salvarRespostas360(f.id, Number(selectedMember.id), toSave)
                 }
             }
+            setDraftStatus("saved")
             setAlert({ isOpen: true, type: "success", title: "Sucesso", message: "Rascunho salvo com sucesso!" })
         } catch (err) {
             setAlert({ isOpen: true, type: "error", title: "Erro", message: "Falha ao salvar rascunho." })
@@ -117,6 +197,9 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
             return
         }
         
+        // Cancela autosave pendente antes de finalizar
+        if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current)
+        dirtyFeedbacksRef.current.clear()
         setSaving(true)
         try {
             for (const f of feedbacks) {
@@ -128,12 +211,13 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                 if (toSave.length > 0) {
                     await salvarRespostas360(f.id, Number(selectedMember.id), toSave)
                 }
-                
+
                 const result = await finalizarFeedback360(f.id, Number(selectedMember.id))
                 if (!result.success) {
                     throw new Error(result.error)
                 }
             }
+            clearDraft(Number(selectedMember.id), avaliacaoId)
             setAlert({ isOpen: true, type: "success", title: "Sucesso", message: "Avaliação finalizada com sucesso!" })
             setTimeout(() => {
                 router.push("/avaliacoes-360")
@@ -218,7 +302,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                             
                                             {feedbacks.map(f => {
                                                 const resp = respostas[f.id]?.[pergunta.id]
-                                                const isFilled = pergunta.tipo === "ESCALA" ? (resp?.nota >= 1 && resp?.nota <= 10) : (resp?.texto?.trim() !== "")
+                                                const isFilled = pergunta.tipo === "ESCALA" ? (resp?.nota >= 0 && resp?.nota <= 10) : (resp?.texto?.trim() !== "")
                                                 
                                                 return (
                                                     <td key={f.id} className="p-6 text-center border-l border-gray-200 align-middle">
@@ -228,11 +312,20 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                                                     ${isFilled ? 'border-[#fad419] shadow-[0_0_0_2px_rgba(250,213,25,0.2)]' : 'border-gray-200'}
                                                                 `}
                                                                 type="number"
-                                                                min="1"
+                                                                min="0"
                                                                 max="10"
+                                                                step="1"
                                                                 placeholder="-"
-                                                                value={resp?.nota || ''}
-                                                                onChange={(e) => handleRespostaChange(f.id, pergunta.id, TipoPergunta360.ESCALA, parseInt(e.target.value) || null)}
+                                                                value={resp?.nota ?? ''}
+                                                                onKeyDown={(e) => { if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault() }}
+                                                                onChange={(e) => {
+                                                                    const raw = e.target.value
+                                                                    if (raw === "") { handleRespostaChange(f.id, pergunta.id, TipoPergunta360.ESCALA, null); return }
+                                                                    const n = parseInt(raw, 10)
+                                                                    if (isNaN(n)) return
+                                                                    const clamped = Math.min(10, Math.max(0, n))
+                                                                    handleRespostaChange(f.id, pergunta.id, TipoPergunta360.ESCALA, clamped)
+                                                                }}
                                                             />
                                                         ) : (
                                                             <textarea 
@@ -269,7 +362,22 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
-                    <button 
+                    {draftStatus !== "idle" && (
+                        <span className="text-xs font-medium text-gray-400 flex items-center gap-1.5 select-none">
+                            {draftStatus === "saving" ? (
+                                <>
+                                    <span className="w-2 h-2 rounded-full bg-gray-300 animate-pulse" />
+                                    Salvando…
+                                </>
+                            ) : (
+                                <>
+                                    <span className="material-symbols-outlined text-sm text-green-500">check_circle</span>
+                                    Rascunho salvo
+                                </>
+                            )}
+                        </span>
+                    )}
+                    <button
                         onClick={salvarRascunho}
                         disabled={saving}
                         className="px-6 py-3 text-sm font-bold text-gray-600 hover:text-black transition-colors disabled:opacity-50 cursor-pointer"
