@@ -979,14 +979,18 @@ export async function getRelatorio360PorAvaliado(avaliacaoId: number, avaliadoId
             }
 
             const mediaSimples = totalNotasDimensao > 0 ? somaNotasDimensao / totalNotasDimensao : 0;
+            const temNotasNumericas = totalNotasDimensao > 0;
 
-            somaScoreGeral += mediaSimples;
-            somaPesosTotal += 1;
+            if (temNotasNumericas) {
+                somaScoreGeral += mediaSimples;
+                somaPesosTotal += 1;
+            }
 
             relatorioDimensoes.push({
                 dimensao: dim.titulo,
                 mediaSimples,
-                distribuicao: distribuicaoDimensao
+                distribuicao: distribuicaoDimensao,
+                temNotasNumericas,
             });
         }
 
@@ -1152,8 +1156,10 @@ export async function getRelatorio360Geral(avaliacaoId: number) {
                 }
 
                 const mediaDim = totalNotas > 0 ? somaNotas / totalNotas : 0;
-                somaScore += mediaDim;
-                somaPesos += 1;
+                if (totalNotas > 0) {
+                    somaScore += mediaDim;
+                    somaPesos += 1;
+                }
                 
                 if (!mediasPorDimensaoGlobal.has(dim.id)) {
                     mediasPorDimensaoGlobal.set(dim.id, { soma: 0, count: 0 });
@@ -1184,14 +1190,15 @@ export async function getRelatorio360Geral(avaliacaoId: number) {
 
         ranking.sort((a, b) => b.scoreGeral - a.scoreGeral);
 
-        const dimensoesGlobais = avaliacao.dimensoes.map(d => {
-            const stats = mediasPorDimensaoGlobal.get(d.id);
-            const media = stats && stats.count > 0 ? stats.soma / stats.count : 0;
-            return {
-                titulo: d.titulo,
-                mediaGlobal: Number(media.toFixed(2))
-            };
-        });
+        const dimensoesGlobais = avaliacao.dimensoes
+            .filter(d => (mediasPorDimensaoGlobal.get(d.id)?.count ?? 0) > 0)
+            .map(d => {
+                const stats = mediasPorDimensaoGlobal.get(d.id)!;
+                return {
+                    titulo: d.titulo,
+                    mediaGlobal: Number((stats.soma / stats.count).toFixed(2))
+                };
+            });
 
         const scoreGlobalMedia = qtdGlobalScores > 0 ? somaGlobalScore / qtdGlobalScores : 0;
 
@@ -1357,8 +1364,9 @@ export async function getRelatorioAV360XlsxData(avaliacaoId: number): Promise<AV
                 });
             }
 
-            const scoreGeral = avaliacao.dimensoes.length > 0
-                ? Number((somaScoreGeral / avaliacao.dimensoes.length).toFixed(2))
+            const numDimsNumericas = dimensoes.filter(d => d.criterios.length > 0).length;
+            const scoreGeral = numDimsNumericas > 0
+                ? Number((somaScoreGeral / numDimsNumericas).toFixed(2))
                 : 0;
 
             // Collect text responses

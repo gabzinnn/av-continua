@@ -124,9 +124,8 @@ export function Relatorio360Content({ id }: { id: number }) {
 
     if (isLoading || !relatorioGeral) return <div className="p-8 text-center">Carregando relatório...</div>
 
-    // Radar Chart Data — exclude dimensions with no numeric scores (qualitative-only)
     const dimensoesNumericas = (relatorioIndividual?.dimensoes ?? []).filter(
-        (d: any) => Object.values(d.distribuicao as Record<string, number>).some(v => v > 0)
+        (d: any) => d.temNotasNumericas
     )
 
     const radarOptions: ApexCharts.ApexOptions = {
@@ -321,7 +320,7 @@ export function Relatorio360Content({ id }: { id: number }) {
                                     <Card className="p-6 overflow-y-auto max-h-[400px]">
                                         <h4 className="font-bold text-gray-900 mb-4">Notas por Dimensão</h4>
                                         <div className="space-y-4">
-                                            {relatorioIndividual.dimensoes.map((d: any, i: number) => (
+                                            {relatorioIndividual.dimensoes.filter((d: any) => d.temNotasNumericas).map((d: any, i: number) => (
                                                 <div key={i} className="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
                                                     <div className="flex justify-between items-center mb-1">
                                                         <span className="font-medium text-sm text-gray-700">{d.dimensao}</span>

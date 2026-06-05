@@ -21,7 +21,10 @@
       "PowerShell(Invoke-WebRequest -Uri \"https://fonts.bunny.net/inter/files/inter-latin-400-normal.ttf\" -OutFile \"D:\\\\Gabriel\\\\av-continua\\\\public\\\\fonts\\\\Inter-Regular.ttf\" -UseBasicParsing)",
       "PowerShell(Invoke-WebRequest -Uri \"https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf\" -OutFile \"D:\\\\Gabriel\\\\av-continua\\\\public\\\\fonts\\\\Inter-Regular.ttf\" -UseBasicParsing; Write-Host \"Inter Regular downloaded\")",
       "PowerShell(Invoke-WebRequest -Uri \"https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf\" -OutFile \"D:\\\\Gabriel\\\\av-continua\\\\public\\\\fonts\\\\Inter-Bold.ttf\" -UseBasicParsing; Write-Host \"Inter Bold downloaded\")",
-      "Bash(Get-ChildItem -Path \"D:\\\\Gabriel\\\\av-continua\\\\src\" -Recurse -Filter \"*.ts\" -o Name)"
+      "Bash(Get-ChildItem -Path \"D:\\\\Gabriel\\\\av-continua\\\\src\" -Recurse -Filter \"*.ts\" -o Name)",
+      "Bash(rtk grep *)",
+      "Bash(rtk ls *)",
+      "Bash(rtk find *)"
     ]
   }
 }
