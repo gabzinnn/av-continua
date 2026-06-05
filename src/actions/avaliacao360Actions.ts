@@ -788,83 +788,6 @@ export async function temAvaliacao360Pendente(membroId: number) {
     }
 }
 
-export interface Av360RespostasView {
-    avaliacaoId: number
-    avaliacaoNome: string
-    dataFim: Date | null
-    avaliados: {
-        feedbackId: number
-        avaliadoId: number
-        avaliadoNome: string
-        dimensoes: {
-            id: number
-            titulo: string
-            perguntas: {
-                id: number
-                texto: string
-                tipo: "ESCALA" | "TEXTO_ABERTO"
-                ordem: number
-                resposta: { nota: number | null; texto: string | null } | null
-            }[]
-        }[]
-    }[]
-}
-
-export async function getAv360RespostasForMembro(
-    membroId: number,
-    avaliacaoId: number
-): Promise<Av360RespostasView | null> {
-    const feedbacks = await prisma.feedback360.findMany({
-        where: { avaliadorId: membroId, avaliacaoId, finalizado: true },
-        include: {
-            avaliado: { select: { id: true, nome: true } },
-            respostas: true,
-            avaliacao: {
-                select: {
-                    id: true,
-                    nome: true,
-                    dataFim: true,
-                    dimensoes: {
-                        orderBy: { ordem: "asc" },
-                        include: {
-                            perguntas: { orderBy: { ordem: "asc" } },
-                        },
-                    },
-                },
-            },
-        },
-    })
-
-    if (feedbacks.length === 0) return null
-
-    const av = feedbacks[0].avaliacao
-
-    return {
-        avaliacaoId: av.id,
-        avaliacaoNome: av.nome,
-        dataFim: av.dataFim,
-        avaliados: feedbacks.map((f: any) => ({
-            feedbackId: f.id,
-            avaliadoId: f.avaliado.id,
-            avaliadoNome: f.avaliado.nome,
-            dimensoes: av.dimensoes.map((d: any) => ({
-                id: d.id,
-                titulo: d.titulo,
-                perguntas: d.perguntas.map((p: any) => {
-                    const resposta = f.respostas.find((r: any) => r.perguntaId === p.id) ?? null
-                    return {
-                        id: p.id,
-                        texto: p.texto,
-                        tipo: p.tipo,
-                        ordem: p.ordem,
-                        resposta: resposta ? { nota: resposta.nota, texto: resposta.texto } : null,
-                    }
-                }),
-            })),
-        })),
-    }
-}
-
 export interface Av360HistoricoItem {
     avaliacaoId: number
     avaliacaoNome: string
@@ -898,6 +821,141 @@ export async function getAv360HistoricoMembro(membroId: number): Promise<Av360Hi
     return Array.from(porAvaliacao.values()).sort((a, b) =>
         (b.dataFim?.getTime() ?? 0) - (a.dataFim?.getTime() ?? 0)
     )
+}
+
+// ==========================================
+// MEMBRO DESTAQUE 360
+// ==========================================
+
+export interface MembroDestaqueOption {
+    id: number
+    nome: string
+}
+
+// Avaliados distintos da av360 (candidatos a destaque), excluindo o respondente.
+export async function getAvaliadosDaAvaliacao360(
+    avaliacaoId: number,
+    excluirMembroId: number
+): Promise<MembroDestaqueOption[]> {
+    try {
+        const feedbacks = await prisma.feedback360.findMany({
+            where: { avaliacaoId },
+            distinct: ["avaliadoId"],
+            select: { avaliado: { select: { id: true, nome: true } } },
+            orderBy: { avaliado: { nome: "asc" } },
+        })
+
+        return feedbacks
+            .map((f) => f.avaliado)
+            .filter((m) => m.id !== excluirMembroId)
+    } catch (error) {
+        console.error(error)
+        return []
+    }
+}
+
+export async function getMembroDestaque360(
+    avaliacaoId: number,
+    membroId: number
+): Promise<number | null> {
+    try {
+        const registro = await prisma.membroDestaque360.findUnique({
+            where: { avaliacaoId_avaliadorId: { avaliacaoId, avaliadorId: membroId } },
+            select: { membroDestaqueId: true },
+        })
+        return registro?.membroDestaqueId ?? null
+    } catch (error) {
+        console.error(error)
+        return null
+    }
+}
+
+export async function salvarMembroDestaque360(
+    avaliacaoId: number,
+    avaliadorId: number,
+    membroDestaqueId: number
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        if (!membroDestaqueId) {
+            return { success: false, error: "Selecione o membro destaque" }
+        }
+        if (membroDestaqueId === avaliadorId) {
+            return { success: false, error: "Você não pode escolher a si mesmo" }
+        }
+
+        const avaliacao = await prisma.avaliacao360.findUnique({
+            where: { id: avaliacaoId },
+            select: { status: true },
+        })
+        if (!avaliacao || avaliacao.status !== StatusAvaliacao360.ATIVA) {
+            return { success: false, error: "Avaliação inativa" }
+        }
+
+        // O respondente precisa participar desta av360
+        const participa = await prisma.feedback360.findFirst({
+            where: { avaliacaoId, avaliadorId },
+            select: { id: true },
+        })
+        if (!participa) {
+            return { success: false, error: "Sem permissão" }
+        }
+
+        // O destaque precisa ser um avaliado desta av360
+        const destaqueValido = await prisma.feedback360.findFirst({
+            where: { avaliacaoId, avaliadoId: membroDestaqueId },
+            select: { id: true },
+        })
+        if (!destaqueValido) {
+            return { success: false, error: "Membro destaque inválido" }
+        }
+
+        await prisma.membroDestaque360.upsert({
+            where: { avaliacaoId_avaliadorId: { avaliacaoId, avaliadorId } },
+            update: { membroDestaqueId },
+            create: { avaliacaoId, avaliadorId, membroDestaqueId },
+        })
+
+        return { success: true }
+    } catch (error) {
+        console.error(error)
+        return { success: false, error: "Erro ao salvar membro destaque" }
+    }
+}
+
+export interface RankingDestaque360Item {
+    membroId: number
+    nome: string
+    votos: number
+}
+
+export async function getRankingDestaque360(
+    avaliacaoId: number
+): Promise<RankingDestaque360Item[]> {
+    try {
+        const destaques = await prisma.membroDestaque360.findMany({
+            where: { avaliacaoId },
+            include: { membroDestaque: { select: { id: true, nome: true } } },
+        })
+
+        const porMembro = new Map<number, RankingDestaque360Item>()
+        for (const d of destaques) {
+            const existing = porMembro.get(d.membroDestaqueId)
+            if (existing) {
+                existing.votos++
+            } else {
+                porMembro.set(d.membroDestaqueId, {
+                    membroId: d.membroDestaque.id,
+                    nome: d.membroDestaque.nome,
+                    votos: 1,
+                })
+            }
+        }
+
+        return Array.from(porMembro.values()).sort((a, b) => b.votos - a.votos)
+    } catch (error) {
+        console.error(error)
+        return []
+    }
 }
 
 export async function getRelatorio360PorAvaliado(avaliacaoId: number, avaliadoId: number) {

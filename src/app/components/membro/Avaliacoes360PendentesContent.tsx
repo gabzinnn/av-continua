@@ -2,34 +2,16 @@
 
 import { useEffect, useState } from "react"
 import { useMember } from "@/src/context/memberContext"
-import { getMinhas360Pendentes, getAv360HistoricoMembro, getAv360RespostasForMembro, Av360HistoricoItem, Av360RespostasView } from "@/src/actions/avaliacao360Actions"
+import { getMinhas360Pendentes, getAv360HistoricoMembro, Av360HistoricoItem } from "@/src/actions/avaliacao360Actions"
 import { Card } from "../Card"
 import Link from "next/link"
-import { ClipboardCheck, CheckCircle, Eye, ArrowLeft, ChevronRight, User } from "lucide-react"
-
-const ESCALA_LABELS: Record<number, string> = {
-    1: "Insuficiente",
-    2: "Muito abaixo",
-    3: "Abaixo do esperado",
-    4: "Pouco abaixo",
-    5: "Regular",
-    6: "Adequado",
-    7: "Acima do esperado",
-    8: "Bom",
-    9: "Muito bom",
-    10: "Excepcional",
-}
+import { ClipboardCheck, CheckCircle } from "lucide-react"
 
 export function Avaliacoes360PendentesContent() {
     const { selectedMember } = useMember()
     const [feedbacks, setFeedbacks] = useState<any[]>([])
     const [historico, setHistorico] = useState<Av360HistoricoItem[]>([])
     const [loading, setLoading] = useState(true)
-
-    // estados de view de respostas
-    const [respostasAv360, setRespostasAv360] = useState<Av360RespostasView | null>(null)
-    const [loadingRespostas, setLoadingRespostas] = useState(false)
-    const [feedbackSelecionado, setFeedbackSelecionado] = useState<number | null>(null)
 
     useEffect(() => {
         if (selectedMember) {
@@ -44,178 +26,8 @@ export function Avaliacoes360PendentesContent() {
         }
     }, [selectedMember])
 
-    const handleVerDetalhes = async (avaliacaoId: number) => {
-        if (!selectedMember) return
-        setLoadingRespostas(true)
-        setFeedbackSelecionado(null)
-        try {
-            const data = await getAv360RespostasForMembro(Number(selectedMember.id), avaliacaoId)
-            setRespostasAv360(data)
-        } finally {
-            setLoadingRespostas(false)
-        }
-    }
-
-    const handleVoltarParaLista = () => {
-        setRespostasAv360(null)
-        setFeedbackSelecionado(null)
-    }
-
-    const handleVoltarParaAvaliados = () => {
-        setFeedbackSelecionado(null)
-    }
-
     if (loading) {
         return <div className="p-8 text-center text-gray-500">Carregando...</div>
-    }
-
-    // =============== VIEW: RESPOSTAS DE UM AVALIADO ===============
-    if (respostasAv360 && feedbackSelecionado !== null) {
-        const avaliado = respostasAv360.avaliados.find(a => a.feedbackId === feedbackSelecionado)
-        if (!avaliado) return null
-
-        return (
-            <div className="flex-1 overflow-y-auto">
-                {/* Header */}
-                <div className="sticky top-0 z-10 bg-bg-main border-b border-border px-6 py-4">
-                    <button
-                        onClick={handleVoltarParaAvaliados}
-                        className="flex items-center gap-2 text-sm text-text-muted hover:text-primary transition-colors cursor-pointer mb-3"
-                    >
-                        <ArrowLeft size={16} />
-                        Voltar para {respostasAv360.avaliacaoNome}
-                    </button>
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                            <User size={18} className="text-primary" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-text-muted font-medium">Avaliando</p>
-                            <h2 className="text-xl font-bold text-text-main">{avaliado.avaliadoNome}</h2>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Dimensões e Perguntas */}
-                <div className="p-6 max-w-3xl mx-auto space-y-6 pb-16">
-                    {avaliado.dimensoes.map((dim) => (
-                        <div key={dim.id} className="bg-bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-                            {/* Dimension header */}
-                            <div className="px-6 py-4 bg-[#fcfbf8] border-b border-border">
-                                <h3 className="font-bold text-primary">{dim.titulo}</h3>
-                            </div>
-
-                            {/* Perguntas */}
-                            <div className="divide-y divide-border">
-                                {dim.perguntas.map((pergunta, pIdx) => (
-                                    <div key={pergunta.id} className="px-6 py-5">
-                                        <p className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-1">
-                                            Pergunta {pIdx + 1}
-                                        </p>
-                                        <p className="text-base font-medium text-text-main mb-4">{pergunta.texto}</p>
-
-                                        {/* ESCALA 1-10 */}
-                                        {pergunta.tipo === "ESCALA" && (
-                                            <div className="space-y-3">
-                                                <div className="flex items-center gap-1.5">
-                                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
-                                                        const selected = pergunta.resposta?.nota === n
-                                                        return (
-                                                            <div
-                                                                key={n}
-                                                                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold select-none transition-none ${
-                                                                    selected
-                                                                        ? "bg-primary text-text-main shadow-sm"
-                                                                        : "bg-gray-100 text-gray-400"
-                                                                }`}
-                                                            >
-                                                                {n}
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>
-                                                {pergunta.resposta?.nota ? (
-                                                    <p className="text-xs text-text-muted">
-                                                        {pergunta.resposta.nota} — <span className="font-medium">{ESCALA_LABELS[pergunta.resposta.nota]}</span>
-                                                    </p>
-                                                ) : (
-                                                    <p className="text-gray-400 italic text-sm">— Não respondida</p>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* TEXTO_ABERTO */}
-                                        {pergunta.tipo === "TEXTO_ABERTO" && (
-                                            <div>
-                                                {pergunta.resposta?.texto ? (
-                                                    <div className="bg-gray-50 rounded-lg border border-border p-4">
-                                                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{pergunta.resposta.texto}</p>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-gray-400 italic text-sm">— Não respondida</p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )
-    }
-
-    // =============== VIEW: LISTA DE AVALIADOS ===============
-    if (respostasAv360) {
-        return (
-            <div className="flex-1 overflow-y-auto">
-                {/* Header */}
-                <div className="sticky top-0 z-10 bg-bg-main border-b border-border px-6 py-4">
-                    <button
-                        onClick={handleVoltarParaLista}
-                        className="flex items-center gap-2 text-sm text-text-muted hover:text-primary transition-colors cursor-pointer mb-3"
-                    >
-                        <ArrowLeft size={16} />
-                        Voltar ao histórico
-                    </button>
-                    <div>
-                        <h2 className="text-xl font-bold text-text-main">{respostasAv360.avaliacaoNome}</h2>
-                        <p className="text-sm text-text-muted mt-0.5">
-                            Selecione um membro para ver suas respostas
-                        </p>
-                    </div>
-                </div>
-
-                <div className="p-6 max-w-2xl mx-auto space-y-3 pb-16">
-                    {respostasAv360.avaliados.map((av) => (
-                        <button
-                            key={av.feedbackId}
-                            onClick={() => setFeedbackSelecionado(av.feedbackId)}
-                            className="w-full bg-bg-card rounded-xl p-5 border border-border hover:border-primary hover:shadow-md transition-all text-left group cursor-pointer"
-                        >
-                            <div className="flex items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                                        <User size={18} className="text-primary" />
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-text-main group-hover:text-primary transition-colors">
-                                            {av.avaliadoNome}
-                                        </p>
-                                        <div className="flex items-center gap-1.5 mt-0.5 text-xs text-green-600">
-                                            <CheckCircle size={12} />
-                                            <span>Avaliação concluída</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <ChevronRight size={18} className="text-gray-400 group-hover:text-primary transition-colors shrink-0" />
-                            </div>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        )
     }
 
     // =============== LISTA PRINCIPAL ===============
@@ -286,7 +98,7 @@ export function Avaliacoes360PendentesContent() {
                         {historico.map((av) => (
                             <div
                                 key={av.avaliacaoId}
-                                className="bg-white rounded-xl p-5 border border-border hover:border-primary/30 hover:shadow-md transition-all"
+                                className="bg-white rounded-xl p-5 border border-border"
                             >
                                 <div className="flex items-center justify-between gap-4">
                                     <div>
@@ -303,14 +115,10 @@ export function Avaliacoes360PendentesContent() {
                                             )}
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => handleVerDetalhes(av.avaliacaoId)}
-                                        disabled={loadingRespostas}
-                                        className="shrink-0 flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer disabled:opacity-50"
-                                    >
-                                        <Eye size={16} />
-                                        <span className="hidden sm:inline">Ver detalhes</span>
-                                    </button>
+                                    <span className="shrink-0 flex items-center gap-1.5 text-xs font-semibold text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
+                                        <CheckCircle size={14} />
+                                        Enviada
+                                    </span>
                                 </div>
                             </div>
                         ))}

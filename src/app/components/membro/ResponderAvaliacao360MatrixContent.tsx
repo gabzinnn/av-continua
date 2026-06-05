@@ -3,10 +3,11 @@
 import React, { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useMember } from "@/src/context/memberContext"
-import { getFeedback360MatrixParaResponder, salvarRespostas360, finalizarFeedback360 } from "@/src/actions/avaliacao360Actions"
+import { getFeedback360MatrixParaResponder, salvarRespostas360, finalizarFeedback360, getAvaliadosDaAvaliacao360, getMembroDestaque360, salvarMembroDestaque360, MembroDestaqueOption } from "@/src/actions/avaliacao360Actions"
 const TipoPergunta360 = { ESCALA: "ESCALA", TEXTO_ABERTO: "TEXTO_ABERTO" } as const
 type TipoPergunta360 = typeof TipoPergunta360[keyof typeof TipoPergunta360]
 import { CustomAlert } from "../CustomAlert"
+import { SearchableSelect } from "../SearchableSelect"
 
 type RespostasMap = Record<number, Record<number, any>>
 
@@ -38,6 +39,10 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
     const [respostas, setRespostas] = useState<RespostasMap>({})
     const [progresso, setProgresso] = useState(0)
     const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved">("idle")
+
+    // Membro destaque
+    const [destaqueOptions, setDestaqueOptions] = useState<MembroDestaqueOption[]>([])
+    const [membroDestaqueId, setMembroDestaqueId] = useState<number | null>(null)
 
     const draftDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const dirtyFeedbacksRef = useRef<Set<number>>(new Set())
@@ -81,6 +86,15 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                 console.error(err)
                 setLoading(false)
             })
+
+            // Carrega candidatos a destaque e seleção previamente salva
+            Promise.all([
+                getAvaliadosDaAvaliacao360(avaliacaoId, Number(selectedMember.id)),
+                getMembroDestaque360(avaliacaoId, Number(selectedMember.id)),
+            ]).then(([opcoes, destaqueSalvo]) => {
+                setDestaqueOptions(opcoes)
+                setMembroDestaqueId(destaqueSalvo)
+            }).catch(err => console.error(err))
         }
     }, [selectedMember, avaliacaoId])
 
@@ -190,18 +204,37 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
         setSaving(false)
     }
 
+    const handleDestaqueChange = async (valor: string) => {
+        if (!selectedMember) return
+        const id = valor ? Number(valor) : null
+        setMembroDestaqueId(id)
+        if (id) {
+            await salvarMembroDestaque360(avaliacaoId, Number(selectedMember.id), id)
+        }
+    }
+
     const finalizarAvaliacao = async () => {
         if (!selectedMember) return
         if (progresso < 100) {
             setAlert({ isOpen: true, type: "warning", title: "Atenção", message: "Preencha todas as perguntas obrigatórias antes de finalizar." })
             return
         }
-        
+        if (!membroDestaqueId) {
+            setAlert({ isOpen: true, type: "warning", title: "Atenção", message: "Selecione o membro destaque antes de finalizar." })
+            return
+        }
+
         // Cancela autosave pendente antes de finalizar
         if (draftDebounceRef.current) clearTimeout(draftDebounceRef.current)
         dirtyFeedbacksRef.current.clear()
         setSaving(true)
         try {
+            // Garante que o membro destaque está persistido (validação server-side também)
+            const destaqueResult = await salvarMembroDestaque360(avaliacaoId, Number(selectedMember.id), membroDestaqueId)
+            if (!destaqueResult.success) {
+                throw new Error(destaqueResult.error)
+            }
+
             for (const f of feedbacks) {
                 const toSave = Object.entries(respostas[f.id] || {}).map(([perguntaId, resp]: any) => ({
                     perguntaId: Number(perguntaId),
@@ -284,7 +317,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                     <tr className="bg-gray-50/50">
                                         <td className="sticky left-0 p-4 border-b border-gray-200 bg-gray-50/50 z-10">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-1 h-6 bg-[#fad419] rounded-full"></div>
+                                                <div className="w-1 h-6 bg-primary rounded-full"></div>
                                                 <h3 className="font-bold text-base tracking-tight text-gray-700">{dimensao.titulo}</h3>
                                             </div>
                                         </td>
@@ -308,8 +341,8 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                                     <td key={f.id} className="p-6 text-center border-l border-gray-200 align-middle">
                                                         {pergunta.tipo === "ESCALA" ? (
                                                             <input 
-                                                                className={`w-14 h-14 rounded-lg bg-gray-50 border text-center font-bold text-lg focus:ring-0 focus:outline-none focus:border-[#fad419] transition-all
-                                                                    ${isFilled ? 'border-[#fad419] shadow-[0_0_0_2px_rgba(250,213,25,0.2)]' : 'border-gray-200'}
+                                                                className={`w-14 h-14 rounded-lg bg-gray-50 border text-center font-bold text-lg focus:ring-0 focus:outline-none focus:border-primary transition-all
+                                                                    ${isFilled ? 'border-primary shadow-[0_0_0_2px_rgba(250,213,25,0.2)]' : 'border-gray-200'}
                                                                 `}
                                                                 type="number"
                                                                 min="0"
@@ -330,7 +363,7 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                                                         ) : (
                                                             <textarea 
                                                                 className={`w-full min-w-50 h-20 p-3 rounded-lg bg-gray-50 border text-sm resize-none focus:ring-0 focus:outline-none focus:border-[#fad419] transition-all
-                                                                    ${isFilled ? 'border-[#fad419]' : 'border-gray-200'}
+                                                                    ${isFilled ? 'border-primary' : 'border-gray-200'}
                                                                 `}
                                                                 placeholder="Escreva aqui..."
                                                                 value={resp?.texto || ''}
@@ -346,6 +379,27 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                             ))}
                         </tbody>
                     </table>
+
+                    {/* Membro Destaque */}
+                    <div className="px-6 py-8 border-t border-gray-200">
+                        <div className="max-w-xl">
+                            <div className="flex items-center gap-3 mb-1">
+                                <div className="w-1 h-6 bg-primary rounded-full"></div>
+                                <h3 className="font-bold text-base tracking-tight text-gray-700">Membro Destaque</h3>
+                                <span className="text-xs font-semibold text-red-500">* obrigatório</span>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-3 ml-4">
+                                Quem foi o membro destaque desse ciclo?
+                            </p>
+                            <SearchableSelect
+                                placeholder="Selecione o membro destaque..."
+                                icon="star"
+                                options={destaqueOptions.map(m => ({ value: String(m.id), label: m.nome }))}
+                                value={membroDestaqueId ? String(membroDestaqueId) : ""}
+                                onChange={handleDestaqueChange}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
             </div>
@@ -384,9 +438,9 @@ export function ResponderAvaliacao360MatrixContent({ avaliacaoId }: { avaliacaoI
                     >
                         {saving ? "Salvando..." : "Salvar Rascunho"}
                     </button>
-                    <button 
+                    <button
                         onClick={finalizarAvaliacao}
-                        disabled={saving || progresso < 100}
+                        disabled={saving || progresso < 100 || !membroDestaqueId}
                         className="bg-primary hover:bg-[#eac416] text-text-main px-8 py-3 rounded-lg font-bold text-sm shadow-md transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                         Enviar Avaliação

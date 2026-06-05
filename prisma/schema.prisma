@@ -58,6 +58,9 @@ model Membro {
 
   avaliacoes360Feitas    Feedback360[] @relation("Avaliador360")
   avaliacoes360Recebidas Feedback360[] @relation("Avaliado360")
+
+  destaquesDados     MembroDestaque360[] @relation("DestaqueAvaliador360")
+  destaquesRecebidos MembroDestaque360[] @relation("DestaqueRecebido360")
 }
 
 model Coordenador {
@@ -549,6 +552,7 @@ model Avaliacao360 {
   ciclo          Ciclo?             @relation(fields: [idCiclo], references: [id])
   dimensoes      Dimensao360[]
   feedbacks      Feedback360[]
+  destaques      MembroDestaque360[]
   relatorioMeta  RelatorioAV360Meta?
 }
 
@@ -617,6 +621,23 @@ model RespostaPergunta360 {
   @@unique([feedbackId, perguntaId])
   @@index([feedbackId])
   @@index([perguntaId])
+}
+
+model MembroDestaque360 {
+  id               Int      @id @default(autoincrement())
+  avaliacaoId      Int
+  avaliadorId      Int
+  membroDestaqueId Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  avaliacao      Avaliacao360 @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  avaliador      Membro       @relation("DestaqueAvaliador360", fields: [avaliadorId], references: [id])
+  membroDestaque Membro       @relation("DestaqueRecebido360", fields: [membroDestaqueId], references: [id])
+
+  @@unique([avaliacaoId, avaliadorId])
+  @@index([avaliacaoId])
+  @@index([membroDestaqueId])
 }
 
 // ==========================================

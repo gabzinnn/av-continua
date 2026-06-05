@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getRelatorio360Geral, getRelatorio360PorAvaliado, salvarRelatorioAV360, getRelatorioAV360, gerarRelatorioAV360Xlsx, getAvaliadores360Status, type Avaliador360Status } from "@/src/actions/avaliacao360Actions"
+import { getRelatorio360Geral, getRelatorio360PorAvaliado, salvarRelatorioAV360, getRelatorioAV360, gerarRelatorioAV360Xlsx, getAvaliadores360Status, getRankingDestaque360, type Avaliador360Status, type RankingDestaque360Item } from "@/src/actions/avaliacao360Actions"
 import { Card } from "../../Card"
 import { Button } from "../../Button"
 import { ArrowLeft, Download, Users, BarChart3, TrendingUp, Star, Edit3, X, Save, CheckCircle, XCircle } from "lucide-react"
@@ -21,6 +21,7 @@ export function Relatorio360Content({ id }: { id: number }) {
     const [isGenerating, setIsGenerating] = useState(false)
     const [isGeneratingXlsx, setIsGeneratingXlsx] = useState(false)
     const [avaliadores, setAvaliadores] = useState<Avaliador360Status[]>([])
+    const [rankingDestaque, setRankingDestaque] = useState<RankingDestaque360Item[]>([])
 
     // Edit modal state
     const [editModalOpen, setEditModalOpen] = useState(false)
@@ -34,13 +35,15 @@ export function Relatorio360Content({ id }: { id: number }) {
     useEffect(() => {
         Promise.all([
             getRelatorio360Geral(id),
-            getAvaliadores360Status(id)
-        ]).then(([data, avs]) => {
+            getAvaliadores360Status(id),
+            getRankingDestaque360(id)
+        ]).then(([data, avs, destaques]) => {
             setRelatorioGeral(data)
             if (data && data.ranking && data.ranking.length > 0) {
                 setMembroSelecionado(data.ranking[0].membroId)
             }
             setAvaliadores(avs)
+            setRankingDestaque(destaques)
             setIsLoading(false)
         })
     }, [id])
@@ -263,6 +266,29 @@ export function Relatorio360Content({ id }: { id: number }) {
                                     </div>
                                 </Card>
                             </div>
+
+                            <Card className="p-6">
+                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Star size={20} className="text-[#fad419]" /> Membros Destaque</h3>
+                                {rankingDestaque.length === 0 ? (
+                                    <p className="text-sm text-gray-500">Nenhum voto de membro destaque registrado.</p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {rankingDestaque.map((d, idx) => (
+                                            <div key={d.membroId} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
+                                                        {idx + 1}
+                                                    </div>
+                                                    <span className="font-bold text-sm text-gray-700">{d.nome}</span>
+                                                </div>
+                                                <span className="font-black text-gray-900 bg-white px-3 py-1 rounded-md border border-gray-200">
+                                                    {d.votos} {d.votos === 1 ? "voto" : "votos"}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </Card>
                         </div>
                     )}
 
