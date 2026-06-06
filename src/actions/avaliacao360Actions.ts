@@ -833,21 +833,37 @@ export interface MembroDestaqueOption {
 }
 
 // Avaliados distintos da av360 (candidatos a destaque), excluindo o respondente.
+// Regra: coords podem votar em qualquer membro; não-coords só veem membros da mesma área que não são coords.
 export async function getAvaliadosDaAvaliacao360(
     avaliacaoId: number,
     excluirMembroId: number
 ): Promise<MembroDestaqueOption[]> {
     try {
+        const avaliador = await prisma.membro.findUnique({
+            where: { id: excluirMembroId },
+            select: { isCoordenador: true, areaId: true },
+        })
+        if (!avaliador) return []
+
         const feedbacks = await prisma.feedback360.findMany({
             where: { avaliacaoId },
             distinct: ["avaliadoId"],
-            select: { avaliado: { select: { id: true, nome: true } } },
+            select: {
+                avaliado: {
+                    select: { id: true, nome: true, isCoordenador: true, areaId: true },
+                },
+            },
             orderBy: { avaliado: { nome: "asc" } },
         })
 
         return feedbacks
             .map((f) => f.avaliado)
-            .filter((m) => m.id !== excluirMembroId)
+            .filter((m) => {
+                if (m.id === excluirMembroId) return false
+                if (avaliador.isCoordenador) return true
+                return m.areaId === avaliador.areaId && !m.isCoordenador
+            })
+            .map((m) => ({ id: m.id, nome: m.nome }))
     } catch (error) {
         console.error(error)
         return []
@@ -907,6 +923,25 @@ export async function salvarMembroDestaque360(
         })
         if (!destaqueValido) {
             return { success: false, error: "Membro destaque inválido" }
+        }
+
+        // Não-coords só podem votar em membros da mesma área que não são coords
+        const avaliador = await prisma.membro.findUnique({
+            where: { id: avaliadorId },
+            select: { isCoordenador: true, areaId: true },
+        })
+        if (avaliador && !avaliador.isCoordenador) {
+            const destaqueMembro = await prisma.membro.findUnique({
+                where: { id: membroDestaqueId },
+                select: { isCoordenador: true, areaId: true },
+            })
+            if (
+                !destaqueMembro ||
+                destaqueMembro.isCoordenador ||
+                destaqueMembro.areaId !== avaliador.areaId
+            ) {
+                return { success: false, error: "Sem permissão para votar neste membro" }
+            }
         }
 
         await prisma.membroDestaque360.upsert({
